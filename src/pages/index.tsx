@@ -4,6 +4,8 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 import { trpc } from "../utils/trpc";
 
+import OrgasmChart from "../components/OrgasmChart";
+
 const Home: NextPage = () => {
   return (
     <>
@@ -17,7 +19,7 @@ const Home: NextPage = () => {
           <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-[5rem]">
             Orgasm Tracker
           </h1>
-          
+
           <div className="flex flex-col items-center gap-2">
             <AuthShowcase />
           </div>
@@ -37,7 +39,7 @@ const AuthShowcase: React.FC = () => {
 
   const { data: secretMessage } = trpc.auth.getSecretMessage.useQuery(
     undefined, // no input
-    { enabled: sessionData?.user !== undefined },
+    { enabled: sessionData?.user !== undefined }
   );
 
   return (
@@ -57,36 +59,49 @@ const AuthShowcase: React.FC = () => {
 };
 
 const OrgasmCount: React.FC = () => {
+  const { data: sessionData } = useSession();
 
-  const {data: sessionData} = useSession();
-
-  const {data: userOrgasms} = trpc.orgasms.getUserOrgasms.useQuery(
+  const { data: userOrgasms } = trpc.orgasms.getUserOrgasms.useQuery(
     undefined,
-    { enabled: sessionData?.user !== undefined },
-  )
+    { enabled: sessionData?.user !== undefined }
+  );
 
-  const {mutate: addUserOrgasm} = trpc.orgasms.addUserOrgasm.useMutation();
+  const context = trpc.useContext();
+
+  const { mutate: addUserOrgasm } = trpc.orgasms.addUserOrgasm.useMutation({
+    onSuccess: () => {
+      context.orgasms.getUserOrgasms.invalidate();
+    },
+  });
 
   const addOrgasm = () => {
     if (!sessionData) return;
-    addUserOrgasm();
-  }
+    const datetime = new Date();
+    const date = datetime.toISOString().slice(0, 10);
+    const time = datetime.toISOString().slice(11, 19);
+
+    addUserOrgasm({ date, time });
+  };
+
+  console.log(userOrgasms);
 
   return (
-    <div className="text-white flex flex-col items-center justify-center gap-4">
-      <p className="text-center">
+    <div className="flex flex-col items-center justify-center gap-4 text-white">
+      <div className="text-center">
         {userOrgasms ? (
-          <>You have had {userOrgasms.length} orgasm{userOrgasms.length !== 1 && "s"}!</>
-        ) : (<a>Sign in to track orgasm</a>)}
-      </p>
+          <OrgasmChart orgasms={userOrgasms} />
+        ) : (
+          <a>Sign in to track orgasm</a>
+        )}
+      </div>
       {sessionData && (
         <button
-        className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20"
-        onClick={addOrgasm}
-      >
-        I&apos;ve had an orgasm!
-      </button>
+          className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20"
+          onClick={addOrgasm}
+        >
+          I&apos;ve had an orgasm!
+        </button>
       )}
     </div>
-  )
-}
+  );
+};
