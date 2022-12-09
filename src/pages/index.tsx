@@ -4,6 +4,10 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 import { trpc } from "../utils/trpc";
 
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+dayjs.extend(utc);
+
 import OrgasmChart from "../components/OrgasmChart";
 
 const Home: NextPage = () => {
@@ -15,7 +19,7 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-pink-700 to-pink-900">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
+        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
           <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-[5rem]">
             Orgasm Tracker
           </h1>
@@ -23,7 +27,7 @@ const Home: NextPage = () => {
           <div className="flex flex-col items-center gap-2">
             <AuthShowcase />
           </div>
-          <div className="text-lg">
+          <div className="w-full text-lg">
             <OrgasmCount />
           </div>
         </div>
@@ -37,16 +41,10 @@ export default Home;
 const AuthShowcase: React.FC = () => {
   const { data: sessionData } = useSession();
 
-  const { data: secretMessage } = trpc.auth.getSecretMessage.useQuery(
-    undefined, // no input
-    { enabled: sessionData?.user !== undefined }
-  );
-
   return (
     <div className="flex flex-col items-center justify-center gap-4">
       <p className="text-center text-2xl text-white">
         {sessionData && <span>Logged in as {sessionData.user?.name}</span>}
-        {secretMessage && <span> - {secretMessage}</span>}
       </p>
       <button
         className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20"
@@ -76,18 +74,16 @@ const OrgasmCount: React.FC = () => {
 
   const addOrgasm = () => {
     if (!sessionData) return;
-    const datetime = new Date();
-    const date = datetime.toISOString().slice(0, 10);
-    const time = datetime.toISOString().slice(11, 19);
+    const today = dayjs.utc().local();
+    const date = today.format("YYYY-MM-DD");
+    const time = today.format("HH:mm:ss");
 
     addUserOrgasm({ date, time });
   };
 
-  console.log(userOrgasms);
-
   return (
-    <div className="flex flex-col items-center justify-center gap-4 text-white">
-      <div className="text-center">
+    <div className="flex flex-col items-center justify-center gap-4  text-white">
+      <div className="w-full  text-center">
         {userOrgasms ? (
           <OrgasmChart orgasms={userOrgasms} />
         ) : (

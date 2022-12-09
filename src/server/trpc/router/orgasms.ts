@@ -11,6 +11,11 @@ export const orgasmRouter = router({
       _count: {
         date: true,
       },
+      orderBy: [
+        {
+          date: "asc",
+        },
+      ],
     });
   }),
   addUserOrgasm: protectedProcedure
