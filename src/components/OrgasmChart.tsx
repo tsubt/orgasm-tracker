@@ -14,6 +14,8 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
   const [showModal, setShowModal] = useState<DateOrgasmType | null>(null);
 
   // calculate total number of orgasms
+  if (!orgasms || orgasms.length === 0) return <>No orgasms.</>;
+
   const n =
     orgasms?.map((o) => o.orgasms.length).reduce((a, b) => a + b, 0) || 0;
 
