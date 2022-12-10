@@ -2,6 +2,8 @@ import { type NextPage } from "next";
 import Head from "next/head";
 import { signIn, signOut, useSession } from "next-auth/react";
 
+import { motion } from "framer-motion";
+
 import { trpc } from "../utils/trpc";
 
 import dayjs from "dayjs";
@@ -9,6 +11,7 @@ import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 
 import OrgasmChart from "../components/OrgasmChart";
+import { useRef, useState } from "react";
 
 const Home: NextPage = () => {
   return (
@@ -64,19 +67,26 @@ const OrgasmCount: React.FC = () => {
     { enabled: sessionData?.user !== undefined }
   );
 
+  const [newOrgasm, setNewOrgasm] = useState(false);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const timeRef = useRef<HTMLInputElement>(null);
+
   const context = trpc.useContext();
 
   const { mutate: addUserOrgasm } = trpc.orgasms.addUserOrgasm.useMutation({
-    onSuccess: () => {
-      context.orgasms.getUserOrgasms.invalidate();
+    onSuccess: async () => {
+      await context.orgasms.getUserOrgasms.invalidate();
+      setNewOrgasm(false);
     },
   });
 
-  const addOrgasm = () => {
+  const addOrgasm = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
     if (!sessionData) return;
     const today = dayjs.utc().local();
-    const date = today.format("YYYY-MM-DD");
-    const time = today.format("HH:mm:ss");
+    const date = dateRef.current?.value || today.format("YYYY-MM-DD");
+    const time = timeRef.current?.value || today.format("HH:mm");
 
     addUserOrgasm({ date, time });
   };
@@ -93,10 +103,64 @@ const OrgasmCount: React.FC = () => {
       {sessionData && (
         <button
           className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20"
-          onClick={addOrgasm}
+          onClick={() => setNewOrgasm(true)}
         >
           I&apos;ve had an orgasm!
         </button>
+      )}
+
+      {newOrgasm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed top-0 left-0 flex h-screen w-screen items-center justify-center bg-black bg-opacity-40"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, originX: 0.5, originY: 0.5 }}
+            animate={{ opacity: 1, scale: 1, transition: { delay: 0.1 } }}
+            className="flex flex-col gap-4 rounded-lg bg-white p-4 text-black shadow-xl"
+          >
+            <h4 className="text-lg text-black">
+              When did you have this orgasm?
+            </h4>
+
+            <form onSubmit={addOrgasm} className="flex flex-col gap-2">
+              <label
+                htmlFor="orgasmDate"
+                className="text-sm font-bold uppercase"
+              >
+                Date
+              </label>
+              <input
+                type="date"
+                ref={dateRef}
+                defaultValue={dayjs.utc().local().format("YYYY-MM-DD")}
+              />
+
+              <label
+                htmlFor="orgasmTime"
+                className="text-sm font-bold uppercase"
+              >
+                Time
+              </label>
+              <input
+                type="time"
+                min="00:00:00"
+                max="24:00:00"
+                pattern="[0-9]{2}:[0-9]{2}"
+                ref={timeRef}
+                defaultValue={dayjs.utc().local().format("HH:mm")}
+              />
+
+              <div className="mt-2 flex justify-between border-t px-4 pt-4">
+                <button type="button" onClick={() => setNewOrgasm(false)}>
+                  Cancel
+                </button>
+                <button type="submit">Save</button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   );

@@ -1,30 +1,28 @@
-import { Prisma } from "@prisma/client";
-
 import { motion } from "framer-motion";
 
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { useState } from "react";
+import { DateOrgasmType } from "../server/trpc/router/orgasms";
 dayjs.extend(isoWeek);
 
-type OrgasmType = Prisma.PickArray<Prisma.OrgasmGroupByOutputType, "date"[]> & {
-  _count: {
-    date: number;
-  };
-};
 type OrgasmChartProps = {
-  orgasms: OrgasmType[] | undefined;
+  orgasms: DateOrgasmType[] | undefined;
 };
 
 const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
-  const [showModal, setShowModal] = useState<OrgasmType | null>(null);
+  const [showModal, setShowModal] = useState<DateOrgasmType | null>(null);
 
-  let n = 0;
-  orgasms?.map((x) => (n += x._count.date));
+  // calculate total number of orgasms
+  const n =
+    orgasms?.map((o) => o.orgasms.length).reduce((a, b) => a + b, 0) || 0;
 
   const today = dayjs();
-  const start = dayjs(orgasms?.at(0)?.date || today.subtract(5, "week"));
-  // const dateStart = new Date(orgasms?.at(0)?.date || new Date());
+  // find earliest date
+  const start =
+    orgasms
+      ?.map((o) => dayjs(o.date))
+      .reduce((min, d) => (d < min ? d : min)) || today.subtract(1, "month");
 
   // generate coordinates for heatmap
   const xMin = today.isoWeek() - start.isoWeek() + 1,
@@ -35,7 +33,7 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
 
   const nMax =
     orgasms?.reduce(
-      (max, org) => (org._count.date > max ? org._count.date : max),
+      (max, org) => (org.orgasms.length > max ? org.orgasms.length : max),
       0
     ) || 1;
 
@@ -45,12 +43,11 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
         You have had {n} orgasm{n !== 1 && "s"}!
       </div>
 
-      <div className="flex justify-center">
-        {/* <svg viewBox={`{0 0 ${xMin} ${yMin}}`} className="bg-white"> */}
+      <div className="relative flex h-[156px] w-full justify-center overflow-hidden">
         <svg
           width={xMin * squareSize}
           height={yMin * squareSize}
-          className="m-2 "
+          className="absolute right-0 m-2"
           xmlns="http://www.w3.org/2000/svg"
         >
           <g strokeWidth="1" stroke="">
@@ -64,8 +61,8 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
                 y={(dayjs(org.date).isoWeekday() - 1) * squareSize}
                 width={squareSize}
                 height={squareSize}
-                fill={`rgba(147, 197, 253, ${org._count.date / nMax})`}
-                initial={{ opacity: 0, scale: 0.9 }}
+                fill={`rgba(147, 197, 253, ${org.orgasms.length / nMax})`}
+                initial={{ opacity: 0, scale: 0.9, originX: 0.5, originY: 0.5 }}
                 animate={{ opacity: 1, scale: 0.9 }}
                 whileHover={{ scale: 1 }}
                 className="cursor-pointer"
@@ -76,20 +73,36 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
         </svg>
       </div>
       {showModal && (
-        <div
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           className="fixed top-0 left-0 flex h-screen w-screen items-center justify-center bg-black bg-opacity-40"
           onClick={() => setShowModal(null)}
         >
-          <div className="flex flex-col gap-8 rounded-lg bg-white p-4 text-black shadow-xl">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, originX: 0.5, originY: 0.5 }}
+            animate={{ opacity: 1, scale: 1, transition: { delay: 0.1 } }}
+            className="flex flex-col gap-8 rounded-lg bg-white p-4 text-black shadow-xl"
+          >
             <h3 className="text-xl">
               {dayjs(showModal.date).format("dddd D MMMM, YYYY")}
             </h3>
             <p>
-              You had {showModal._count.date} orgasm
-              {showModal._count.date !== 1 && "s"}!
+              You had {showModal.orgasms.length} orgasm
+              {showModal.orgasms.length !== 1 && "s"}!
             </p>
-          </div>
-        </div>
+            <ul>
+              {showModal.orgasms.map((o) => (
+                <li key={o.id}>
+                  {dayjs
+                    .utc(o.date + " " + o.time)
+                    .local()
+                    .format("HH:mm a")}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   );

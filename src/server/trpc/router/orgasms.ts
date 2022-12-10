@@ -1,22 +1,29 @@
+import { Orgasm } from "@prisma/client";
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 
+type DateOrgasmType = {
+  date: string;
+  orgasms: Orgasm[];
+};
+
 export const orgasmRouter = router({
-  getUserOrgasms: protectedProcedure.query(({ ctx }) => {
-    return ctx.prisma.orgasm.groupBy({
-      by: ["date"],
+  getUserOrgasms: protectedProcedure.query(async ({ ctx }) => {
+    const orgasms = await ctx.prisma.orgasm.findMany({
       where: {
         userId: ctx.session.user.id,
       },
-      _count: {
-        date: true,
-      },
-      orderBy: [
-        {
-          date: "asc",
-        },
-      ],
     });
+
+    const dates = groupBy(orgasms, (orgasm) => orgasm.date);
+    const result: DateOrgasmType[] = [];
+    for (const [date, orgasms] of Object.entries(dates)) {
+      result.push({
+        date,
+        orgasms,
+      });
+    }
+    return result;
   }),
   addUserOrgasm: protectedProcedure
     // accept datetime input
@@ -44,3 +51,14 @@ export const orgasmRouter = router({
       return user;
     }),
 });
+
+const groupBy = <T>(
+  array: T[],
+  predicate: (value: T, index: number, array: T[]) => string
+) =>
+  array.reduce((acc, value, index, array) => {
+    (acc[predicate(value, index, array)] ||= []).push(value);
+    return acc;
+  }, {} as { [key: string]: T[] });
+
+export type { DateOrgasmType };
