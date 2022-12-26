@@ -97,8 +97,11 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
               {showModal.orgasms
                 .sort((a, b) => (a.time >= b.time ? 1 : -1))
                 .map((o) => (
-                  <div className="flex flex-col border-b pb-4 lg:flex-row lg:px-8">
-                    <div key={o.id} className="font-bold lg:w-40">
+                  <div
+                    className="flex flex-col border-b pb-4 lg:flex-row lg:px-8"
+                    key={o.id}
+                  >
+                    <div className="font-bold lg:w-40">
                       {dayjs
                         .utc(o.date + " " + o.time)
                         .local()
