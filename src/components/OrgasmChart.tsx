@@ -84,7 +84,7 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9, originX: 0.5, originY: 0.5 }}
             animate={{ opacity: 1, scale: 1, transition: { delay: 0.1 } }}
-            className="flex flex-col gap-8 rounded-lg bg-white p-4 text-black shadow-xl"
+            className="mx-4 flex flex-col gap-8 rounded-lg bg-white p-4 text-black shadow-xl"
           >
             <h3 className="text-xl">
               {dayjs(showModal.date).format("dddd D MMMM, YYYY")}
@@ -93,16 +93,21 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
               You had {showModal.orgasms.length} orgasm
               {showModal.orgasms.length !== 1 && "s"}!
             </p>
-            <ul>
-              {showModal.orgasms.map((o) => (
-                <li key={o.id}>
-                  {dayjs
-                    .utc(o.date + " " + o.time)
-                    .local()
-                    .format("HH:mm a")}
-                </li>
-              ))}
-            </ul>
+            <div className="flex flex-col gap-4 text-sm lg:mx-4">
+              {showModal.orgasms
+                .sort((a, b) => (a.time >= b.time ? 1 : -1))
+                .map((o) => (
+                  <div className="flex flex-col border-b pb-4 lg:flex-row lg:px-8">
+                    <div key={o.id} className="font-bold lg:w-40">
+                      {dayjs
+                        .utc(o.date + " " + o.time)
+                        .local()
+                        .format("HH:mm a")}
+                    </div>
+                    <div className="">{o.note}</div>
+                  </div>
+                ))}
+            </div>
           </motion.div>
         </motion.div>
       )}

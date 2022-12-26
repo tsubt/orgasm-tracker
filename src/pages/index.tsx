@@ -70,6 +70,7 @@ const OrgasmCount: React.FC = () => {
   const [newOrgasm, setNewOrgasm] = useState(false);
   const dateRef = useRef<HTMLInputElement>(null);
   const timeRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
 
   const context = trpc.useContext();
 
@@ -87,8 +88,9 @@ const OrgasmCount: React.FC = () => {
     const today = dayjs.utc().local();
     const date = dateRef.current?.value || today.format("YYYY-MM-DD");
     const time = timeRef.current?.value || today.format("HH:mm");
+    const note = noteRef.current?.value || null;
 
-    addUserOrgasm({ date, time });
+    addUserOrgasm({ date, time, note });
   };
 
   return (
@@ -125,31 +127,48 @@ const OrgasmCount: React.FC = () => {
             </h4>
 
             <form onSubmit={addOrgasm} className="flex flex-col gap-2">
-              <label
-                htmlFor="orgasmDate"
-                className="text-sm font-bold uppercase"
-              >
-                Date
-              </label>
-              <input
-                type="date"
-                ref={dateRef}
-                defaultValue={dayjs.utc().local().format("YYYY-MM-DD")}
-              />
+              <div className="flex flex-col gap-2 lg:grid lg:grid-flow-col lg:grid-rows-2 lg:items-center lg:gap-x-8">
+                <label
+                  htmlFor="orgasmDate"
+                  className="text-sm font-bold uppercase"
+                >
+                  Date
+                </label>
+                <input
+                  type="date"
+                  ref={dateRef}
+                  defaultValue={dayjs.utc().local().format("YYYY-MM-DD")}
+                />
+
+                <label
+                  htmlFor="orgasmTime"
+                  className="text-sm font-bold uppercase"
+                >
+                  Time
+                </label>
+                <input
+                  type="time"
+                  min="00:00:00"
+                  max="24:00:00"
+                  pattern="[0-9]{2}:[0-9]{2}"
+                  ref={timeRef}
+                  defaultValue={dayjs.utc().local().format("HH:mm")}
+                />
+              </div>
 
               <label
-                htmlFor="orgasmTime"
+                htmlFor="orgasmNote"
                 className="text-sm font-bold uppercase"
               >
-                Time
+                Notes
               </label>
-              <input
-                type="time"
-                min="00:00:00"
-                max="24:00:00"
-                pattern="[0-9]{2}:[0-9]{2}"
-                ref={timeRef}
-                defaultValue={dayjs.utc().local().format("HH:mm")}
+              <textarea
+                name="orgasmNote"
+                id="orgasmNote"
+                className="border p-2 text-sm outline-none"
+                placeholder="Details you'd like to remember"
+                ref={noteRef}
+                rows={4}
               />
 
               <div className="mt-2 flex justify-between border-t px-4 pt-4">

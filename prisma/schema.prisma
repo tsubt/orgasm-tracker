@@ -70,6 +70,7 @@ model Orgasm {
   id        String   @id @default(cuid())
   date      String
   time      String
+  note      String?  @db.Text
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

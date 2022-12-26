@@ -31,6 +31,7 @@ export const orgasmRouter = router({
       z.object({
         date: z.string(),
         time: z.string(),
+        note: z.string().nullable(),
       })
     )
     .mutation(({ ctx, input }) => {
@@ -44,6 +45,7 @@ export const orgasmRouter = router({
             create: {
               date: input.date,
               time: input.time,
+              note: input.note,
             },
           },
         },
