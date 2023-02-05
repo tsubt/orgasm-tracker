@@ -1,4 +1,4 @@
-import { Orgasm } from "@prisma/client";
+import type { Orgasm } from "@prisma/client";
 import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 

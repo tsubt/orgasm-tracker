@@ -2,8 +2,8 @@ import { motion } from "framer-motion";
 
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-import { useEffect, useState } from "react";
-import { DateOrgasmType } from "../server/trpc/router/orgasms";
+import { useState } from "react";
+import type { DateOrgasmType } from "../server/trpc/router/orgasms";
 import { HeatMap } from "./charts/HeatMap";
 import { BarChart } from "./charts/BarChart";
 dayjs.extend(isoWeek);
@@ -122,6 +122,6 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
 
 export default OrgasmChart;
 
-function getRange(count: number) {
-  return Array.from({ length: count }, (_, i) => i);
-}
+// function getRange(count: number) {
+//   return Array.from({ length: count }, (_, i) => i);
+// }

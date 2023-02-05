@@ -1,6 +1,8 @@
-import dayjs, { Dayjs } from "dayjs";
-import React, { Dispatch, SetStateAction } from "react";
-import { DateOrgasmType } from "../../server/trpc/router/orgasms";
+import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
+import React from "react";
+import type { Dispatch, SetStateAction } from "react";
+import type { DateOrgasmType } from "../../server/trpc/router/orgasms";
 import { motion } from "framer-motion";
 
 type HeatMapProps = {
@@ -22,10 +24,10 @@ export const HeatMap: React.FC<HeatMapProps> = ({
     );
   };
   // generate coordinates for heatmap
-  const xMin = getX(end),
-    xMax = 0;
-  const yMin = 7,
-    yMax = 0;
+  const xMin = getX(end);
+  // xMax = 0;
+  const yMin = 7;
+  // yMax = 0;
   const squareSize = 20;
 
   const nMax =

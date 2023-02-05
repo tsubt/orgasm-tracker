@@ -1,9 +1,10 @@
-import { Orgasm } from "@prisma/client";
+import type { Orgasm } from "@prisma/client";
 import dayjs from "dayjs";
-var weekOfYear = require("dayjs/plugin/weekOfYear");
-dayjs.extend(weekOfYear);
+import weekOfYear from "dayjs/plugin/weekOfYear";
 import React, { useEffect, useState } from "react";
-import { DateOrgasmType } from "../../server/trpc/router/orgasms";
+import type { DateOrgasmType } from "../../server/trpc/router/orgasms";
+
+dayjs.extend(weekOfYear);
 
 type BarChartProps = {
   events: DateOrgasmType[];
@@ -15,12 +16,10 @@ type BarChartEvent = {
   orgasms: Orgasm[];
 };
 
-const N_MAX = 8;
-
 export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   const [orgs, setOrgs] = useState<BarChartEvent[]>([]);
-  const [nOrg, setNOrg] = useState(0);
-  const [startDate, setStartDate] = useState(dayjs());
+  // const [nOrg, setNOrg] = useState(0);
+  // const [startDate, setStartDate] = useState(dayjs());
 
   const today = dayjs();
 
@@ -51,11 +50,11 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
       })
       .sort((a, b) => (a.date > b.date ? 1 : -1));
     setOrgs(dateList);
-    setNOrg(
-      filtered?.map((o) => o.orgasms.length).reduce((a, b) => a + b, 0) || 0
-    );
-    setStartDate(start);
-  }, [events, view]);
+    // setNOrg(
+    //   filtered?.map((o) => o.orgasms.length).reduce((a, b) => a + b, 0) || 0
+    // );
+    // setStartDate(start);
+  }, [today, events, view]);
 
   return (
     <div className="flex h-full w-full max-w-[1000px] flex-col gap-4">
