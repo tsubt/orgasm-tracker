@@ -2,9 +2,22 @@ import { motion } from "framer-motion";
 
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DateOrgasmType } from "../server/trpc/router/orgasms";
+import { HeatMap } from "./charts/HeatMap";
+import { BarChart } from "./charts/BarChart";
 dayjs.extend(isoWeek);
+
+type View = {
+  name: "dow" | "day" | "week" | "month";
+  label: string;
+};
+const views: View[] = [
+  // { name: "dow", label: "Heatmap" },
+  { name: "day", label: "Day" },
+  { name: "week", label: "Week" },
+  { name: "month", label: "Month" },
+];
 
 type OrgasmChartProps = {
   orgasms: DateOrgasmType[] | undefined;
@@ -13,31 +26,19 @@ type OrgasmChartProps = {
 const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
   const [showModal, setShowModal] = useState<DateOrgasmType | null>(null);
 
-  // calculate total number of orgasms
-  if (!orgasms || orgasms.length === 0) return <>No orgasms.</>;
-
-  const n =
-    orgasms?.map((o) => o.orgasms.length).reduce((a, b) => a + b, 0) || 0;
+  // the type of chart to display
+  const [view, setView] = useState<"dow" | "day" | "week" | "month">("day");
 
   const today = dayjs();
-  // find earliest date
   const start =
     orgasms
       ?.map((o) => dayjs(o.date))
       .reduce((min, d) => (d < min ? d : min)) || today.subtract(1, "month");
+  const n =
+    orgasms?.map((o) => o.orgasms.length).reduce((a, b) => a + b, 0) || 0;
 
-  // generate coordinates for heatmap
-  const xMin = today.isoWeek() - start.isoWeek() + 1,
-    xMax = 0;
-  const yMin = 7,
-    yMax = 0;
-  const squareSize = 20;
-
-  const nMax =
-    orgasms?.reduce(
-      (max, org) => (org.orgasms.length > max ? org.orgasms.length : max),
-      0
-    ) || 1;
+  // no orgasms? return!
+  if (!orgasms || orgasms.length === 0) return <>No orgasms.</>;
 
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4">
@@ -45,35 +46,36 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
         You have had {n} orgasm{n !== 1 && "s"}!
       </div>
 
-      <div className="relative flex h-[156px] w-full justify-center overflow-hidden">
-        <svg
-          width={xMin * squareSize}
-          height={yMin * squareSize}
-          className="absolute right-0 m-2"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <g strokeWidth="1" stroke="">
-            {orgasms?.map((org) => (
-              <motion.rect
-                key={org.date}
-                x={
-                  (xMin - today.isoWeek() + dayjs(org.date).isoWeek() - 1) *
-                  squareSize
-                }
-                y={(dayjs(org.date).isoWeekday() - 1) * squareSize}
-                width={squareSize}
-                height={squareSize}
-                fill={`rgba(147, 197, 253, ${org.orgasms.length / nMax})`}
-                initial={{ opacity: 0, scale: 0.9, originX: 0.5, originY: 0.5 }}
-                animate={{ opacity: 1, scale: 0.9 }}
-                whileHover={{ scale: 1 }}
-                className="cursor-pointer"
-                onClick={() => setShowModal(org)}
-              />
-            ))}
-          </g>
-        </svg>
+      {/* controls go here */}
+      <div className="flex flex-col items-center justify-center gap-4">
+        <div className="flex flex-row items-center justify-center gap-4 text-sm">
+          {views.map(({ name, label }) => (
+            <button
+              key={name}
+              className={`rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20 ${
+                view === name && "bg-white/20"
+              }`}
+              onClick={() => setView(name)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      <div className="relative flex h-[156px] w-full justify-center">
+        {view === "dow" ? (
+          <HeatMap
+            events={orgasms}
+            start={start}
+            end={today}
+            handler={setShowModal}
+          />
+        ) : (
+          <BarChart events={orgasms} view={view} />
+        )}
+      </div>
+
       {showModal && (
         <motion.div
           initial={{ opacity: 0 }}
