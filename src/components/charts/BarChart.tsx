@@ -59,35 +59,50 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   return (
     <div className="flex h-full w-full max-w-[1000px] flex-col gap-4">
       <div className="flex h-full w-full">
-        {orgs.map((o, index) => (
-          <div
-            key={o.date}
-            className="mx-[2px] flex w-[3.33%] cursor-pointer flex-col items-center justify-center bg-opacity-10 pb-1 "
-          >
-            <div className="flex h-full w-full flex-col justify-end gap-[2px]  border-b border-b-white px-[2px] pb-1 hover:bg-pink-900">
-              {o.orgasms.map((orgasm) => (
-                <div
-                  key={orgasm.id}
-                  className={`group relative h-[12.5%] w-full bg-white hover:bg-pink-200`}
-                >
-                  {orgasm.note && (
-                    <>
-                      <div className="absolute top-0 left-1/2 hidden -translate-x-1/2 -translate-y-[110%] pb-2 group-hover:block">
-                        <div className="w-[300px] rounded bg-gray-50 bg-opacity-20 p-2 text-sm">
-                          {orgasm.note}
+        {orgs.map((o, index) => {
+          const showYear =
+            index === 0
+              ? false
+              : dayjs(o.date).format("YYYY") !==
+                dayjs(orgs.at(Math.max(index - 1))?.date).format("YYYY");
+
+          return (
+            <div
+              key={o.date}
+              className="mx-[2px] flex w-[3.33%] cursor-pointer flex-col items-center justify-center bg-opacity-10 pb-1 "
+            >
+              <div className="flex h-full w-full flex-col justify-end gap-[2px]  border-b border-b-white px-[2px] pb-1 hover:bg-pink-900">
+                {o.orgasms.map((orgasm) => (
+                  <div
+                    key={orgasm.id}
+                    className={`group relative h-[12.5%] w-full bg-white hover:bg-pink-200`}
+                  >
+                    {orgasm.note && (
+                      <>
+                        <div className="absolute top-0 left-1/2 hidden -translate-x-1/2 -translate-y-[110%] pb-2 group-hover:block">
+                          <div className="w-[300px] rounded bg-gray-50 bg-opacity-20 p-2 text-sm">
+                            {orgasm.note}
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="h-4 text-[8px] text-white">
+                {dayjs(o.date).format(view === "month" ? "MMM" : "MMM D")}
+              </div>
+              <div className="m-0 h-12 w-full p-0 text-[10px] text-white">
+                {showYear && dayjs(o.date).format("YYYY")}
+              </div>
             </div>
-            <div className="text-xs text-white">{30 - index}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="flex justify-center text-xs text-white">
-        <div className="uppercase">{view}s ago</div>
+        <div className="uppercase">
+          {view} {view === "week" && "starting"}
+        </div>
       </div>
     </div>
   );
