@@ -16,6 +16,8 @@ type BarChartEvent = {
   orgasms: Orgasm[];
 };
 
+const CHART_HEIGHT = 200;
+
 export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   const [orgs, setOrgs] = useState<BarChartEvent[]>([]);
   const [nMax, setNMax] = useState(8);
@@ -63,21 +65,28 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   return (
     <div className="flex h-full w-full max-w-[1000px] flex-col gap-4">
       <div
-        className="relative flex h-full w-full overflow-x-scroll"
-        style={{ direction: "rtl" }}
+        className="relative flex w-full overflow-x-scroll"
+        style={{ direction: "rtl", height: CHART_HEIGHT + "px" }}
       >
         <div className="absolute top-0 flex h-full">
           {orgs.map((o, index) => {
+            const showMonth =
+              index === 0
+                ? false
+                : dayjs(o.date).format("MMM") !==
+                  dayjs(orgs.at(Math.max(index + 1))?.date).format("MMM");
             const showYear =
               index === 0
                 ? false
                 : dayjs(o.date).format("YYYY") !==
-                  dayjs(orgs.at(Math.max(index - 1))?.date).format("YYYY");
+                  dayjs(orgs.at(Math.max(index + 1))?.date).format("YYYY");
 
             return (
               <div
                 key={o.date}
-                className="mx-[2px] flex w-8 cursor-pointer flex-col items-center justify-center bg-opacity-10 pb-1 "
+                className={`mx-[2px] flex cursor-pointer flex-col items-center justify-center bg-opacity-10 pb-1 ${
+                  view === "day" && "w-4"
+                } ${view === "week" && "w-8"} ${view === "month" && "w-16"}`}
               >
                 <div className="flex h-full w-full flex-col justify-end gap-[3px]  border-b border-b-white px-[2px] pb-1 hover:bg-pink-900">
                   {o.orgasms.map((orgasm) => (
@@ -85,17 +94,24 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                       key={orgasm.id}
                       className="group w-full bg-white hover:bg-pink-200"
                       style={{
-                        height: 100 / nMax,
+                        height: (CHART_HEIGHT - 100) / nMax + "px",
                       }}
                       onClick={() => setNote(orgasm.note)}
                     ></div>
                   ))}
                 </div>
-                <div className="h-4 text-[8px] text-white">
-                  {dayjs(o.date).format(view === "month" ? "MMM" : "MMM D")}
+                <div className="h-4 whitespace-nowrap text-[8px] text-white">
+                  {dayjs(o.date).format(view === "month" ? "MMM" : "D")}
                 </div>
-                <div className="m-0 h-12 w-full p-0 text-[10px] text-white">
-                  {showYear && dayjs(o.date).format("YYYY")}
+                <div className="relative m-0 h-6 w-full p-0 text-[10px] text-white">
+                  <div className="absolute left-1/2 top-0 -translate-x-1/2">
+                    {showMonth && dayjs(o.date).format("MMM")}
+                  </div>
+                </div>
+                <div className="relative m-0 h-6 w-full p-0 text-[10px] text-white">
+                  <div className="absolute left-1/2 top-0 -translate-x-1/2">
+                    {showMonth && dayjs(o.date).format("YYYY")}
+                  </div>
                 </div>
               </div>
             );

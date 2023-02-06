@@ -75,7 +75,7 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
         </div>
       </div>
 
-      <div className="relative flex h-[200px] w-full justify-center">
+      <div className="relative flex w-full justify-center">
         {view === "dow" ? (
           <HeatMap
             events={orgasms}
