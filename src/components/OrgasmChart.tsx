@@ -40,10 +40,21 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
   // no orgasms? return!
   if (!orgasms || orgasms.length === 0) return <>No orgasms.</>;
 
+  const last = dayjs(orgasms[0]?.date);
+  const daysSinceLast = today.diff(last, "day");
+
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4">
-      <div>
-        You have had {n} orgasm{n !== 1 && "s"}!
+      {/* basic stats */}
+      <div className="mb-4 flex items-center justify-center gap-8">
+        <div className="flex flex-col">
+          <div className="text-bold text-4xl">{n}</div>
+          <div>orgasm{n !== 1 && "s"}</div>
+        </div>
+        <div className="flex flex-col">
+          <div className="text-bold text-4xl">{daysSinceLast}</div>
+          <div>day{daysSinceLast !== 1 && "s"} without</div>
+        </div>
       </div>
 
       {/* controls go here */}
@@ -52,7 +63,7 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
           {views.map(({ name, label }) => (
             <button
               key={name}
-              className={`rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20 ${
+              className={`rounded-full bg-white/10 px-4 py-2 font-semibold text-white no-underline transition hover:bg-white/20 md:py-3 md:px-10 ${
                 view === name && "bg-white/20"
               }`}
               onClick={() => setView(name)}

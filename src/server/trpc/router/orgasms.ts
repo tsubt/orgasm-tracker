@@ -1,6 +1,6 @@
 import type { Orgasm } from "@prisma/client";
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, publicProcedure } from "../trpc";
 
 type DateOrgasmType = {
   date: string;
@@ -8,6 +8,39 @@ type DateOrgasmType = {
 };
 
 export const orgasmRouter = router({
+  getUserIdOrgasms: publicProcedure
+    .input(
+      z.object({
+        userId: z.string().nullable(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      if (!input.userId) return null;
+
+      // check user permissions
+      const user = await ctx.prisma.user.findUnique({
+        where: {
+          username: input.userId,
+        },
+      });
+      if (!user) return null;
+      if (!user.publicOrgasms) return null;
+
+      const orgasms = await ctx.prisma.orgasm.findMany({
+        where: {
+          userId: user.id,
+        },
+      });
+      const dates = groupBy(orgasms, (orgasm) => orgasm.date);
+      const result: DateOrgasmType[] = [];
+      for (const [date, orgasms] of Object.entries(dates)) {
+        result.push({
+          date,
+          orgasms,
+        });
+      }
+      return result;
+    }),
   getUserOrgasms: protectedProcedure.query(async ({ ctx }) => {
     const orgasms = await ctx.prisma.orgasm.findMany({
       where: {

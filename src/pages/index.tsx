@@ -1,4 +1,4 @@
-import { type NextPage } from "next";
+import { GetStaticProps, InferGetStaticPropsType, type NextPage } from "next";
 import Head from "next/head";
 import { signIn, signOut, useSession } from "next-auth/react";
 
@@ -13,7 +13,9 @@ dayjs.extend(utc);
 import OrgasmChart from "../components/OrgasmChart";
 import { useRef, useState } from "react";
 
-const Home: NextPage = () => {
+const Home: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = ({
+  title,
+}) => {
   return (
     <>
       <Head>
@@ -24,7 +26,7 @@ const Home: NextPage = () => {
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-pink-700 to-pink-900">
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
           <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-[5rem]">
-            Orgasm Tracker
+            {title}
           </h1>
 
           <div className="flex flex-col items-center gap-2">
@@ -37,6 +39,14 @@ const Home: NextPage = () => {
       </main>
     </>
   );
+};
+
+export const getStaticProps: GetStaticProps = async () => {
+  return {
+    props: {
+      title: process.env.APP_TITLE || "Orgasm Tracker",
+    },
+  };
 };
 
 export default Home;
