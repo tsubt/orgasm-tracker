@@ -1,4 +1,4 @@
-import { GetStaticProps, InferGetStaticPropsType, type NextPage } from "next";
+import type { GetStaticProps, InferGetStaticPropsType, NextPage } from "next";
 import Head from "next/head";
 import { signIn, signOut, useSession } from "next-auth/react";
 

@@ -1,11 +1,10 @@
-import {
+import type {
   GetServerSideProps,
   InferGetServerSidePropsType,
   NextPage,
 } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
 import OrgasmChart from "../../components/OrgasmChart";
 import { trpc } from "../../utils/trpc";
 
