@@ -40,7 +40,7 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
   // no orgasms? return!
   if (!orgasms || orgasms.length === 0) return <>No orgasms.</>;
 
-  const last = dayjs(orgasms[0]?.date);
+  const last = dayjs(orgasms.at(-1)?.date);
   const daysSinceLast = today.diff(last, "day");
 
   return (
