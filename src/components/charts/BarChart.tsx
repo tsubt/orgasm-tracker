@@ -88,11 +88,15 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
       >
         <div className="absolute top-0 flex h-full">
           {orgs.map((o, index) => {
+            const showYear =
+              dayjs(o.date).format("YYYY") !==
+              dayjs(orgs.at(index + 1)?.date).format("YYYY");
+
             const showMonth =
-              index === 0
-                ? false
-                : dayjs(o.date).format("MMM") !==
-                  dayjs(orgs.at(Math.max(index + 1))?.date).format("MMM");
+              // index === 0
+              //   ? true
+              dayjs(o.date).format("MMM") !==
+              dayjs(orgs.at(Math.max(index + 1))?.date).format("MMM");
 
             {
               /* show day if not day view OR date mod 5 is 1 */
@@ -144,7 +148,7 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                 )}
                 <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
                   <div className="absolute left-1/2 top-0 -translate-x-1/2">
-                    {showMonth && dayjs(o.date).format("YYYY")}
+                    {showYear && dayjs(o.date).format("YYYY")}
                   </div>
                 </div>
               </div>

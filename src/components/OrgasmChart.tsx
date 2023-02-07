@@ -50,7 +50,6 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
     })
     .filter((d) => d !== null)
     .map((d) => (d ? d : 0));
-  console.log(times);
 
   // calculate longest streak of zero days between orgasms
   const streaks = times
@@ -70,6 +69,53 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
 
   // time between orgasms -> days *without* orgasm + 1
   const longestGap = times.length ? Math.max(...times) - 1 : 0;
+
+  // most orgasms in a day, week, and month
+  const recordDay = orgasms
+    .map((o) => o.orgasms.length)
+    .reduce((a, b) => (a > b ? a : b));
+
+  // group orgasms by week and find max
+  const weekTotals = orgasms
+    .map((o) => {
+      const week = dayjs(o.date).startOf("week").format("YYYY-MM-DD");
+      return {
+        week,
+        n: o.orgasms.length,
+      };
+    })
+    .reduce((acc, cur) => {
+      if (acc[cur.week]) {
+        acc[cur.week] += cur.n;
+      } else {
+        acc[cur.week] = cur.n;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  const recordWeek = Object.values(weekTotals).reduce((a, b) =>
+    a > b ? a : b
+  );
+
+  // group orgasms by month and find max
+  const monthTotals = orgasms
+    .map((o) => {
+      const month = dayjs(o.date).startOf("month").format("YYYY-MM-DD");
+      return {
+        month,
+        n: o.orgasms.length,
+      };
+    })
+    .reduce((acc, cur) => {
+      if (acc[cur.month]) {
+        acc[cur.month] += cur.n;
+      } else {
+        acc[cur.month] = cur.n;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  const recordMonth = Object.values(monthTotals).reduce((a, b) =>
+    a > b ? a : b
+  );
 
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4">
@@ -100,6 +146,25 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
             <div>
               <div className="text-bold text-4xl">{longestGap}</div> day
               {longestGap !== 1 && "s"}
+            </div>
+          </div>
+        </div>
+        <div className="mb-4 flex items-center justify-center gap-8">
+          <div className="flex flex-col">
+            <div>max orgasm record</div>
+            <div className="space-evenly flex items-center justify-center gap-6">
+              <div className="flex flex-1 flex-col">
+                <div className="text-bold text-4xl">{recordDay}</div>
+                day
+              </div>
+              <div className="flex flex-1 flex-col">
+                <div className="text-bold text-4xl">{recordWeek}</div>
+                week
+              </div>
+              <div className="flex flex-1 flex-col">
+                <div className="text-bold text-4xl">{recordMonth}</div>
+                month
+              </div>
             </div>
           </div>
         </div>
