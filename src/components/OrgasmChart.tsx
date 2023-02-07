@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { useState } from "react";
 import type { DateOrgasmType } from "../server/trpc/router/orgasms";
-import { HeatMap } from "./charts/HeatMap";
+// import { HeatMap } from "./charts/HeatMap";
 import { BarChart } from "./charts/BarChart";
 dayjs.extend(isoWeek);
 
@@ -30,10 +30,6 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
   const [view, setView] = useState<"dow" | "day" | "week" | "month">("day");
 
   const today = dayjs();
-  const start =
-    orgasms
-      ?.map((o) => dayjs(o.date))
-      .reduce((min, d) => (d < min ? d : min)) || today.subtract(1, "month");
   const n =
     orgasms?.map((o) => o.orgasms.length).reduce((a, b) => a + b, 0) || 0;
 
@@ -44,17 +40,66 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
   const last = orgasms.map((d) => d.date).reduce((a, b) => (a > b ? a : b));
   const daysSinceLast = today.diff(last, "day");
 
+  // calculate time between orgasms
+  const times = orgasms
+    .map((o) => o.date)
+    .sort((a, b) => dayjs(a).diff(dayjs(b)))
+    .map((d, i, arr) => {
+      if (i === 0) return null;
+      return dayjs(d).diff(dayjs(arr[i - 1]), "day");
+    })
+    .filter((d) => d !== null)
+    .map((d) => d as number);
+
+  // calculate longest streak of zero days between orgasms
+  const streaks = times
+    .reduce(
+      (acc, cur) => {
+        if (cur === 1) {
+          acc[acc.length - 1] += 1;
+        } else {
+          acc.push(0);
+        }
+        return acc;
+      },
+      [0]
+    )
+    .map((x) => x + 1);
+  const longestStreak = streaks.reduce((a, b) => (a > b ? a : b));
+
+  const longestGap = times.length ? Math.max(...times) : 0;
+
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4">
       {/* basic stats */}
-      <div className="mb-4 flex items-center justify-center gap-8">
-        <div className="flex flex-col">
-          <div className="text-bold text-4xl">{n}</div>
-          <div>orgasm{n !== 1 && "s"}</div>
+      <div className="flex flex-col items-center justify-center gap-8 md:flex-row md:gap-12">
+        <div className="mb-4 flex items-center justify-center gap-8">
+          <div className="flex flex-col">
+            <div>total of</div>
+            <div className="text-bold text-4xl">{n}</div>
+            <div>orgasm{n !== 1 && "s"}</div>
+          </div>
+          <div className="flex flex-col">
+            <div>currently</div>
+            <div className="text-bold text-4xl">{daysSinceLast}</div>
+            <div>day{daysSinceLast !== 1 && "s"} without</div>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <div className="text-bold text-4xl">{daysSinceLast}</div>
-          <div>day{daysSinceLast !== 1 && "s"} without</div>
+        <div className="mb-4 flex items-center justify-center gap-8">
+          <div className="flex flex-col">
+            <div>longest streak</div>
+            <div>
+              <div className="text-bold text-4xl">{longestStreak}</div> day
+              {longestStreak !== 1 && "s"}
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <div>longest break</div>
+            <div>
+              <div className="text-bold text-4xl">{longestGap}</div> day
+              {longestGap !== 1 && "s"}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -77,13 +122,14 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
 
       <div className="relative flex w-full justify-center">
         {view === "dow" ? (
-          <HeatMap
-            events={orgasms}
-            start={start}
-            end={today}
-            handler={setShowModal}
-          />
+          <>Not available</>
         ) : (
+          // <HeatMap
+          //   events={orgasms}
+          //   start={start}
+          //   end={today}
+          //   handler={setShowModal}
+          // />
           <BarChart events={orgasms} view={view} />
         )}
       </div>

@@ -25,15 +25,17 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
+    if (events.length === 0) return;
+
     // const start = today.subtract(30, view).startOf(view);
     // find first event
     const today = dayjs();
-    const start =
-      events
-        ?.map((o) => dayjs(o.date))
-        .reduce((min, d) => (d < min ? d : min)) || today.subtract(1, "month");
+    const firstEvent = events
+      ?.map((o) => dayjs(o.date))
+      .reduce((min, d) => (d < min ? d : min));
 
-    const filtered = events?.filter((o) => dayjs(o.date) > start);
+    const start = firstEvent?.startOf(view);
+    console.log(start);
 
     // create a list of dates from start to today by view
     const dates = [];
@@ -42,11 +44,12 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
       dates.push(d.format("YYYY-MM-DD"));
       d = d.add(1, view);
     }
+    console.log(dates);
 
     // for each date, find all orgasms that happened after that date and before the next date
     const dateList = dates
       .map((date) => {
-        const orgasms = filtered?.filter((o) => {
+        const orgasms = events?.filter((o) => {
           const d = dayjs(o.date);
           return d >= dayjs(date) && d < dayjs(date).add(1, view);
         });
@@ -65,21 +68,19 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   return (
     <div className="flex h-full w-full max-w-[1000px] flex-col gap-4">
       <div
-        className="relative flex w-full overflow-x-scroll"
-        style={{ direction: "rtl", height: CHART_HEIGHT + "px" }}
+        className="relative w-full overflow-y-hidden overflow-x-scroll"
+        style={{
+          direction: "rtl",
+          height: CHART_HEIGHT + "px",
+        }}
       >
-        <div className="absolute top-0 flex h-full">
+        <div className="h-fullpb-4 absolute top-0 flex">
           {orgs.map((o, index) => {
             const showMonth =
               index === 0
                 ? false
                 : dayjs(o.date).format("MMM") !==
                   dayjs(orgs.at(Math.max(index + 1))?.date).format("MMM");
-            const showYear =
-              index === 0
-                ? false
-                : dayjs(o.date).format("YYYY") !==
-                  dayjs(orgs.at(Math.max(index + 1))?.date).format("YYYY");
 
             return (
               <div
@@ -88,7 +89,17 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                   view === "day" && "w-4"
                 } ${view === "week" && "w-8"} ${view === "month" && "w-16"}`}
               >
-                <div className="flex h-full w-full flex-col justify-end gap-[3px]  border-b border-b-white px-[2px] pb-1 hover:bg-pink-900">
+                <div
+                  className={`flex h-full w-full flex-col justify-end ${
+                    view === "month" ? "" : "gap-[3px]"
+                  }  border-b border-b-white px-[2px] pb-1 hover:bg-pink-900`}
+                >
+                  {/* show count label on 'month' view */}
+                  {view === "month" && (
+                    <div className="mb-2 h-4 whitespace-nowrap text-[10px] font-bold text-white">
+                      {o.orgasms.length}
+                    </div>
+                  )}
                   {o.orgasms.map((orgasm) => (
                     <div
                       key={orgasm.id}
@@ -103,11 +114,13 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                 <div className="h-4 whitespace-nowrap text-[8px] text-white">
                   {dayjs(o.date).format(view === "month" ? "MMM" : "D")}
                 </div>
-                <div className="relative m-0 h-6 w-full p-0 text-[10px] text-white">
-                  <div className="absolute left-1/2 top-0 -translate-x-1/2">
-                    {showMonth && dayjs(o.date).format("MMM")}
+                {view !== "month" && (
+                  <div className="relative m-0 h-6 w-full p-0 text-[10px] text-white">
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2">
+                      {showMonth && dayjs(o.date).format("MMM")}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="relative m-0 h-6 w-full p-0 text-[10px] text-white">
                   <div className="absolute left-1/2 top-0 -translate-x-1/2">
                     {showMonth && dayjs(o.date).format("YYYY")}
