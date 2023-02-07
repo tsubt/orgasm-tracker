@@ -4,6 +4,8 @@ import weekOfYear from "dayjs/plugin/weekOfYear";
 import React, { useEffect, useState } from "react";
 import type { DateOrgasmType } from "../../server/trpc/router/orgasms";
 
+import { AnimatePresence, motion } from "framer-motion";
+
 dayjs.extend(weekOfYear);
 
 type BarChartProps = {
@@ -97,83 +99,118 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
           Average: {average} per {view}
         </div>
       </div>
-      <div
-        className="relative w-full overflow-y-hidden overflow-x-scroll"
-        style={{
-          direction: "rtl",
-          height: CHART_HEIGHT + "px",
-        }}
-      >
-        <div className="absolute top-0 flex h-full">
-          {orgs.map((o, index) => {
-            const showYear =
-              dayjs(o.date).format("YYYY") !==
-              dayjs(orgs.at(index + 1)?.date).format("YYYY");
+      <AnimatePresence mode="wait">
+        <div
+          className="relative w-full overflow-y-hidden overflow-x-scroll"
+          style={{
+            direction: "rtl",
+            height: CHART_HEIGHT + "px",
+          }}
+        >
+          <div className="absolute top-0 flex h-full">
+            {orgs.map((o, index) => {
+              const showYear =
+                dayjs(o.date).format("YYYY") !==
+                dayjs(orgs.at(index + 1)?.date).format("YYYY");
 
-            const showMonth =
-              // index === 0
-              //   ? true
-              dayjs(o.date).format("MMM") !==
-              dayjs(orgs.at(Math.max(index + 1))?.date).format("MMM");
+              const showMonth =
+                // index === 0
+                //   ? true
+                dayjs(o.date).format("MMM") !==
+                dayjs(orgs.at(Math.max(index + 1))?.date).format("MMM");
 
-            {
-              /* show day if not day view OR date mod 5 is 1 */
-            }
-            const showDay = view !== "day" || dayjs(o.date).date() % 3 === 1;
+              {
+                /* show day if not day view OR date mod 5 is 1 */
+              }
+              const showDay = view !== "day" || dayjs(o.date).date() % 3 === 1;
 
-            return (
-              <div
-                key={o.date}
-                className={`mx-[2px] flex cursor-pointer flex-col items-center justify-center bg-opacity-10 pb-1`}
-                style={{
-                  width: BAR_WIDTHS.find((b) => b.view === view)?.width + "px",
-                }}
-              >
-                <div
-                  className={`flex h-full w-full flex-col justify-end ${
-                    view === "month" ? "" : "gap-[3px]"
-                  }  border-b border-b-white px-[2px] pb-1 hover:bg-pink-900`}
+              // sort orgasms by time
+              const Os = o.orgasms
+                .map((o) => ({
+                  ...o,
+                  time: dayjs(o.date + " " + o.time),
+                }))
+                .sort((a, b) => -a.time.diff(b.time));
+
+              return (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  // exit={{ opacity: 0, transition: { delay: 1 } }}
+                  key={view + o.date}
+                  // layoutId={"view" + o.date}
+                  className={`mx-[2px] flex cursor-pointer flex-col items-center justify-center bg-opacity-10 pb-1`}
+                  style={{
+                    width:
+                      BAR_WIDTHS.find((b) => b.view === view)?.width + "px",
+                  }}
                 >
-                  {/* show count label on 'month' view */}
-                  {view === "month" && (
-                    <div className="mb-2 h-4 whitespace-nowrap text-[10px] font-bold text-white">
-                      {o.orgasms.length}
-                    </div>
-                  )}
-                  {o.orgasms.map((orgasm) => (
+                  <div
+                    className={`flex h-full w-full flex-col justify-end ${
+                      view === "month" ? "" : "gap-[3px]"
+                    }  border-b border-b-white px-[2px] pb-1 hover:bg-pink-900`}
+                  >
+                    {/* show count label on 'month' view */}
+                    {view === "month" && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{
+                          opacity: 1,
+                          transition: { delay: 0.2 * Os.length },
+                        }}
+                        exit={{ opacity: 0 }}
+                        className="mb-2 h-4 whitespace-nowrap text-[10px] font-bold text-white"
+                      >
+                        {o.orgasms.length}
+                      </motion.div>
+                    )}
                     <div
-                      key={orgasm.id}
-                      className="group w-full bg-white hover:bg-pink-200"
-                      style={{
-                        height: (CHART_HEIGHT - 100) / nMax + "px",
-                      }}
-                      onClick={() => setNote(orgasm.note)}
-                    ></div>
-                  ))}
-                </div>
-                <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
-                  <div className="absolute left-1/2 top-0 -translate-x-1/2">
-                    {showDay &&
-                      dayjs(o.date).format(view === "month" ? "MMM" : "D")}
+                      className={`flex flex-col-reverse ${
+                        view === "month" ? "" : "gap-[3px]"
+                      }`}
+                    >
+                      {Os.map((orgasm, index) => (
+                        <motion.div
+                          key={view + orgasm.id + index}
+                          initial={{ opacity: 0 }}
+                          animate={{
+                            opacity: 1,
+                            transition: { delay: index * 0.2 },
+                          }}
+                          exit={{ opacity: 0 }}
+                          className="group w-full bg-white hover:bg-pink-200"
+                          style={{
+                            height: (CHART_HEIGHT - 100) / nMax + "px",
+                          }}
+                          onClick={() => setNote(orgasm.note)}
+                        ></motion.div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                {view !== "month" && (
                   <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
                     <div className="absolute left-1/2 top-0 -translate-x-1/2">
-                      {showMonth && dayjs(o.date).format("MMM")}
+                      {showDay &&
+                        dayjs(o.date).format(view === "month" ? "MMM" : "D")}
                     </div>
                   </div>
-                )}
-                <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
-                  <div className="absolute left-1/2 top-0 -translate-x-1/2">
-                    {showYear && dayjs(o.date).format("YYYY")}
+                  {view !== "month" && (
+                    <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
+                      <div className="absolute left-1/2 top-0 -translate-x-1/2">
+                        {showMonth && dayjs(o.date).format("MMM")}
+                      </div>
+                    </div>
+                  )}
+                  <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2">
+                      {showYear && dayjs(o.date).format("YYYY")}
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </AnimatePresence>
       <div className="flex justify-center text-xs text-white">
         <div className="uppercase">
           Number of orgasms per {view} {view === "week" && "starting"}
