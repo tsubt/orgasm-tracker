@@ -5,8 +5,8 @@ import type {
 } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import OrgasmChart from "../../components/OrgasmChart";
-import { trpc } from "../../utils/trpc";
+import OrgasmChart from "../../../components/OrgasmChart";
+import { trpc } from "../../../utils/trpc";
 
 const UserPage: NextPage<
   InferGetServerSidePropsType<typeof getServerSideProps>

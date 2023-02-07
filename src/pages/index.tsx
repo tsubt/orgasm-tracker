@@ -72,7 +72,7 @@ const AuthShowcase: React.FC = () => {
 const OrgasmCount: React.FC = () => {
   const { data: sessionData } = useSession();
 
-  const { data: userOrgasms } = trpc.orgasms.getUserOrgasms.useQuery(
+  const { data: userOrgasms, isLoading } = trpc.orgasms.getUserOrgasms.useQuery(
     undefined,
     { enabled: sessionData?.user !== undefined }
   );
@@ -106,7 +106,9 @@ const OrgasmCount: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center gap-4  text-white">
       <div className="w-full  text-center">
-        {userOrgasms ? (
+        {isLoading ? (
+          <>Loading ...</>
+        ) : userOrgasms ? (
           <OrgasmChart orgasms={userOrgasms} />
         ) : (
           <a>Sign in to track orgasm</a>
