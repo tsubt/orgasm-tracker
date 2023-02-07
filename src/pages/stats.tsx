@@ -13,6 +13,20 @@ const StatsPage: NextPage<
   const { data: userCount, isLoading: countLoading } =
     trpc.stats.userCount.useQuery();
 
+  const { data: orgasmCount, isLoading: orgasmCountLoading } =
+    trpc.stats.orgasmCount.useQuery();
+
+  const stats = [
+    {
+      title: "Users",
+      value: countLoading ? "?" : ((userCount || "unknown") as string),
+    },
+    {
+      title: "Orgasms",
+      value: orgasmCountLoading ? "?" : ((orgasmCount || "unknown") as string),
+    },
+  ];
+
   return (
     <>
       <Head>
@@ -30,8 +44,13 @@ const StatsPage: NextPage<
             Statistics
           </h2>
 
-          <div className="w-full text-center text-white">
-            Number of users: {countLoading ? "Loading..." : userCount}
+          <div className="flex justify-center gap-8 text-center text-white">
+            {stats.map((stat) => (
+              <div key={stat.title}>
+                <div className="text-bold text-4xl">{stat.value}</div>
+                <div className="">{stat.title}</div>
+              </div>
+            ))}
           </div>
         </div>
       </main>
