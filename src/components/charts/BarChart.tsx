@@ -49,7 +49,6 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
       .reduce((min, d) => (d < min ? d : min));
 
     const start = firstEvent?.startOf(view);
-    console.log(start);
 
     // create a list of dates from start to today by view
     const dates = [];
@@ -58,7 +57,6 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
       dates.push(d.format("YYYY-MM-DD"));
       d = d.add(1, view);
     }
-    console.log(dates);
 
     // for each date, find all orgasms that happened after that date and before the next date
     const dateList = dates

@@ -49,7 +49,8 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
       return dayjs(d).diff(dayjs(arr[i - 1]), "day");
     })
     .filter((d) => d !== null)
-    .map((d) => d as number);
+    .map((d) => (d ? d : 0));
+  console.log(times);
 
   // calculate longest streak of zero days between orgasms
   const streaks = times
@@ -67,7 +68,8 @@ const OrgasmChart: React.FC<OrgasmChartProps> = ({ orgasms }) => {
     .map((x) => x + 1);
   const longestStreak = streaks.reduce((a, b) => (a > b ? a : b));
 
-  const longestGap = times.length ? Math.max(...times) : 0;
+  // time between orgasms -> days *without* orgasm + 1
+  const longestGap = times.length ? Math.max(...times) - 1 : 0;
 
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4">
