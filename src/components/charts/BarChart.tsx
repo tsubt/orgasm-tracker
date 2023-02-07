@@ -17,6 +17,20 @@ type BarChartEvent = {
 };
 
 const CHART_HEIGHT = 200;
+const BAR_WIDTHS = [
+  {
+    view: "day",
+    width: 8,
+  },
+  {
+    view: "week",
+    width: 40,
+  },
+  {
+    view: "month",
+    width: 60,
+  },
+];
 
 export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   const [orgs, setOrgs] = useState<BarChartEvent[]>([]);
@@ -74,7 +88,7 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
           height: CHART_HEIGHT + "px",
         }}
       >
-        <div className="h-fullpb-4 absolute top-0 flex">
+        <div className="absolute top-0 flex h-full">
           {orgs.map((o, index) => {
             const showMonth =
               index === 0
@@ -82,12 +96,18 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                 : dayjs(o.date).format("MMM") !==
                   dayjs(orgs.at(Math.max(index + 1))?.date).format("MMM");
 
+            {
+              /* show day if not day view OR date mod 5 is 1 */
+            }
+            const showDay = view !== "day" || dayjs(o.date).date() % 3 === 1;
+
             return (
               <div
                 key={o.date}
-                className={`mx-[2px] flex cursor-pointer flex-col items-center justify-center bg-opacity-10 pb-1 ${
-                  view === "day" && "w-4"
-                } ${view === "week" && "w-8"} ${view === "month" && "w-16"}`}
+                className={`mx-[2px] flex cursor-pointer flex-col items-center justify-center bg-opacity-10 pb-1`}
+                style={{
+                  width: BAR_WIDTHS.find((b) => b.view === view)?.width + "px",
+                }}
               >
                 <div
                   className={`flex h-full w-full flex-col justify-end ${
@@ -111,17 +131,20 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                     ></div>
                   ))}
                 </div>
-                <div className="h-4 whitespace-nowrap text-[8px] text-white">
-                  {dayjs(o.date).format(view === "month" ? "MMM" : "D")}
+                <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
+                  <div className="absolute left-1/2 top-0 -translate-x-1/2">
+                    {showDay &&
+                      dayjs(o.date).format(view === "month" ? "MMM" : "D")}
+                  </div>
                 </div>
                 {view !== "month" && (
-                  <div className="relative m-0 h-6 w-full p-0 text-[10px] text-white">
+                  <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
                     <div className="absolute left-1/2 top-0 -translate-x-1/2">
                       {showMonth && dayjs(o.date).format("MMM")}
                     </div>
                   </div>
                 )}
-                <div className="relative m-0 h-6 w-full p-0 text-[10px] text-white">
+                <div className="relative m-0 h-5 w-full p-0 text-[10px] text-white">
                   <div className="absolute left-1/2 top-0 -translate-x-1/2">
                     {showMonth && dayjs(o.date).format("YYYY")}
                   </div>
@@ -133,7 +156,7 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
       </div>
       <div className="flex justify-center text-xs text-white">
         <div className="uppercase">
-          {view} {view === "week" && "starting"}
+          Number of orgasms per {view} {view === "week" && "starting"}
         </div>
       </div>
 
