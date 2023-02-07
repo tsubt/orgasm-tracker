@@ -35,6 +35,8 @@ const BAR_WIDTHS = [
 export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   const [orgs, setOrgs] = useState<BarChartEvent[]>([]);
   const [nMax, setNMax] = useState(8);
+  const [record, setRecord] = useState(0);
+  const [average, setAverage] = useState(0);
 
   const [note, setNote] = useState<string | null>(null);
 
@@ -72,6 +74,16 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
       })
       .sort((a, b) => -dayjs(a.date).diff(dayjs(b.date)));
 
+    // find max orgasms in a day
+    setRecord(Math.max(...dateList.map((o) => o.orgasms.length), 1));
+    // find average orgasms per view
+    setAverage(
+      Math.round(
+        (dateList.reduce((a, b) => a + b.orgasms.length, 0) / dateList.length) *
+          100
+      ) / 100
+    );
+
     setOrgs(dateList);
     // find max length of orgasms in each dateList
     setNMax(Math.max(...dateList.map((o) => o.orgasms.length), 1));
@@ -79,6 +91,12 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
 
   return (
     <div className="flex h-full w-full max-w-[1000px] flex-col gap-4">
+      <div className="flex justify-end gap-8 text-sm">
+        <div>Record: {record}</div>
+        <div>
+          Average: {average} per {view}
+        </div>
+      </div>
       <div
         className="relative w-full overflow-y-hidden overflow-x-scroll"
         style={{
