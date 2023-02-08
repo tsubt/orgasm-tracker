@@ -33,6 +33,7 @@ const BAR_WIDTHS = [
     width: 60,
   },
 ];
+const BAR_TIMING = 0.05;
 
 export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   const [orgs, setOrgs] = useState<BarChartEvent[]>([]);
@@ -153,15 +154,18 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                     {/* show count label on 'month' view */}
                     {view === "month" && (
                       <motion.div
+                        key={view + o.date + "count"}
                         initial={{ opacity: 0 }}
                         animate={{
                           opacity: 1,
-                          transition: { delay: 0.2 * Os.length },
+                          // transition: {
+                          //   delay: BAR_TIMING * Os.length,
+                          // },
                         }}
                         exit={{ opacity: 0 }}
                         className="mb-2 h-4 whitespace-nowrap text-[10px] font-bold text-white"
                       >
-                        {o.orgasms.length}
+                        {Os.length} ({view + index + "count"})
                       </motion.div>
                     )}
                     <div
@@ -175,7 +179,7 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                           initial={{ opacity: 0 }}
                           animate={{
                             opacity: 1,
-                            transition: { delay: index * 0.2 },
+                            transition: { delay: index * BAR_TIMING },
                           }}
                           exit={{ opacity: 0 }}
                           className="group w-full bg-white hover:bg-pink-200"
