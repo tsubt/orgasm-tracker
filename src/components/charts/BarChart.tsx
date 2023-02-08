@@ -165,7 +165,7 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                         exit={{ opacity: 0 }}
                         className="mb-2 h-4 whitespace-nowrap text-[10px] font-bold text-white"
                       >
-                        {Os.length} ({view + index + "count"})
+                        {Os.length}
                       </motion.div>
                     )}
                     <div
