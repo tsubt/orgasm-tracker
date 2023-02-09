@@ -3,7 +3,7 @@ import type { Session } from "next-auth";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-// import { trpc } from "../../utils/trpc";
+import { trpc } from "../../utils/trpc";
 
 export default function User() {
   const { data: session, status: authStatus } = useSession();
@@ -32,13 +32,12 @@ export default function User() {
 const UserMenu = ({ session }: { session: Session }) => {
   if (!session) return <></>;
 
-  // const { data: userInfo } = trpc.users.self.useQuery();
-
-  // const userId = userInfo ? userInfo.username || userInfo.id : "";
+  const { data: userInfo } = trpc.users.self.useQuery();
+  const userId = userInfo ? userInfo.username : "";
 
   const items = [
-    // { name: "Your profile", href: "/u/" + userId },
-    // { name: "Settings", href: "/settings" },
+    { name: "Your profile", href: "/u/" + userId, show: userId !== "" },
+    { name: "Settings", href: "/settings/account" },
     { name: "Sign out", href: "/api/auth/signout" },
   ];
 
@@ -57,15 +56,17 @@ const UserMenu = ({ session }: { session: Session }) => {
       </div>
 
       <div className="flex flex-col gap-2 group-hover:flex md:absolute md:top-full md:hidden md:w-full md:rounded-lg md:bg-black md:py-8">
-        {items.map((item) => (
-          <Link
-            key={item.name}
-            href={item.href}
-            className="py-1 text-white hover:text-pink-300 md:px-8"
-          >
-            {item.name}
-          </Link>
-        ))}
+        {items
+          .filter((item) => item.show !== false)
+          .map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="py-1 text-white hover:text-pink-300 md:px-8"
+            >
+              {item.name}
+            </Link>
+          ))}
       </div>
     </div>
   );

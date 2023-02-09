@@ -1,6 +1,7 @@
 import { router } from "../trpc";
 import { authRouter } from "./auth";
 import { orgasmRouter } from "./orgasms";
+import { settingsRouter } from "./settings";
 import { statsRouter } from "./stats";
 import { usersRouter } from "./users";
 
@@ -9,6 +10,7 @@ export const appRouter = router({
   orgasms: orgasmRouter,
   stats: statsRouter,
   users: usersRouter,
+  settings: settingsRouter,
 });
 
 // export type definition of API
