@@ -12,6 +12,7 @@ dayjs.extend(utc);
 
 import OrgasmChart from "../components/OrgasmChart";
 import { useRef, useState } from "react";
+import { Spinner } from "../components/Loaders";
 
 const Home: NextPage = () => {
   return (
@@ -69,7 +70,7 @@ const AuthShowcase: React.FC = () => {
 const OrgasmCount: React.FC = () => {
   const { data: sessionData } = useSession();
 
-  const { data: userOrgasms } = trpc.orgasms.getUserOrgasms.useQuery(
+  const { data: userOrgasms, isLoading } = trpc.orgasms.getUserOrgasms.useQuery(
     undefined,
     { enabled: sessionData?.user !== undefined }
   );
@@ -107,6 +108,8 @@ const OrgasmCount: React.FC = () => {
       <div className="w-full  text-center">
         {userOrgasms ? (
           <OrgasmChart orgasms={userOrgasms} />
+        ) : isLoading ? (
+          <Spinner />
         ) : (
           <a>Sign in to track orgasm</a>
         )}
