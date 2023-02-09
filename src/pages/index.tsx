@@ -78,7 +78,9 @@ const OrgasmCount: React.FC = () => {
   const [newOrgasm, setNewOrgasm] = useState(false);
   const dateRef = useRef<HTMLInputElement>(null);
   const timeRef = useRef<HTMLInputElement>(null);
+  const typeRef = useRef<HTMLSelectElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const { data: orgasmTypes } = trpc.orgasms.types.useQuery();
 
   const context = trpc.useContext();
 
@@ -167,6 +169,31 @@ const OrgasmCount: React.FC = () => {
                   defaultValue={dayjs.utc().local().format("HH:mm")}
                 />
               </div>
+
+              {/* orgasm type */}
+              {orgasmTypes && orgasmTypes.length > 0 && (
+                <>
+                  <label
+                    htmlFor="orgasmType"
+                    className="text-sm font-bold uppercase"
+                  >
+                    Type
+                  </label>
+                  <select
+                    name="orgasmType"
+                    id="orgasmType"
+                    className="border bg-white p-2 text-sm outline-none"
+                    ref={typeRef}
+                  >
+                    {orgasmTypes.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                    <option value="other"></option>
+                  </select>
+                </>
+              )}
 
               <label
                 htmlFor="orgasmNote"

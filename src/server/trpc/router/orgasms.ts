@@ -85,6 +85,14 @@ export const orgasmRouter = router({
       });
       return user;
     }),
+  types: protectedProcedure.query(async ({ ctx }) => {
+    const orgasmTypes = await ctx.prisma.orgasmType.findMany({
+      where: {
+        userId: ctx.session.user.id,
+      },
+    });
+    return orgasmTypes;
+  }),
 });
 
 const groupBy = <T>(

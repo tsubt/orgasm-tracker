@@ -2,8 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
   relationMode = "prisma"
 }
 
@@ -55,11 +55,13 @@ model User {
   emailVerified DateTime?
   image         String?
 
-  publicOrgasms  Boolean   @default(false)
+  publicOrgasms Boolean @default(false)
+  defaultOrgasmTypeId String?
 
-  accounts      Account[]
-  sessions      Session[]
-  orgasms       Orgasm[]
+  accounts Account[]
+  sessions Session[]
+  orgasms  Orgasm[]
+  orgasmTypes OrgasmType[]
 }
 
 model VerificationToken {
@@ -71,13 +73,31 @@ model VerificationToken {
 }
 
 model Orgasm {
-  id        String   @id @default(cuid())
-  date      String
-  time      String
-  note      String?  @db.Text
+  id   String     @id @default(cuid())
+  date String
+  time String
+  note String?    @db.Text
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  typeId String?
+  type OrgasmType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([typeId])
+}
+
+model OrgasmType {
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+  private     Boolean @default(true)
+
+  userId       String
+
+  orgasms Orgasm[]
+  users User[]
 
   @@index([userId])
 }
