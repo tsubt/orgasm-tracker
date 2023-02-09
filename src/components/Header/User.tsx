@@ -1,6 +1,6 @@
-import { LockClosedIcon } from "@heroicons/react/24/solid";
+import { LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/solid";
 import type { Session } from "next-auth";
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { trpc } from "../../utils/trpc";
@@ -16,13 +16,14 @@ export default function User() {
         ""
       ) : (
         <div className="mx-8">
-          <Link
-            href="/api/auth/signin"
-            className="flex flex-row items-center gap-2 text-white hover:text-pink-200"
+          <button
+            onClick={() => signIn("google")}
+            className="group flex flex-row items-center gap-2 text-white "
           >
-            <LockClosedIcon className="h-6 w-6" />
+            <LockClosedIcon className="h-6 w-6 group-hover:hidden" />
+            <LockOpenIcon className="hidden h-6 w-6 group-hover:block" />
             Sign in
-          </Link>
+          </button>
         </div>
       )}
     </>

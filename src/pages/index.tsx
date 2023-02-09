@@ -48,10 +48,10 @@ const AuthShowcase: React.FC = () => {
         </p>
         <p className="text-white">Please sign in to continue</p>
         <button
-          className="rounded-md bg-pink-800 px-4 py-2 text-white"
-          onClick={() => signIn()}
+          className="rounded-md bg-pink-800 px-4 py-2 text-white shadow hover:bg-pink-900"
+          onClick={() => signIn("google")}
         >
-          Sign in
+          Sign in with Google
         </button>
       </div>
     );
