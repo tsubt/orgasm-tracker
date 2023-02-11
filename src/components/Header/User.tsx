@@ -38,6 +38,7 @@ const UserMenu = ({ session }: { session: Session }) => {
 
   const items = [
     { name: "Your profile", href: "/u/" + userId, show: userId !== "" },
+    { name: "Orgasms", href: "/orgasms" },
     { name: "Settings", href: "/settings/account" },
     { name: "Sign out", href: "/api/auth/signout" },
   ];

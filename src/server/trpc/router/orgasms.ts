@@ -41,6 +41,35 @@ export const orgasmRouter = router({
       }
       return result;
     }),
+  get: protectedProcedure.query(async ({ ctx }) => {
+    const orgasms = await ctx.prisma.orgasm.findMany({
+      where: {
+        userId: ctx.session.user.id,
+      },
+    });
+
+    return orgasms.sort((a, b) => {
+      if (a.date > b.date) return -1;
+      if (a.date < b.date) return 1;
+      if (a.time > b.time) return -1;
+      if (a.time < b.time) return 1;
+      return 0;
+    });
+  }),
+  delete: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const orgasm = await ctx.prisma.orgasm.delete({
+        where: {
+          id: input.id,
+        },
+      });
+      return orgasm;
+    }),
   getUserOrgasms: protectedProcedure.query(async ({ ctx }) => {
     const orgasms = await ctx.prisma.orgasm.findMany({
       where: {
