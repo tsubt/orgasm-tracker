@@ -1,23 +1,19 @@
-import type { NextPage } from "next";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
+import { prisma } from "../server/db/client";
 
-import { trpc } from "../utils/trpc";
-
-const StatsPage: NextPage = () => {
-  const { data: userCount, isLoading: countLoading } =
-    trpc.stats.userCount.useQuery();
-
-  const { data: orgasmCount, isLoading: orgasmCountLoading } =
-    trpc.stats.orgasmCount.useQuery();
-
+export default function StatsPage({
+  userCount,
+  orgasmCount,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const stats = [
     {
       title: "User" + (userCount === 1 ? "" : "s"),
-      value: countLoading ? "?" : ((userCount || "unknown") as string),
+      value: userCount, //countLoading ? "?" : ((userCount || "unknown") as string),
     },
     {
       title: "Orgasm" + (orgasmCount === 1 ? "" : "s"),
-      value: orgasmCountLoading ? "?" : ((orgasmCount || "unknown") as string),
+      value: orgasmCount, //orgasmCountLoading ? "?" : ((orgasmCount || "unknown") as string),
     },
   ];
 
@@ -44,6 +40,24 @@ const StatsPage: NextPage = () => {
       </div>
     </>
   );
-};
+}
 
-export default StatsPage;
+type Props = {
+  userCount: number;
+  orgasmCount: number;
+};
+export const getServerSideProps: GetServerSideProps<Props> = async ({
+  res,
+}) => {
+  res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=3600");
+
+  const userCount = await prisma.user.count();
+  const orgasmCount = await prisma.orgasm.count();
+
+  return {
+    props: {
+      userCount: userCount,
+      orgasmCount: orgasmCount,
+    },
+  };
+};
