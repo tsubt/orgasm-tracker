@@ -3,7 +3,8 @@ import type { Orgasm } from "@prisma/client";
 import dayjs from "dayjs";
 import Head from "next/head";
 import { useMemo, useState } from "react";
-import { Column, useTable } from "react-table";
+import type { Column } from "react-table";
+import { useTable } from "react-table";
 import { Modal } from "../../components/ui";
 import { trpc } from "../../utils/trpc";
 
@@ -102,28 +103,39 @@ const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
     <>
       <table {...getTableProps()} className="w-full">
         <thead>
-          {headerGroups.map((headerGroup) => (
-            <tr {...headerGroup.getHeaderGroupProps()}>
-              {headerGroup.headers.map((column) => (
-                <th
-                  {...column.getHeaderProps()}
-                  className="bg-pink-900 px-4 py-2 text-left text-pink-100"
-                >
-                  {column.render("Header")}
-                </th>
-              ))}
-            </tr>
-          ))}
+          {headerGroups.map((headerGroup) => {
+            const { key, ...headerGroupProps } =
+              headerGroup.getHeaderGroupProps();
+            return (
+              <tr key={key} {...headerGroupProps}>
+                {headerGroup.headers.map((column) => {
+                  const { key, ...headerProps } = column.getHeaderProps();
+                  return (
+                    <th
+                      key={key}
+                      {...headerProps}
+                      className="bg-pink-900 px-4 py-2 text-left text-pink-100"
+                    >
+                      {column.render("Header")}
+                    </th>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </thead>
         <tbody {...getTableBodyProps()}>
           {rows.map((row) => {
             prepareRow(row);
+            const { key, ...rowProps } = row.getRowProps();
             return (
-              <tr {...row.getRowProps()}>
+              <tr key={key} {...rowProps}>
                 {row.cells.map((cell) => {
+                  const { key, ...cellProps } = cell.getCellProps();
                   return (
                     <td
-                      {...cell.getCellProps()}
+                      key={key}
+                      {...cellProps}
                       className="border-t border-gray-200 px-4 py-2 text-sm"
                     >
                       {cell.render("Cell")}
