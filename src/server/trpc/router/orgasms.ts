@@ -56,6 +56,28 @@ export const orgasmRouter = router({
       return 0;
     });
   }),
+  edit: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        date: z.string(),
+        time: z.string(),
+        note: z.string().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const orgasm = await ctx.prisma.orgasm.update({
+        where: {
+          id: input.id,
+        },
+        data: {
+          date: input.date,
+          time: input.time,
+          note: input.note,
+        },
+      });
+      return orgasm;
+    }),
   delete: protectedProcedure
     .input(
       z.object({

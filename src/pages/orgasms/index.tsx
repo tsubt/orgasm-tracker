@@ -1,8 +1,9 @@
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/solid";
+import type { Orgasm } from "@prisma/client";
 import dayjs from "dayjs";
 import Head from "next/head";
 import { useMemo, useState } from "react";
-import { useTable } from "react-table";
+import { Column, useTable } from "react-table";
 import { Modal } from "../../components/ui";
 import { trpc } from "../../utils/trpc";
 
@@ -42,6 +43,12 @@ export default function OrgasmsPage() {
 
 const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
   const context = trpc.useContext();
+  const mutateOrgasm = trpc.orgasms.edit.useMutation({
+    onSuccess: () => {
+      setEditOrgasm(null);
+      context.orgasms.get.invalidate();
+    },
+  });
   const deleteOrgasm = trpc.orgasms.delete.useMutation({
     onSuccess: () => {
       setDeleteOrgasmConfirm(null);
@@ -49,20 +56,21 @@ const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
     },
   });
 
+  const [editOrgasm, setEditOrgasm] = useState<Orgasm | null>(null);
   const [deleteOrgasmConfirm, setDeleteOrgasmConfirm] =
     useState<Orgasm | null>();
 
-  const columns = useMemo(
+  const columns = useMemo<Column<Orgasm>[]>(
     () => [
       {
         Header: "Date",
         accessor: (row: Orgasm) =>
           dayjs(row.date + " " + row.time).format("DD MMM YYYY @ HH:mm"),
       },
-      {
-        Header: "Type",
-        accessor: "type",
-      },
+      // {
+      //   Header: "Type",
+      //   accessor: "typeId",
+      // },
       {
         Header: "Note",
         accessor: "note",
@@ -71,7 +79,10 @@ const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
         Header: "Actions",
         accessor: (row: Orgasm) => (
           <div className="flex flex-row items-center gap-2">
-            <PencilSquareIcon className="h-5 w-5 text-gray-500" />
+            <PencilSquareIcon
+              className="h-5 w-5 cursor-pointer text-gray-500"
+              onClick={() => setEditOrgasm(row)}
+            />
             <TrashIcon
               className="h-5 w-5 cursor-pointer text-gray-500"
               onClick={() => setDeleteOrgasmConfirm(row)}
@@ -82,6 +93,7 @@ const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
     ],
     []
   );
+
   const tableInstance = useTable({ columns, data: orgasms });
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
     tableInstance;
@@ -123,6 +135,119 @@ const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
           })}
         </tbody>
       </table>
+
+      {editOrgasm && (
+        <Modal
+          onClose={() => setEditOrgasm(null)}
+          header={"Edit orgasm"}
+          footer={
+            <div className="flex w-full items-center justify-end gap-4">
+              <button
+                className="rounded bg-pink-600 py-1 px-2 font-bold text-white hover:bg-red-700"
+                onClick={() => {
+                  mutateOrgasm.mutateAsync({
+                    id: editOrgasm.id,
+                    // type: editOrgasm.type,
+                    note: editOrgasm.note,
+                    date: editOrgasm.date,
+                    time: editOrgasm.time,
+                  });
+                }}
+              >
+                {mutateOrgasm.isLoading ? <>Saving ...</> : <>Save changes</>}
+              </button>
+              <button
+                className="rounded bg-gray-200 py-1 px-2 font-bold text-gray-500 hover:bg-gray-300"
+                onClick={() => setEditOrgasm(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          }
+        >
+          <div className="grid grid-cols-1 items-center justify-center gap-4 md:grid-cols-2">
+            <div className="flex w-full flex-col">
+              {/* Date */}
+              <label
+                htmlFor="date"
+                className="text-left text-sm font-bold text-gray-500"
+              >
+                Date
+              </label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                value={editOrgasm.date}
+                onChange={(e) =>
+                  setEditOrgasm((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          date: e.target.value,
+                        }
+                      : null
+                  )
+                }
+                className="w-full rounded border border-gray-300 px-4 py-2"
+              />
+            </div>
+            <div className="flex w-full flex-col">
+              {/* Time */}
+              <label
+                htmlFor="time"
+                className="text-left text-sm font-bold text-gray-500"
+              >
+                Time
+              </label>
+              <input
+                type="time"
+                id="time"
+                name="time"
+                value={editOrgasm.time}
+                onChange={(e) =>
+                  setEditOrgasm((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          time: e.target.value,
+                        }
+                      : null
+                  )
+                }
+                className="w-full rounded border border-gray-300 px-4 py-2"
+              />
+            </div>
+            <div className="flex w-full flex-col">{/* Type */}</div>
+            <div className="flex w-full flex-col md:col-span-2">
+              {/* Note */}
+              <label
+                htmlFor="note"
+                className="text-left text-sm font-bold text-gray-500"
+              >
+                Note
+              </label>
+              <textarea
+                id="note"
+                name="note"
+                value={editOrgasm.note || ""}
+                onChange={(e) =>
+                  setEditOrgasm((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          note: e.target.value,
+                        }
+                      : null
+                  )
+                }
+                className="w-full rounded border border-gray-300 px-4 py-2"
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {deleteOrgasmConfirm && (
         <Modal
           onClose={() => setDeleteOrgasmConfirm(null)}
