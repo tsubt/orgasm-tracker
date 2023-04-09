@@ -1,4 +1,4 @@
-import type { Orgasm } from "@prisma/client";
+import { type Orgasm, OrgasmType, SexType } from "@prisma/client";
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../trpc";
 
@@ -62,6 +62,8 @@ export const orgasmRouter = router({
         id: z.string(),
         date: z.string(),
         time: z.string(),
+        type: z.nativeEnum(OrgasmType),
+        sex: z.nativeEnum(SexType),
         note: z.string().nullable(),
       })
     )
@@ -73,6 +75,8 @@ export const orgasmRouter = router({
         data: {
           date: input.date,
           time: input.time,
+          type: input.type,
+          sex: input.sex,
           note: input.note,
         },
       });
@@ -115,6 +119,8 @@ export const orgasmRouter = router({
       z.object({
         date: z.string(),
         time: z.string(),
+        type: z.nativeEnum(OrgasmType),
+        sex: z.nativeEnum(SexType),
         note: z.string().nullable(),
       })
     )
@@ -129,6 +135,8 @@ export const orgasmRouter = router({
             create: {
               date: input.date,
               time: input.time,
+              type: input.type,
+              sex: input.sex,
               note: input.note,
             },
           },
@@ -136,14 +144,6 @@ export const orgasmRouter = router({
       });
       return user;
     }),
-  types: protectedProcedure.query(async ({ ctx }) => {
-    const orgasmTypes = await ctx.prisma.orgasmType.findMany({
-      where: {
-        userId: ctx.session.user.id,
-      },
-    });
-    return orgasmTypes;
-  }),
 });
 
 const groupBy = <T>(
