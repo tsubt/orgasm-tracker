@@ -61,7 +61,6 @@ model User {
   accounts Account[]
   sessions Session[]
   orgasms  Orgasm[]
-  orgasmTypes OrgasmType[]
 }
 
 model VerificationToken {
@@ -72,32 +71,31 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+
+enum OrgasmType {
+  FULL
+  RUINED
+  HANDSFREE
+  ANAL
+}
+
+enum SexType {
+  SOLO
+  VIRTUAL
+  PHYSICAL
+}
+
 model Orgasm {
   id   String     @id @default(cuid())
   date String
   time String
   note String?    @db.Text
 
-  typeId String?
-  type OrgasmType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  type OrgasmType @default(FULL)
+  sex SexType     @default(SOLO)
 
   userId       String
   user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([typeId])
-}
-
-model OrgasmType {
-  id          String  @id @default(cuid())
-  name        String
-  description String? @db.Text
-  private     Boolean @default(true)
-
-  userId       String
-
-  orgasms Orgasm[]
-  users User[]
 
   @@index([userId])
 }

@@ -1,5 +1,5 @@
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/solid";
-import type { Orgasm } from "@prisma/client";
+import type { Orgasm, OrgasmType, SexType } from "@prisma/client";
 import dayjs from "dayjs";
 import Head from "next/head";
 import { useMemo, useState } from "react";
@@ -7,6 +7,7 @@ import type { Column } from "react-table";
 import { useTable } from "react-table";
 import { Modal } from "../../components/ui";
 import { trpc } from "../../utils/trpc";
+import { OrgasmTypes, SexTypes } from "../../utils/types";
 
 export default function OrgasmsPage() {
   const { data: orgasms, isLoading: loadingOrgasms } =
@@ -68,10 +69,14 @@ const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
         accessor: (row: Orgasm) =>
           dayjs(row.date + " " + row.time).format("DD MMM YYYY @ HH:mm"),
       },
-      // {
-      //   Header: "Type",
-      //   accessor: "typeId",
-      // },
+      {
+        Header: "Type",
+        accessor: "type",
+      },
+      {
+        Header: "Partner?",
+        accessor: "sex",
+      },
       {
         Header: "Note",
         accessor: "note",
@@ -159,7 +164,8 @@ const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
                 onClick={() => {
                   mutateOrgasm.mutateAsync({
                     id: editOrgasm.id,
-                    // type: editOrgasm.type,
+                    type: editOrgasm.type,
+                    sex: editOrgasm.sex,
                     note: editOrgasm.note,
                     date: editOrgasm.date,
                     time: editOrgasm.time,
@@ -230,7 +236,70 @@ const OrgasmTable = ({ orgasms }: { orgasms: Orgasm[] }) => {
                 className="w-full rounded border border-gray-300 px-4 py-2"
               />
             </div>
-            <div className="flex w-full flex-col">{/* Type */}</div>
+
+            <div className="flex w-full flex-col">
+              {/* Type */}
+              <label
+                htmlFor="type"
+                className="text-left text-sm font-bold text-gray-500"
+              >
+                Orgasm Type
+              </label>
+              <select
+                name="orgasmType"
+                id="orgasmType"
+                className="border bg-white p-2 text-sm outline-none"
+                value={editOrgasm.type}
+                onChange={(e) =>
+                  setEditOrgasm((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          type: e.target.value as OrgasmType,
+                        }
+                      : null
+                  )
+                }
+              >
+                {OrgasmTypes.map((type) => (
+                  <option key={type.value} value={type.value} className="">
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex w-full flex-col">
+              {/* Sex with partner? */}
+              <label
+                htmlFor="sex"
+                className="text-left text-sm font-bold text-gray-500"
+              >
+                Partner?
+              </label>
+              <select
+                name="sexType"
+                id="sexType"
+                className="border bg-white p-2 text-sm outline-none"
+                value={editOrgasm.sex}
+                onChange={(e) =>
+                  setEditOrgasm((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          sex: e.target.value as SexType,
+                        }
+                      : null
+                  )
+                }
+              >
+                {SexTypes.map((type) => (
+                  <option key={type.value} value={type.value} className="">
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex w-full flex-col md:col-span-2">
               {/* Note */}
               <label

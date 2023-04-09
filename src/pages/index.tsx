@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 import { motion } from "framer-motion";
 
@@ -13,8 +13,12 @@ dayjs.extend(utc);
 import OrgasmChart from "../components/OrgasmChart";
 import { useRef, useState } from "react";
 import { Spinner } from "../components/Loaders";
+import { OrgasmTypes, SexTypes } from "../utils/types";
+import { type OrgasmType, type SexType } from "@prisma/client";
 
 const Home: NextPage = () => {
+  const { data: sessionData } = useSession();
+
   return (
     <>
       <Head>
@@ -27,9 +31,7 @@ const Home: NextPage = () => {
         <div className="flex flex-col items-center gap-2">
           <AuthShowcase />
         </div>
-        <div className="w-full text-lg">
-          <OrgasmCount />
-        </div>
+        <div className="w-full text-lg">{sessionData && <OrgasmCount />}</div>
       </div>
     </>
   );
@@ -40,29 +42,23 @@ export default Home;
 const AuthShowcase: React.FC = () => {
   const { data: sessionData } = useSession();
 
-  if (!sessionData) {
-    return (
-      <div className="flex flex-col items-center gap-8">
-        <p className="text-center text-2xl text-white">
-          Welcome to OrgasmTracker
-        </p>
-        <p className="text-white">Please sign in to continue</p>
-        <button
-          className="rounded-md bg-pink-800 px-4 py-2 text-white shadow hover:bg-pink-900"
-          onClick={() => signIn("google")}
-        >
-          Sign in with Google
-        </button>
-      </div>
-    );
-  }
-
-  return (
+  if (sessionData) {
+    // user dashboard
     <div className="flex flex-col items-center justify-center gap-4">
       <p className="text-center text-2xl text-white">
         <span>Welcome {sessionData.user?.name}</span>
       </p>
       <p className="text-white">Here&apos;s your dashboard</p>
+    </div>;
+  }
+
+  return (
+    // public dashboard
+    <div className="flex flex-col items-center gap-8">
+      <p className="text-center text-2xl text-white">
+        Welcome to OrgasmTracker
+      </p>
+      <p className="text-white">Please sign in to continue</p>
     </div>
   );
 };
@@ -78,9 +74,9 @@ const OrgasmCount: React.FC = () => {
   const [newOrgasm, setNewOrgasm] = useState(false);
   const dateRef = useRef<HTMLInputElement>(null);
   const timeRef = useRef<HTMLInputElement>(null);
-  const typeRef = useRef<HTMLSelectElement>(null);
+  const [type, setType] = useState<OrgasmType>("FULL");
+  const [sex, setSex] = useState<SexType>("SOLO");
   const noteRef = useRef<HTMLTextAreaElement>(null);
-  const { data: orgasmTypes } = trpc.orgasms.types.useQuery();
 
   const context = trpc.useContext();
 
@@ -100,7 +96,7 @@ const OrgasmCount: React.FC = () => {
     const time = timeRef.current?.value || today.format("HH:mm");
     const note = noteRef.current?.value || null;
 
-    addUserOrgasm({ date, time, note });
+    addUserOrgasm({ date, time, type, sex, note });
   };
 
   if (!sessionData) return <></>;
@@ -170,30 +166,49 @@ const OrgasmCount: React.FC = () => {
                 />
               </div>
 
-              {/* orgasm type */}
-              {orgasmTypes && orgasmTypes.length > 0 && (
-                <>
-                  <label
-                    htmlFor="orgasmType"
-                    className="text-sm font-bold uppercase"
-                  >
-                    Type
-                  </label>
-                  <select
-                    name="orgasmType"
-                    id="orgasmType"
-                    className="border bg-white p-2 text-sm outline-none"
-                    ref={typeRef}
-                  >
-                    {orgasmTypes.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
-                      </option>
-                    ))}
-                    <option value="other"></option>
-                  </select>
-                </>
-              )}
+              <div className="flex flex-col gap-2 lg:grid lg:grid-flow-col lg:grid-rows-2 lg:items-center lg:gap-x-8">
+                {/* orgasm type */}
+                <label
+                  htmlFor="orgasmType"
+                  className="text-sm font-bold uppercase"
+                >
+                  Orgasm Type
+                </label>
+                <select
+                  name="orgasmType"
+                  id="orgasmType"
+                  className="border bg-white p-2 text-sm outline-none"
+                  value={type}
+                  onChange={(e) => setType(e.target.value as OrgasmType)}
+                >
+                  {OrgasmTypes.map((type) => (
+                    <option key={type.value} value={type.value} className="">
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+
+                {/* sex type */}
+                <label
+                  htmlFor="sexType"
+                  className="text-sm font-bold uppercase"
+                >
+                  Sex Partner?
+                </label>
+                <select
+                  name="sexType"
+                  id="sexType"
+                  className="border bg-white p-2 text-sm outline-none"
+                  value={sex}
+                  onChange={(e) => setSex(e.target.value as SexType)}
+                >
+                  {SexTypes.map((type) => (
+                    <option key={type.value} value={type.value} className="">
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <label
                 htmlFor="orgasmNote"

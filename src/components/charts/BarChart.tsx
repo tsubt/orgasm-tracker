@@ -35,6 +35,25 @@ const BAR_WIDTHS = [
 ];
 const BAR_TIMING = 0.05;
 
+const BAR_COLOURS = [
+  {
+    type: "FULL",
+    colour: "#8feb81",
+  },
+  {
+    type: "RUINED",
+    colour: "#f2bc57",
+  },
+  {
+    type: "HANDSFREE",
+    colour: "#ff8f8f",
+  },
+  {
+    type: "ANAL",
+    colour: "#d68bd1",
+  },
+];
+
 export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   const [orgs, setOrgs] = useState<BarChartEvent[]>([]);
   const [nMax, setNMax] = useState(8);
@@ -94,10 +113,35 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
 
   return (
     <div className="flex h-full w-full max-w-[1000px] flex-col gap-4">
-      <div className="flex justify-end gap-8 text-sm">
-        <div>Record: {record}</div>
-        <div>
-          Average: {average} per {view}
+      <div className="flex w-full flex-col gap-1">
+        <div className="flex justify-end gap-8 text-sm">
+          <div>Record: {record}</div>
+          <div>
+            Average: {average} per {view}
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          {BAR_COLOURS.map((c) => (
+            <div
+              key={c.type}
+              className="flex items-center justify-center px-1 text-xs text-black"
+              style={{
+                backgroundColor: c.colour,
+              }}
+            >
+              {c.type}
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-center gap-1 px-1 text-xs text-white">
+            <div className="h-1 w-1 rounded-full border border-white bg-black"></div>
+            Virtual partner
+          </div>
+          <div className="flex items-center justify-center gap-1 px-1 text-xs text-white">
+            <div className="bg-red h-1 w-1 rounded-full border border-black bg-black"></div>
+            Physical partner
+          </div>
         </div>
       </div>
       <AnimatePresence mode="wait">
@@ -182,12 +226,29 @@ export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
                             transition: { delay: index * BAR_TIMING },
                           }}
                           exit={{ opacity: 0 }}
-                          className="group w-full bg-white hover:bg-pink-200"
+                          className="w-fullhover:bg-pink-200 group relative"
                           style={{
                             height: (CHART_HEIGHT - 100) / nMax + "px",
+                            background:
+                              BAR_COLOURS.find((c) => c.type === orgasm.type)
+                                ?.colour || "white",
                           }}
                           onClick={() => setNote(orgasm.note)}
-                        ></motion.div>
+                        >
+                          {orgasm.sex !== "SOLO" && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div
+                                className="h-1 w-1 rounded-full border bg-black"
+                                style={{
+                                  borderColor:
+                                    orgasm.sex === "VIRTUAL"
+                                      ? "white"
+                                      : "black",
+                                }}
+                              ></div>
+                            </div>
+                          )}
+                        </motion.div>
                       ))}
                     </div>
                   </div>
