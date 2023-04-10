@@ -64,8 +64,8 @@ const UserCard = ({
         <div className="flex-col">
           {orgasms.length ? (
             <>
-              {user.orgasms.length} orgasms tracked, last orgasm was{" "}
-              {dayjs(lastOrgasm?.datetime).fromNow()}
+              {orgasms.length} orgasm{orgasms.length > 1 && "s"} tracked, last
+              orgasm was {dayjs(lastOrgasm?.datetime).fromNow()}
             </>
           ) : (
             <>No orgasms tracked.</>
