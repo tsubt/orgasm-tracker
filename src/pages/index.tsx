@@ -15,6 +15,7 @@ import { useRef, useState } from "react";
 import { Spinner } from "../components/Loaders";
 import { OrgasmTypes, SexTypes } from "../utils/types";
 import { type OrgasmType, type SexType } from "@prisma/client";
+import { Feed } from "../components/Orgasm";
 
 const Home: NextPage = () => {
   const { data: sessionData } = useSession();
@@ -32,6 +33,13 @@ const Home: NextPage = () => {
           <AuthShowcase />
         </div>
         <div className="w-full text-lg">{sessionData && <OrgasmCount />}</div>
+      </div>
+
+      {/* feed */}
+      <div className="flex w-full max-w-5xl flex-col items-center gap-12 border-t px-4 py-16 text-white">
+        <h3 className="text-lg">Community feed</h3>
+
+        <Feed />
       </div>
     </>
   );

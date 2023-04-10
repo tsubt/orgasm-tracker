@@ -144,6 +144,27 @@ export const orgasmRouter = router({
       });
       return user;
     }),
+  publicFeed: publicProcedure
+    .input(
+      z.object({
+        limit: z.number().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const orgasms = await ctx.prisma.orgasm.findMany({
+        where: {
+          user: {
+            publicOrgasms: true,
+          },
+        },
+        include: {
+          user: true,
+        },
+        take: input.limit,
+      });
+
+      return orgasms;
+    }),
 });
 
 const groupBy = <T>(
