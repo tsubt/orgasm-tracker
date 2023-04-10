@@ -48,7 +48,7 @@ const Feed = () => {
       ))}
       <div
         className="cursor-pointer rounded bg-pink-900 p-2 text-center italic shadow"
-        onClick={() => setLimit((l) => l + 10)}
+        onClick={() => setLimit((limit) => limit + 10)}
       >
         Load more &hellip;
       </div>
