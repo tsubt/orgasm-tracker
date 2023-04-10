@@ -9,6 +9,7 @@ export const settingsRouter = router({
       },
       select: {
         username: true,
+        publicProfile: true,
         publicOrgasms: true,
       },
     });
@@ -36,11 +37,12 @@ export const settingsRouter = router({
     .input(
       z.object({
         username: z.string().nullable(),
+        publicProfile: z.boolean(),
         publicOrgasms: z.boolean(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { username, publicOrgasms } = input;
+      const { username, publicProfile, publicOrgasms } = input;
 
       const user = await ctx.prisma.user.update({
         where: {
@@ -48,8 +50,12 @@ export const settingsRouter = router({
         },
         data: {
           username: username && username.length < 3 ? undefined : username,
+          publicProfile:
+            username && username.length < 3 ? false : publicProfile,
           publicOrgasms:
-            username && username.length < 3 ? false : publicOrgasms,
+            username && publicProfile && username.length < 3
+              ? false
+              : publicOrgasms,
         },
       });
       return user;

@@ -18,6 +18,12 @@ export default function AccountSettingsPage() {
   const profilePublic = useRef<HTMLInputElement>(null);
   const profilePrivate = useRef<HTMLInputElement>(null);
   const [newVisibility, setNewVisibility] = useState<"public" | "private">(
+    userSettings?.publicProfile || false ? "public" : "private"
+  );
+
+  const orgasmsPublic = useRef<HTMLInputElement>(null);
+  const orgasmsPrivate = useRef<HTMLInputElement>(null);
+  const [newOVisibility, setNewOVisibility] = useState<"public" | "private">(
     userSettings?.publicOrgasms || false ? "public" : "private"
   );
 
@@ -29,6 +35,9 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     setNewUsername(userSettings?.username || "");
     setNewVisibility(
+      userSettings?.publicProfile || false ? "public" : "private"
+    );
+    setNewOVisibility(
       userSettings?.publicOrgasms || false ? "public" : "private"
     );
   }, [userSettings]);
@@ -68,7 +77,8 @@ export default function AccountSettingsPage() {
     if (newUsernameOK !== "ok" && newUsernameOK !== "empty") return;
     updateSettings({
       username: newUsername,
-      publicOrgasms: newVisibility === "public",
+      publicProfile: newVisibility === "public",
+      publicOrgasms: newOVisibility === "public",
     });
   };
 
@@ -162,7 +172,7 @@ export default function AccountSettingsPage() {
               Once you have chosen a username, you can make your profile public.
               This will allow you to share your orgasm history with others!
             </p>
-            {userSettings?.username && userSettings?.publicOrgasms && (
+            {userSettings?.username && userSettings?.publicProfile && (
               <p>
                 Profile is available at:
                 <Link
@@ -174,6 +184,42 @@ export default function AccountSettingsPage() {
               </p>
             )}
           </div>
+
+          {userSettings &&
+            userSettings.username &&
+            userSettings.publicProfile && (
+              <>
+                <h3 className="text-right text-lg font-bold">
+                  Public orgasm feed
+                </h3>
+                <div className="col-span-2 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="orgasmsVisible"
+                      id="publicOs"
+                      ref={orgasmsPublic}
+                      checked={newOVisibility === "public"}
+                      onChange={() => setNewOVisibility("public")}
+                    />
+                    <label htmlFor="publicOs">Include my orgasms</label>
+                    <input
+                      type="radio"
+                      name="orgasmsVisible"
+                      id="privateOs"
+                      ref={orgasmsPrivate}
+                      checked={newOVisibility === "private"}
+                      onChange={() => setNewOVisibility("private")}
+                    />
+                    <label htmlFor="privateOs">Exclude my orgasms</label>
+                  </div>
+                  <p className="text-sm">
+                    When your profile is public, you can also choose to publish
+                    your orgasms on the public feed.
+                  </p>
+                </div>
+              </>
+            )}
 
           <div className="col-span-3 flex items-center justify-end">
             {/* save button */}

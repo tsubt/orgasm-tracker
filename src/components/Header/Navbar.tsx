@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 
 const items = [
   { name: "About", href: "/about" },
+  { name: "Users", href: "/users" },
   { name: "Stats", href: "/stats" },
 ];
 
