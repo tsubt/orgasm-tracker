@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import type { DateOrgasmType } from "../../server/trpc/router/orgasms";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { TypeColours } from "../Orgasm";
 
 dayjs.extend(weekOfYear);
 
@@ -35,24 +36,7 @@ const BAR_WIDTHS = [
 ];
 const BAR_TIMING = 0.05;
 
-const BAR_COLOURS = [
-  {
-    type: "FULL",
-    colour: "#8feb81",
-  },
-  {
-    type: "RUINED",
-    colour: "#f2bc57",
-  },
-  {
-    type: "HANDSFREE",
-    colour: "#ff8f8f",
-  },
-  {
-    type: "ANAL",
-    colour: "#d68bd1",
-  },
-];
+const BAR_COLOURS = TypeColours;
 
 export const BarChart: React.FC<BarChartProps> = ({ events, view }) => {
   const [orgs, setOrgs] = useState<BarChartEvent[]>([]);
