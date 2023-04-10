@@ -24,7 +24,7 @@ export const orgasmRouter = router({
         },
       });
       if (!user) return null;
-      if (!user.publicOrgasms) return null;
+      if (!user.publicProfile) return null;
 
       const orgasms = await ctx.prisma.orgasm.findMany({
         where: {
