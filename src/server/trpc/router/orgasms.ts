@@ -160,6 +160,10 @@ export const orgasmRouter = router({
         include: {
           user: true,
         },
+        orderBy: {
+          date: "desc",
+          // time: "desc",
+        },
         take: input.limit,
       });
 
