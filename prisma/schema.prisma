@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 datasource db {
-  provider     = "mysql"
+  provider     = "postgresql"
   url          = env("DATABASE_URL")
   relationMode = "prisma"
 }
@@ -49,9 +49,9 @@ model User {
   emailVerified DateTime?
   image         String?
 
-  joinedAt      DateTime  @default(now())
-  lastSeen      DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt @default(now())
+  joinedAt  DateTime @default(now())
+  lastSeen  DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   publicOrgasms Boolean @default(false)
   publicProfile Boolean @default(false)
@@ -69,7 +69,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-
 enum OrgasmType {
   FULL
   RUINED
@@ -84,16 +83,16 @@ enum SexType {
 }
 
 model Orgasm {
-  id   String     @id @default(cuid())
+  id   String  @id @default(cuid())
   date String
   time String
-  note String?    @db.Text
+  note String? @db.Text
 
   type OrgasmType @default(FULL)
-  sex SexType     @default(SOLO)
+  sex  SexType    @default(SOLO)
 
-  userId       String
-  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
