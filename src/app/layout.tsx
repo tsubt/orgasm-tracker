@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Quicksand } from "next/font/google";
 import "./globals.css";
 import Header from "./header";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const quicksand = Quicksand({
+  variable: "--font-quicksand",
   subsets: ["latin"],
 });
 
@@ -26,7 +21,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex min-h-screen h-full flex-col justify-center bg-linear-to-b from-pink-700 to-pink-900`}
+        className={`${quicksand.variable}  antialiased flex min-h-screen h-full flex-col justify-center bg-linear-to-b from-pink-700 to-pink-900`}
       >
         <Header />
         <div className="flex flex-1 flex-col items-center p-4">{children}</div>

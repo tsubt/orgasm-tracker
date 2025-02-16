@@ -1,0 +1,57 @@
+"use client";
+
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+
+const OPTIONS = [
+  "All",
+  // "This year",
+  // "This month",
+  // "This week",
+  "Last 12 months",
+  "Last 30 days",
+  "Last 7 days",
+];
+
+export default function PickTime() {
+  const [init, setInit] = useState(false);
+
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set(name, value);
+      return params.toString();
+    },
+    [searchParams]
+  );
+
+  // get users timezone
+  useEffect(() => {
+    if (init) return;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    router.replace(pathname + "?" + createQueryString("tz", tz));
+    setInit(true);
+  }, [init, router, pathname, createQueryString]);
+
+  return (
+    <div className="flex gap-4 items-center">
+      {OPTIONS.map((option) => (
+        <button
+          key={option}
+          className={`${
+            searchParams.get("time") === option ? "border-white" : ""
+          } text-white text-xs font-semibold tracking-wide cursor-pointer  border-b border-transparent`}
+          onClick={() => {
+            router.replace(pathname + "?" + createQueryString("time", option));
+          }}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}

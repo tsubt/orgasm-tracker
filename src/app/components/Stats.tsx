@@ -1,9 +1,24 @@
 import { prisma } from "@/prisma";
-import dayjs from "dayjs";
+
 import { Session } from "next-auth";
 import { Suspense } from "react";
+import PickTime from "./PickTime";
 
-export default async function Stats({ session }: { session: Session }) {
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+dayjs.extend(timezone);
+dayjs.extend(utc);
+
+export default async function Stats({
+  session,
+  time,
+  tz,
+}: {
+  session: Session;
+  time: string;
+  tz: string;
+}) {
   if (!session.user || !session.user.id) {
     return <></>;
   }
@@ -14,29 +29,95 @@ export default async function Stats({ session }: { session: Session }) {
         <span>Welcome, {session.user.name}</span>
       </p>
       <p className="text-white">Here&apos;s your dashboard</p>
-
+      <Suspense fallback={null}>
+        <PickTime />
+      </Suspense>
       <Suspense fallback={<LoadingSummaryStats />}>
-        <SummaryStats userId={session.user.id} />
+        <SummaryStats userId={session.user.id} time={time} tz={tz} />
       </Suspense>
     </div>
   );
 }
 
-async function SummaryStats({ userId }: { userId: string }) {
+async function SummaryStats({
+  userId,
+  time,
+  tz,
+}: {
+  userId: string;
+  time: string;
+  tz: string;
+}) {
+  const d = dayjs().tz(tz);
+
   const orgasms = await prisma.orgasm.findMany({
     where: {
       userId,
+      timestamp:
+        time === "This year"
+          ? {
+              gte: d.startOf("year").toDate(),
+            }
+          : time === "This month"
+          ? {
+              gte: d.startOf("month").toDate(),
+            }
+          : time === "This week"
+          ? {
+              gte: d.startOf("week").toDate(),
+            }
+          : time === "Last 12 months"
+          ? {
+              gte: d.subtract(12, "month").toDate(),
+            }
+          : time === "Last 30 days"
+          ? {
+              gte: d.subtract(30, "day").toDate(),
+            }
+          : time === "Last 7 days"
+          ? {
+              gte: d.subtract(7, "day").toDate(),
+            }
+          : {},
     },
   });
 
   const n = orgasms.length;
   if (n === 0) return <div>No orgasms yet</div>;
 
-  const today = dayjs();
-
   // find last orgasm date
   const last = orgasms.map((d) => d.date).reduce((a, b) => (a > b ? a : b));
-  const daysSinceLast = today.diff(last, "day");
+  const daysSinceLast = d.diff(last, "day");
+
+  // calculate time between orgasms
+  const times = orgasms
+    .map((o) => o.date)
+    .sort((a, b) => dayjs(a).diff(dayjs(b)))
+    .map((d, i, arr) => {
+      if (i === 0) return null;
+      return dayjs(d).diff(dayjs(arr[i - 1]), "day");
+    })
+    .filter((d) => d !== null)
+    .map((d) => (d ? d : 0));
+
+  // calculate longest streak of zero days between orgasms
+  const streaks = times
+    .reduce(
+      (acc, cur) => {
+        if (cur === 1) {
+          acc[acc.length - 1] += 1;
+        } else {
+          acc.push(0);
+        }
+        return acc;
+      },
+      [0]
+    )
+    .map((x) => x + 1);
+  const longestStreak = streaks.reduce((a, b) => (a > b ? a : b));
+
+  // time between orgasms -> days *without* orgasm + 1
+  const longestGap = times.length ? Math.max(...times) - 1 : 0;
 
   // wait 5 seconds
   //   await new Promise((resolve) => setTimeout(resolve, 200000));
@@ -45,10 +126,16 @@ async function SummaryStats({ userId }: { userId: string }) {
     <div className="flex items-center gap-4 text-black">
       <Stat count={n} title="total of" unit={["orgasm", "orgasms"]} />
       <Stat
-        count={daysSinceLast + 5}
+        count={daysSinceLast}
         title="currently"
         unit={["day without", "days without"]}
       />
+      <Stat
+        count={longestStreak}
+        title="longest streak"
+        unit={["day", "days"]}
+      />
+      <Stat count={longestGap} title="longest break" unit={["day", "days"]} />
     </div>
   );
 }

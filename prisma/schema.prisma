@@ -83,10 +83,11 @@ enum SexType {
 }
 
 model Orgasm {
-  id   String  @id @default(cuid())
-  date String
-  time String
-  note String? @db.Text
+  id        String    @id @default(cuid())
+  timestamp DateTime?
+  date      String
+  time      String
+  note      String?   @db.Text
 
   type OrgasmType @default(FULL)
   sex  SexType    @default(SOLO)
