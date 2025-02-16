@@ -1,26 +1,16 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
-const OPTIONS = [
-  "All",
-  // "This year",
-  // "This month",
-  // "This week",
-  "Last 12 months",
-  "Last 30 days",
-  "Last 7 days",
-];
+const OPTIONS = ["Year", "Month", "Week", "Day"];
 
-export default function PickTime() {
-  const [init, setInit] = useState(false);
-
+export default function PickPeriod() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const curtime = searchParams.get("time") ?? "All";
+  const curperiod = searchParams.get("period") ?? "Year";
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -31,24 +21,18 @@ export default function PickTime() {
     [searchParams]
   );
 
-  // get users timezone
-  useEffect(() => {
-    if (init) return;
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    router.replace(pathname + "?" + createQueryString("tz", tz));
-    setInit(true);
-  }, [init, router, pathname, createQueryString]);
-
   return (
     <div className="flex gap-4 items-center">
       {OPTIONS.map((option) => (
         <button
           key={option}
           className={`${
-            curtime === option ? "border-white" : ""
+            curperiod === option ? "border-white" : ""
           } text-white text-xs font-semibold tracking-wide cursor-pointer  border-b border-transparent`}
           onClick={() => {
-            router.replace(pathname + "?" + createQueryString("time", option));
+            router.replace(
+              pathname + "?" + createQueryString("period", option)
+            );
           }}
         >
           {option}

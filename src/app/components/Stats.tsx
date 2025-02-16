@@ -4,9 +4,13 @@ import { Session } from "next-auth";
 import { Suspense } from "react";
 import PickTime from "./PickTime";
 
+import Charts from "./charts";
+
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
+import PickPeriod from "./charts/PickPeriod";
+
 dayjs.extend(timezone);
 dayjs.extend(utc);
 
@@ -14,10 +18,12 @@ export default async function Stats({
   session,
   time,
   tz,
+  period,
 }: {
   session: Session;
   time: string;
   tz: string;
+  period: string;
 }) {
   if (!session.user || !session.user.id) {
     return <></>;
@@ -28,13 +34,24 @@ export default async function Stats({
       <p className="text-center text-2xl text-white">
         <span>Welcome, {session.user.name}</span>
       </p>
-      <p className="text-white">Here&apos;s your dashboard</p>
-      <Suspense fallback={null}>
-        <PickTime />
-      </Suspense>
-      <Suspense fallback={<LoadingSummaryStats />}>
-        <SummaryStats userId={session.user.id} time={time} tz={tz} />
-      </Suspense>
+
+      <div className="bg-black/5 rounded flex flex-col gap-4 p-4 w-full">
+        <Suspense fallback={null}>
+          <PickTime />
+        </Suspense>
+        <Suspense fallback={<LoadingSummaryStats />}>
+          <SummaryStats userId={session.user.id} time={time} tz={tz} />
+        </Suspense>
+      </div>
+
+      <div className="bg-black/5 rounded flex flex-col gap-4 p-4 w-full">
+        <Suspense fallback={null}>
+          <PickPeriod />
+        </Suspense>
+        <Suspense fallback={<>Loading charts ...</>}>
+          <Charts userId={session.user.id} period={period} />
+        </Suspense>
+      </div>
     </div>
   );
 }
