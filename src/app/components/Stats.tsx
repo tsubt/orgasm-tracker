@@ -9,10 +9,12 @@ import Charts from "./charts";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
+import relativeTime from "dayjs/plugin/relativeTime";
 import PickPeriod from "./charts/PickPeriod";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
+dayjs.extend(relativeTime);
 
 export default async function Stats({
   session,
@@ -31,9 +33,15 @@ export default async function Stats({
 
   return (
     <div className="flex flex-col items-center justify-center gap-4">
-      <p className="text-center text-2xl text-white">
-        <span>Welcome, {session.user.name}</span>
-      </p>
+      <div className="flex flex-col gap-4 w-full">
+        <p className="text-center text-2xl text-white">
+          <span>Welcome, {session.user.name}</span>
+        </p>
+
+        <Suspense fallback={null}>
+          <LastOrgasm userId={session.user.id} tz={tz} />
+        </Suspense>
+      </div>
 
       <div className="bg-black/5 rounded flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={null}>
@@ -52,6 +60,30 @@ export default async function Stats({
           <Charts userId={session.user.id} period={period} />
         </Suspense>
       </div>
+    </div>
+  );
+}
+
+async function LastOrgasm({ userId, tz }: { userId: string; tz: string }) {
+  const d = dayjs().tz(tz);
+
+  const last = await prisma.orgasm.findFirst({
+    where: {
+      userId,
+    },
+    orderBy: {
+      timestamp: "desc",
+    },
+  });
+
+  if (last === null) return;
+
+  return (
+    <div className="">
+      <h4 className="text-lg font-bold">
+        Last orgasm {dayjs(last.timestamp).fromNow()}
+      </h4>
+      <p>{dayjs(last.timestamp).format("D MMM YYYY, H:ma")}</p>
     </div>
   );
 }

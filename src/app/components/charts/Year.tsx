@@ -17,6 +17,8 @@ export default async function YearChart({ orgasms }: { orgasms: Orgasm[] }) {
     .map((o) => ({ ...o, year: new Date(o.date).getFullYear() }))
     .groupBy("year");
 
+  const currentYear = new Date().getFullYear();
+
   // cumulative orgasms per year
   const cumYear = Object.keys(years).map((year) => {
     const yr = years[parseInt(year)].sort(
@@ -51,7 +53,11 @@ export default async function YearChart({ orgasms }: { orgasms: Orgasm[] }) {
       return acc;
     }, [] as { date: string; x: number; orgasms: number; y: number }[]);
 
-    return { name: year, data: cumOrgasms };
+    return {
+      name: year,
+      data: cumOrgasms,
+      highlight: year === currentYear.toString(),
+    };
   });
 
   return (

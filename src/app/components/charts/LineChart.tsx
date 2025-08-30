@@ -16,6 +16,7 @@ export default function ChartLine({
 }: {
   data: {
     name: string;
+    highlight?: boolean;
     data: ({ x: number; y: number } & Record<string, unknown>)[];
   }[];
 }) {
@@ -35,7 +36,7 @@ export default function ChartLine({
             data={entry.data}
             name={entry.name}
             dot={false}
-            stroke="white"
+            stroke={entry.highlight ? "white" : "#999999"}
           />
         ))}
       </LineChart>
