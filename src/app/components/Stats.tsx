@@ -79,7 +79,7 @@ async function LastOrgasm({ userId, tz }: { userId: string; tz: string }) {
   if (last === null) return;
 
   return (
-    <div className="">
+    <div className="text-pink-50">
       <h4 className="text-lg font-bold">
         Last orgasm {dayjs(last.timestamp).fromNow()}
       </h4>

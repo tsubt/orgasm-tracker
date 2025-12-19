@@ -8,6 +8,7 @@ const items = [
   { name: "About", href: "/about" },
   { name: "Users", href: "/users" },
   { name: "Stats", href: "/stats" },
+  { name: "Orgasms", href: "/orgasms" },
 ];
 
 // on small devices, the navbar is just a hamburger that opens a drawer
