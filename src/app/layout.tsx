@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Quicksand } from "next/font/google";
 import "./globals.css";
 import Header from "./header";
+import Footer from "./components/Footer";
 import { Toaster } from "react-hot-toast";
 
 const quicksand = Quicksand({
@@ -26,6 +27,7 @@ export default async function RootLayout({
       >
         <Header />
         <div className="flex flex-1 flex-col items-center p-4">{children}</div>
+        <Footer />
         <Toaster position="top-center" />
       </body>
     </html>
