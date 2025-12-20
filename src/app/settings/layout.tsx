@@ -1,6 +1,5 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { ReactNode } from "react";
 import SettingsNav from "./SettingsNav";
 

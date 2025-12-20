@@ -67,9 +67,10 @@ export default async function YearChart({ orgasms }: { orgasms: Orgasm[] }) {
   );
 }
 
-function groupBy<T extends Record<string, any>>(arr: T[], key: string) {
+function groupBy<T, K extends keyof T>(arr: T[], key: K) {
   return arr.reduce((acc, curr) => {
-    (acc[curr[key]] = acc[curr[key]] || []).push(curr);
+    const keyValue = String(curr[key]);
+    (acc[keyValue] = acc[keyValue] || []).push(curr);
     return acc;
   }, {} as { [key: string]: T[] });
 }

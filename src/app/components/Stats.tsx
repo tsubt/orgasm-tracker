@@ -64,9 +64,7 @@ export default async function Stats({
   );
 }
 
-async function LastOrgasm({ userId, tz }: { userId: string; tz: string }) {
-  const d = dayjs().tz(tz);
-
+async function LastOrgasm({ userId }: { userId: string; tz: string }) {
   const last = await prisma.orgasm.findFirst({
     where: {
       userId,
