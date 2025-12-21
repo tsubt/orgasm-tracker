@@ -34,8 +34,7 @@ export async function updateSettings(data: {
     },
     data: {
       username: username && username.length < 3 ? undefined : username,
-      publicProfile:
-        username && username.length < 3 ? false : publicProfile,
+      publicProfile: username && username.length < 3 ? false : publicProfile,
       publicOrgasms:
         username && publicProfile && username.length < 3
           ? false

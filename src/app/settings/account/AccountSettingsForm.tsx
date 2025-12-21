@@ -91,7 +91,9 @@ export default function AccountSettingsForm({
       <div className="flex flex-col gap-8">
         {/* Username Section */}
         <div className="flex flex-col gap-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Username</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            Username
+          </h3>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <input
@@ -123,14 +125,17 @@ export default function AccountSettingsForm({
               ) : null}
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              If your username is blank, your profile will not be visible to anyone.
+              If your username is blank, your profile will not be visible to
+              anyone.
             </p>
           </div>
         </div>
 
         {/* Profile Visibility Section */}
         <div className="flex flex-col gap-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Profile visibility</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            Profile visibility
+          </h3>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -159,8 +164,8 @@ export default function AccountSettingsForm({
               </label>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Once you have chosen a username, you can make your profile public. This
-              will allow you to share your orgasm history with others!
+              Once you have chosen a username, you can make your profile public.
+              This will allow you to share your orgasm history with others!
             </p>
             {newUsernameOK === "ok" &&
               newVisibility === "public" &&
@@ -181,7 +186,9 @@ export default function AccountSettingsForm({
         {/* Public Orgasm Feed Section */}
         {canShowOrgasmSettings && (
           <div className="flex flex-col gap-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Public orgasm feed</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Public orgasm feed
+            </h3>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -193,7 +200,9 @@ export default function AccountSettingsForm({
                     onChange={() => setNewOVisibility("public")}
                     className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400"
                   />
-                  <span className="text-gray-900 dark:text-white">Include my orgasms</span>
+                  <span className="text-gray-900 dark:text-white">
+                    Include my orgasms
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -204,7 +213,9 @@ export default function AccountSettingsForm({
                     onChange={() => setNewOVisibility("private")}
                     className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400"
                   />
-                  <span className="text-gray-900 dark:text-white">Exclude my orgasms</span>
+                  <span className="text-gray-900 dark:text-white">
+                    Exclude my orgasms
+                  </span>
                 </label>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
