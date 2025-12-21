@@ -12,7 +12,7 @@ export default async function Home({
   const tz = (await searchParams).tz ?? "UTC";
   const period = (await searchParams).period ?? "Year";
 
-  if (session && session.user) {
+  if (session && session.user && session.user.id) {
     return (
       <main className="w-full p-8">
         <div className="max-w-4xl">
