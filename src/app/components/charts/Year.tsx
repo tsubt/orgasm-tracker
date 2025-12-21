@@ -1,6 +1,7 @@
 import { Orgasm } from "@prisma/client";
 import dayjs from "dayjs";
 import ChartLine from "./LineChart";
+import HeatMap from "./HeatMap";
 
 export default async function YearChart({ orgasms }: { orgasms: Orgasm[] }) {
   // split data into years
@@ -63,6 +64,7 @@ export default async function YearChart({ orgasms }: { orgasms: Orgasm[] }) {
   return (
     <div>
       <ChartLine data={cumYear} />
+      <HeatMap orgasms={orgasms} />
     </div>
   );
 }

@@ -1,10 +1,9 @@
-import { auth } from "@/auth";
 import SignIn from "@/components/signIn";
-import { prisma } from "@/prisma";
 import Orgasm from "./Orgasm";
 import Footer from "./Footer";
 import Image from "next/image";
 import NavLink from "./NavLink";
+import { Session } from "next-auth";
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: "📊" },
@@ -14,11 +13,17 @@ const navItems = [
   { name: "Settings", href: "/settings", icon: "⚙️" },
 ];
 
-export default async function Sidebar() {
-  const session = await auth();
-
+export default function Sidebar({
+  session,
+  username,
+  onMobileNavClick,
+}: {
+  session: Session | null;
+  username: string | null;
+  onMobileNavClick?: () => void;
+}) {
   return (
-    <div className="lg:w-64 bg-gray-100 dark:bg-gray-900 border-r-4 border-pink-500 flex flex-col min-h-screen">
+    <div className="flex flex-col h-full">
       {session && session.user ? (
         <>
           {/* User Info Section */}
@@ -51,13 +56,22 @@ export default async function Sidebar() {
           {/* Navigation */}
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             {navItems.map((item) => (
-              <NavLink key={item.href} href={item.href} icon={item.icon}>
+              <NavLink
+                key={item.href}
+                href={item.href}
+                icon={item.icon}
+                onClick={onMobileNavClick}
+              >
                 {item.name}
               </NavLink>
             ))}
 
             {/* User Menu Items */}
-            <UserMenuItems session={session} />
+            <UserMenuItems
+              session={session}
+              username={username}
+              onMobileNavClick={onMobileNavClick}
+            />
           </nav>
 
           {/* Footer */}
@@ -99,16 +113,29 @@ export default async function Sidebar() {
   );
 }
 
-async function UserMenuItems({ session }: { session: any }) {
+function UserMenuItems({
+  session,
+  username,
+  onMobileNavClick,
+}: {
+  session: Session;
+  username: string | null;
+  onMobileNavClick?: () => void;
+}) {
   if (!session || !session.user) return null;
 
-  const userInfo = await prisma.user.findUnique({
-    where: { id: session.user.id },
-  });
-  const userId = userInfo ? userInfo.username : "";
-
-  const userItems: { name: string; href: string; show?: boolean; icon: string }[] = [
-    { name: "Your profile", href: "/u/" + userId, show: userId !== "", icon: "👤" },
+  const userItems: {
+    name: string;
+    href: string;
+    show?: boolean;
+    icon: string;
+  }[] = [
+    {
+      name: "Your profile",
+      href: "/u/" + username,
+      show: username !== null && username !== "",
+      icon: "👤",
+    },
     { name: "Sign out", href: "/api/auth/signout", icon: "🚪" },
   ];
 
@@ -118,7 +145,12 @@ async function UserMenuItems({ session }: { session: any }) {
         {userItems
           .filter((item) => item.show !== false)
           .map((item) => (
-            <NavLink key={item.href} href={item.href} icon={item.icon}>
+            <NavLink
+              key={item.href}
+              href={item.href}
+              icon={item.icon}
+              onClick={onMobileNavClick}
+            >
               {item.name}
             </NavLink>
           ))}

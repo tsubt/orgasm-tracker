@@ -7,17 +7,21 @@ export default function NavLink({
   href,
   icon,
   children,
+  onClick,
 }: {
   href: string;
   icon: string;
   children: React.ReactNode;
+  onClick?: () => void;
 }) {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
+  const isActive =
+    pathname === href || (href !== "/" && pathname.startsWith(href));
 
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={`flex items-center gap-3 px-3 py-2.5 border-l-4 border-transparent transition-all uppercase text-xs font-bold tracking-wider ${
         isActive
           ? "bg-gray-200 dark:bg-gray-800 text-pink-500"
