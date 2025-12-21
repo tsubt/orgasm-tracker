@@ -1,4 +1,6 @@
-import { prisma } from "@/prisma";
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -6,31 +8,135 @@ import type { Orgasm, User } from "@prisma/client";
 
 dayjs.extend(relativeTime);
 
-export default async function UsersList() {
-  const users = await prisma.user.findMany({
-    where: {
-      publicProfile: true,
-    },
-    include: {
-      orgasms: true,
-    },
-  });
+const ITEMS_PER_PAGE = 15;
 
-  // Sort by lastSeen (most recent first)
-  const sortedUsers = users.sort((a, b) =>
-    dayjs(a.lastSeen).isAfter(dayjs(b.lastSeen)) ? -1 : 1
-  );
+type UserWithOrgasms = User & {
+  orgasms: Orgasm[];
+};
 
-  if (sortedUsers.length === 0) {
-    return <p className="text-white">No users found</p>;
+export default function UsersList() {
+  const [users, setUsers] = useState<UserWithOrgasms[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch("/api/users");
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+        setCurrentPage(1);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 w-full">
+        <p className="text-lg text-gray-900 dark:text-white">Loading users...</p>
+      </div>
+    );
   }
 
+  if (users.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 w-full">
+        <p className="text-lg text-gray-900 dark:text-white">No users found</p>
+      </div>
+    );
+  }
+
+  // Calculate pagination
+  const totalPages = Math.ceil(users.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedUsers = users.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
-    <>
-      {sortedUsers.map((user) => (
-        <UserCard user={user} key={user.id} />
-      ))}
-    </>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
+        {paginatedUsers.map((user) => (
+          <UserCard user={user} key={user.id} />
+        ))}
+      </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="border-t border-gray-200 dark:border-gray-600 px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-b-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Showing {startIndex + 1} to {Math.min(endIndex, users.length)} of{" "}
+              {users.length} users
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                          currentPage === page
+                            ? "bg-pink-500 dark:bg-pink-600 text-white"
+                            : "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  } else if (
+                    page === currentPage - 2 ||
+                    page === currentPage + 2
+                  ) {
+                    return (
+                      <span
+                        key={page}
+                        className="px-2 text-gray-500 dark:text-gray-400"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -56,29 +162,34 @@ function UserCard({
   const lastOrgasm = orgasms[0];
 
   return (
-    <div className="flex items-start justify-between rounded-sm bg-pink-200 p-4 shadow-sm">
-      <div className="flex-col">
-        <Link href={"/u/" + user.username} className="text-lg text-pink-800">
-          <strong>@{user.username}</strong>
+    <div className="flex items-start justify-between rounded-lg bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+      <div className="flex flex-col gap-2 flex-1">
+        <Link
+          href={"/u/" + user.username}
+          className="text-lg font-semibold text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 transition-colors"
+        >
+          @{user.username}
         </Link>
-        <div className="flex-col">
+        <div className="flex flex-row gap-1 text-sm text-gray-700 dark:text-gray-300 items-center">
           {orgasms.length ? (
             <>
-              {orgasms.length} orgasm{orgasms.length > 1 && "s"} tracked
+              <span className="font-medium">{orgasms.length}</span>
+              <span>orgasm{orgasms.length > 1 ? "s" : ""} tracked</span>
               {lastOrgasm && (
-                <> last orgasm was {lastOrgasm.datetime.fromNow()}</>
+                <span className="text-gray-600 dark:text-gray-400">
+                  {" "}• Last orgasm {lastOrgasm.datetime.fromNow()}
+                </span>
               )}
             </>
           ) : (
-            <>No orgasms tracked.</>
+            <span className="text-gray-500 dark:text-gray-400">No orgasms tracked</span>
           )}
         </div>
       </div>
 
-      <div className="flex items-center text-xs">
-        Joined: {dayjs(user.joinedAt).format("DD MMM YYYY")}
-        <div className="mx-2 h-1 w-1 rounded-full bg-black"></div>
-        Last seen: {dayjs(user.lastSeen).fromNow()}
+      <div className="flex flex-col items-end gap-1 text-xs text-gray-600 dark:text-gray-400 ml-4">
+        <div>Joined {dayjs(user.joinedAt).format("DD MMM YYYY")}</div>
+        <div>Last seen {dayjs(user.lastSeen).fromNow()}</div>
       </div>
     </div>
   );

@@ -43,6 +43,6 @@ export async function updateSettings(data: {
     },
   });
 
-  revalidatePath("/settings/account");
+  revalidatePath("/settings");
   revalidatePath("/users");
 }

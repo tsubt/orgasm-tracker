@@ -87,132 +87,148 @@ export default function AccountSettingsForm({
     newUsernameOK === "ok" && newVisibility === "public";
 
   return (
-    <div className="grid w-full grid-cols-3 gap-8 text-white">
-      <h3 className="text-right text-lg font-bold">Username</h3>
-
-      <div className="col-span-2 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            placeholder="No username set"
-            className="rounded-sm bg-pink-200 p-1 px-3 text-pink-900 accent-pink-900 placeholder:italic placeholder:text-red-500"
-          />
-          {newUsernameOK === "ok" ? (
-            <div className="flex items-center gap-2 text-xs text-green-300">
-              <CheckCircleIcon className="ml-2 h-6 w-6 text-green-500" />
-              Username available!
-            </div>
-          ) : newUsernameOK === "taken" ? (
-            <div className="flex items-center gap-2 text-xs text-red-300">
-              <XCircleIcon className="ml-2 h-6 w-6 text-red-300" />
-              Username taken
-            </div>
-          ) : newUsernameOK === "checking" ? (
-            <div className="flex items-center gap-2 text-xs text-red-300">
-              <div className="ml-2 h-4 w-4 animate-spin rounded-full border-2 border-red-300 border-t-transparent"></div>
-            </div>
-          ) : newUsernameOK === "invalid" ? (
-            <div className="flex items-center gap-2 text-xs text-red-300">
-              <XCircleIcon className="ml-2 h-6 w-6 text-red-300" />
-              Username must be at least 3 characters
-            </div>
-          ) : (
-            <></>
-          )}
-        </div>
-        <p className="text-sm">
-          If your username is blank, your profile will not be visible to anyone.
-        </p>
-      </div>
-
-      <h3 className="text-right text-lg font-bold">Profile visibility</h3>
-
-      <div className="col-span-2 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <input
-            type="radio"
-            name="visibility"
-            id="public"
-            checked={newVisibility === "public"}
-            onChange={() => setNewVisibility("public")}
-            disabled={newUsernameOK !== "ok"}
-          />
-          <label htmlFor="public">Public</label>
-          <input
-            type="radio"
-            name="visibility"
-            id="private"
-            checked={newVisibility === "private"}
-            onChange={() => setNewVisibility("private")}
-            disabled={newUsernameOK !== "ok"}
-          />
-          <label htmlFor="private">Private</label>
-        </div>
-        <p className="text-sm">
-          Once you have chosen a username, you can make your profile public. This
-          will allow you to share your orgasm history with others!
-        </p>
-        {newUsernameOK === "ok" &&
-          newVisibility === "public" &&
-          newUsername && (
-            <p>
-              Profile is available at:
-              <Link
-                href={`/u/${newUsername}`}
-                className="inline px-2 text-blue-200 hover:text-blue-100"
-              >
-                {`/u/${newUsername}`}
-              </Link>
-            </p>
-          )}
-      </div>
-
-      {canShowOrgasmSettings && (
-        <>
-          <h3 className="text-right text-lg font-bold">Public orgasm feed</h3>
-          <div className="col-span-2 flex flex-col gap-2">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+      <div className="flex flex-col gap-8">
+        {/* Username Section */}
+        <div className="flex flex-col gap-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Username</h3>
+          <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <input
-                type="radio"
-                name="orgasmsVisible"
-                id="publicOs"
-                checked={newOVisibility === "public"}
-                onChange={() => setNewOVisibility("public")}
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="No username set"
+                className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 px-3 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 dark:focus:ring-pink-400"
               />
-              <label htmlFor="publicOs">Include my orgasms</label>
-              <input
-                type="radio"
-                name="orgasmsVisible"
-                id="privateOs"
-                checked={newOVisibility === "private"}
-                onChange={() => setNewOVisibility("private")}
-              />
-              <label htmlFor="privateOs">Exclude my orgasms</label>
+              {newUsernameOK === "ok" ? (
+                <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
+                  <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  Available
+                </div>
+              ) : newUsernameOK === "taken" ? (
+                <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400">
+                  <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  Taken
+                </div>
+              ) : newUsernameOK === "checking" ? (
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-pink-500 dark:border-pink-400 border-t-transparent"></div>
+                </div>
+              ) : newUsernameOK === "invalid" ? (
+                <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400">
+                  <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  Must be at least 3 characters
+                </div>
+              ) : null}
             </div>
-            <p className="text-sm">
-              When your profile is public, you can also choose to publish your
-              orgasms on the public feed.
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              If your username is blank, your profile will not be visible to anyone.
             </p>
           </div>
-        </>
-      )}
+        </div>
 
-      <div className="col-span-3 flex items-center justify-end">
-        {isPending ? (
-          <div className="flex justify-end">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+        {/* Profile Visibility Section */}
+        <div className="flex flex-col gap-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Profile visibility</h3>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="visibility"
+                  id="public"
+                  checked={newVisibility === "public"}
+                  onChange={() => setNewVisibility("public")}
+                  disabled={newUsernameOK !== "ok"}
+                  className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className="text-gray-900 dark:text-white">Public</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="visibility"
+                  id="private"
+                  checked={newVisibility === "private"}
+                  onChange={() => setNewVisibility("private")}
+                  disabled={newUsernameOK !== "ok"}
+                  className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span className="text-gray-900 dark:text-white">Private</span>
+              </label>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Once you have chosen a username, you can make your profile public. This
+              will allow you to share your orgasm history with others!
+            </p>
+            {newUsernameOK === "ok" &&
+              newVisibility === "public" &&
+              newUsername && (
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  Profile is available at:{" "}
+                  <Link
+                    href={`/u/${newUsername}`}
+                    className="text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 underline"
+                  >
+                    {`/u/${newUsername}`}
+                  </Link>
+                </p>
+              )}
           </div>
-        ) : (
-          <button
-            onClick={handleSave}
-            disabled={newUsernameOK !== "ok" && newUsernameOK !== "empty"}
-            className="rounded-lg bg-white p-2 px-4 font-bold text-pink-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-50"
-          >
-            Save
-          </button>
+        </div>
+
+        {/* Public Orgasm Feed Section */}
+        {canShowOrgasmSettings && (
+          <div className="flex flex-col gap-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Public orgasm feed</h3>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="orgasmsVisible"
+                    id="publicOs"
+                    checked={newOVisibility === "public"}
+                    onChange={() => setNewOVisibility("public")}
+                    className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400"
+                  />
+                  <span className="text-gray-900 dark:text-white">Include my orgasms</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="orgasmsVisible"
+                    id="privateOs"
+                    checked={newOVisibility === "private"}
+                    onChange={() => setNewOVisibility("private")}
+                    className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400"
+                  />
+                  <span className="text-gray-900 dark:text-white">Exclude my orgasms</span>
+                </label>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                When your profile is public, you can also choose to publish your
+                orgasms on the public feed.
+              </p>
+            </div>
+          </div>
         )}
+
+        {/* Save Button */}
+        <div className="flex items-center justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+          {isPending ? (
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-pink-500 dark:border-pink-400 border-t-transparent"></div>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={newUsernameOK !== "ok" && newUsernameOK !== "empty"}
+              className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors"
+            >
+              Save
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

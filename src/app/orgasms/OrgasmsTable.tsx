@@ -22,6 +22,8 @@ const SexTypes = Object.keys(SexType).map((x) => {
   };
 });
 
+const ITEMS_PER_PAGE = 20;
+
 export default function OrgasmsTable() {
   const [orgasms, setOrgasms] = useState<Orgasm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +35,7 @@ export default function OrgasmsTable() {
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(
     null
   );
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
   useEffect(() => {
@@ -45,6 +48,7 @@ export default function OrgasmsTable() {
       if (response.ok) {
         const data = await response.json();
         setOrgasms(data.orgasms || []);
+        setCurrentPage(1); // Reset to first page when fetching new data
       }
     } catch (error) {
       console.error("Error fetching orgasms:", error);
@@ -155,24 +159,36 @@ export default function OrgasmsTable() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 bg-white/10 rounded-lg p-8 w-full">
-        <p className="text-lg text-white">Loading orgasms...</p>
+      <div className="flex flex-col items-center justify-center gap-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 w-full">
+        <p className="text-lg text-gray-900 dark:text-white">Loading orgasms...</p>
       </div>
     );
   }
 
   if (orgasms.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 bg-white/10 rounded-lg p-8 w-full">
-        <p className="text-lg text-white">No orgasms to show (yet).</p>
+      <div className="flex flex-col items-center justify-center gap-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 w-full">
+        <p className="text-lg text-gray-900 dark:text-white">No orgasms to show (yet).</p>
       </div>
     );
   }
 
+  // Calculate pagination
+  const totalPages = Math.ceil(orgasms.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedOrgasms = orgasms.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <>
-      <div className="w-full bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full">
             <thead>
               <tr className="bg-pink-500 dark:bg-pink-600">
@@ -194,39 +210,43 @@ export default function OrgasmsTable() {
               </tr>
             </thead>
             <tbody>
-              {orgasms.map((orgasm, index) => (
+              {paginatedOrgasms.map((orgasm, index) => {
+                const actualIndex = startIndex + index;
+                return (
                 <tr
                   key={orgasm.id}
                   className={`${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                  } border-t border-gray-200`}
+                    actualIndex % 2 === 0
+                      ? "bg-white dark:bg-gray-800"
+                      : "bg-gray-50 dark:bg-gray-700"
+                  } border-t border-gray-200 dark:border-gray-600`}
                 >
-                  <td className="px-4 py-3 text-sm text-gray-900">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
                     {dayjs(`${orgasm.date} ${orgasm.time}`).format(
                       "DD MMM YYYY @ HH:mm"
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 capitalize">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 capitalize">
                     {orgasm.type.toLowerCase()}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 capitalize">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 capitalize">
                     {orgasm.sex.toLowerCase()}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
                     {orgasm.note || "-"}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex flex-row items-center justify-center gap-3">
                       <button
                         onClick={() => setEditOrgasm(orgasm)}
-                        className="text-gray-600 hover:text-pink-800 transition-colors cursor-pointer"
+                        className="text-gray-600 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 transition-colors cursor-pointer"
                         title="Edit"
                       >
                         <PencilSquareIcon className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => setDeleteOrgasmConfirm(orgasm)}
-                        className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer"
+                        className="text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
                         title="Delete"
                       >
                         <TrashIcon className="h-5 w-5" />
@@ -234,10 +254,76 @@ export default function OrgasmsTable() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="border-t border-gray-200 dark:border-gray-600 px-4 py-3 bg-gray-50 dark:bg-gray-700">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700 dark:text-gray-300">
+                Showing {startIndex + 1} to {Math.min(endIndex, orgasms.length)} of{" "}
+                {orgasms.length} orgasms
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                            currentPage === page
+                              ? "bg-pink-500 dark:bg-pink-600 text-white"
+                              : "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return (
+                        <span
+                          key={page}
+                          className="px-2 text-gray-500 dark:text-gray-400"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Edit Modal */}

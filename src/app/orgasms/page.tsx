@@ -10,11 +10,15 @@ export default async function OrgasmsPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-8 w-full max-w-6xl">
-      <h2 className="text-2xl font-bold uppercase tracking-wider text-white">
-        Manage your Orgasms
-      </h2>
-      <OrgasmsTable />
+    <div className="w-full p-8">
+      <div className="max-w-6xl mx-auto flex flex-col gap-8 h-full">
+        <h2 className="text-2xl font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+          Manage your Orgasms
+        </h2>
+        <div className="flex-1">
+          <OrgasmsTable />
+        </div>
+      </div>
     </div>
   );
 }
