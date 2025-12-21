@@ -26,7 +26,7 @@ export default async function RootLayout({
         className={`${quicksand.variable}  antialiased flex min-h-screen h-full flex-col justify-center bg-linear-to-b from-pink-700 to-pink-900`}
       >
         <Header />
-        <div className="flex flex-1 flex-col items-center p-4">{children}</div>
+        <div className="flex flex-1 flex-col items-center">{children}</div>
         <Footer />
         <Toaster position="top-center" />
       </body>

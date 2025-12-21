@@ -45,8 +45,10 @@ export default function PickTime() {
         <button
           key={option}
           className={`${
-            curtime === option ? "border-white" : ""
-          } text-white text-xs font-semibold tracking-wide cursor-pointer  border-b border-transparent`}
+            curtime === option
+              ? "border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100"
+              : "border-transparent text-gray-600 dark:text-gray-400"
+          } text-xs font-semibold tracking-wide cursor-pointer border-b-2 hover:text-gray-900 dark:hover:text-gray-100 transition-colors`}
           onClick={() => {
             router.replace(pathname + "?" + createQueryString("time", option));
           }}
