@@ -12,7 +12,7 @@ export default function SignIn() {
     >
       <button
         type="submit"
-        className="group flex flex-row items-center gap-2 text-white cursor-pointer"
+        className="group flex flex-row items-center gap-2 text-gray-900 dark:text-white cursor-pointer hover:text-pink-500 dark:hover:text-pink-400 transition-colors"
       >
         <LockClosedIcon className="h-6 w-6 group-hover:hidden" />
         <LockOpenIcon className="hidden h-6 w-6 group-hover:block" />

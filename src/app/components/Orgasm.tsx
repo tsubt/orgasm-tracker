@@ -109,7 +109,7 @@ export default function Orgasm() {
   return (
     <>
       <button
-        className="bg-pink-800 text-pink-50 px-4 py-2 rounded-md shadow cursor-pointer hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-pink-500 dark:bg-pink-600 text-white px-3 py-2.5 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold uppercase tracking-wide"
         onClick={() => setIsOpen(true)}
       >
         I&apos;ve had an orgasm!
@@ -256,7 +256,7 @@ export default function Orgasm() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-pink-800 text-pink-50 rounded hover:bg-pink-900 flex items-center gap-2 cursor-pointer transition-colors"
+                    className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded hover:bg-pink-600 dark:hover:bg-pink-700 flex items-center gap-2 cursor-pointer transition-colors"
                   >
                     Save
                   </button>

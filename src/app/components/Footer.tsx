@@ -11,34 +11,34 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="flex items-center justify-center bg-black p-2 pb-12 font-bold text-white md:p-4 md:pb-16">
-      <div className="container mx-auto flex flex-col justify-between gap-4 px-2 md:flex-row">
-        <div className="flex flex-col gap-1">
-          <div className="text-pink-700">OrgasmTracker &copy; {currentYear}</div>
-          <div className="text-xs">
-            By{" "}
-            <Link
-              href="https://twitter.com/thesubtop"
-              className="text-blue-400 hover:text-blue-300"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              @thesubtop
-            </Link>
-          </div>
+    <footer className="p-3 text-gray-900 dark:text-white">
+      <div className="flex flex-col gap-2 text-xs">
+        <div className="text-pink-600 dark:text-pink-400 font-bold">
+          OrgasmTracker &copy; {currentYear}
         </div>
-        <div className="flex flex-row gap-2">
+        <div className="text-gray-600 dark:text-gray-500">
+          By{" "}
+          <Link
+            href="https://twitter.com/thesubtop"
+            className="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            @thesubtop
+          </Link>
+        </div>
+        <div className="flex flex-row gap-2 pt-1">
           {social.map((item) => (
             <Link
               key={item.title}
               href={item.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center rounded-full bg-pink-200 p-2 transition-colors hover:bg-pink-300"
+              className="flex items-center justify-center rounded-full bg-pink-500 dark:bg-pink-600 p-1.5 transition-colors hover:bg-pink-600 dark:hover:bg-pink-700"
               aria-label={item.title}
             >
               <svg
-                className="h-5 w-5 text-pink-900"
+                className="h-4 w-4 text-white"
                 fill="currentColor"
                 viewBox="0 0 24 24"
                 aria-hidden="true"

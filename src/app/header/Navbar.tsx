@@ -36,7 +36,7 @@ export default function Navbar() {
             <Link
               key={item.name}
               href={item.href}
-              className=" uppercase tracking-wider text-white"
+              className=" uppercase tracking-wider text-gray-900 dark:text-white"
               //   onClick={() => setOpen(false)}
             >
               {item.name}
@@ -64,7 +64,7 @@ export default function Navbar() {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="text-lg font-bold uppercase tracking-wider text-white"
+                    className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-white"
                     //   onClick={() => setOpen(false)}
                   >
                     {item.name}

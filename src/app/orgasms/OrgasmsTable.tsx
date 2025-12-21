@@ -175,20 +175,20 @@ export default function OrgasmsTable() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-pink-800">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pink-100">
+              <tr className="bg-pink-500 dark:bg-pink-600">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-white">
                   Date & Time
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pink-100">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-white">
                   Type
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pink-100">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-white">
                   Partner?
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-pink-100">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-white">
                   Note
                 </th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-pink-100">
+                <th className="px-4 py-3 text-center text-sm font-semibold text-white">
                   Actions
                 </th>
               </tr>
@@ -410,7 +410,7 @@ export default function OrgasmsTable() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-pink-800 text-pink-50 rounded hover:bg-pink-900 flex items-center gap-2 cursor-pointer transition-colors"
+                    className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded hover:bg-pink-600 dark:hover:bg-pink-700 flex items-center gap-2 cursor-pointer transition-colors"
                   >
                     Save changes
                   </button>

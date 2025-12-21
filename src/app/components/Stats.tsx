@@ -210,7 +210,7 @@ function Stat({
   unit: [string, string];
 }) {
   return (
-    <div className="bg-pink-800 size-30 rounded shadow flex flex-col items-center justify-center gap-2 p-2 text-pink-50">
+    <div className="bg-pink-500 dark:bg-pink-600 size-30 rounded shadow flex flex-col items-center justify-center gap-2 p-2 text-white">
       <div className="">{title}</div>
       <div className="bold text-4xl">{count}</div>
       <div>{count === 1 ? unit[0] : unit[1]}</div>
