@@ -3,6 +3,7 @@ import { Bars3Icon } from "@heroicons/react/24/solid";
 // import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import User from "./User";
+import AddOrgasmButton from "./AddOrgasmButton";
 
 const items = [
   { name: "About", href: "/about" },
@@ -46,7 +47,8 @@ export default function Navbar() {
         <div className="hidden items-center justify-center gap-8 md:flex">
           <User />
         </div>
-        <div className="flex items-center justify-center md:hidden">
+        <div className="flex items-center justify-center gap-3 md:hidden">
+          <AddOrgasmButton />
           <Bars3Icon
             className="h-6 w-6 cursor-pointer"
             // onClick={() => setOpen(true)}

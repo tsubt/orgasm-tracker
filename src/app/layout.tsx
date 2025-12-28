@@ -5,6 +5,8 @@ import SidebarWrapper from "./components/SidebarWrapper";
 import { Toaster } from "react-hot-toast";
 import { auth } from "@/auth";
 import { prisma } from "@/prisma";
+import { OrgasmModalProvider } from "./contexts/OrgasmModalContext";
+import Orgasm from "./components/Orgasm";
 
 const quicksand = Quicksand({
   variable: "--font-quicksand",
@@ -38,13 +40,17 @@ export default async function RootLayout({
       <body
         className={`${quicksand.variable} antialiased flex min-h-screen h-full flex-col bg-linear-to-b from-pink-700 to-pink-900`}
       >
-        <div className="flex flex-1 flex-col lg:flex-row w-full min-h-screen bg-gray-50 dark:bg-gray-950">
-          <SidebarWrapper session={session} username={username} />
-          <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto lg:ml-0 pt-16 lg:pt-0">
-            {children}
+        <OrgasmModalProvider>
+          <div className="flex flex-1 flex-col lg:flex-row w-full h-screen bg-gray-50 dark:bg-gray-950">
+            <SidebarWrapper session={session} username={username} />
+            <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto lg:ml-0 pt-16 lg:pt-0">
+              {children}
+            </div>
           </div>
-        </div>
-        <Toaster position="top-center" />
+          {/* Orgasm modal - always available for the plus button */}
+          {session && <Orgasm hideButton={true} />}
+          <Toaster position="top-center" />
+        </OrgasmModalProvider>
       </body>
     </html>
   );

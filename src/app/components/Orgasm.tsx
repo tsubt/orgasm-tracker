@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -8,6 +8,7 @@ import timezone from "dayjs/plugin/timezone";
 import { OrgasmType, SexType } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useOrgasmModal } from "../contexts/OrgasmModalContext";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -26,8 +27,8 @@ const SexTypes = Object.keys(SexType).map((x) => {
   };
 });
 
-export default function Orgasm() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function Orgasm({ hideButton = false }: { hideButton?: boolean }) {
+  const { isOpen, openModal, closeModal } = useOrgasmModal();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
@@ -56,7 +57,7 @@ export default function Orgasm() {
     const timestamp = localDateTime.utc().toDate();
 
     // Hide modal immediately
-    setIsOpen(false);
+    closeModal();
     setErrorMessage(null);
 
     // Show loading toast with ID
@@ -105,23 +106,25 @@ export default function Orgasm() {
 
       // Reopen modal with error message
       setErrorMessage(errorMsg);
-      setIsOpen(true);
+      openModal();
     }
   };
 
   const handleClose = () => {
-    setIsOpen(false);
+    closeModal();
     setErrorMessage(null);
   };
 
   return (
     <>
-      <button
-        className="w-full bg-pink-500 dark:bg-pink-600 text-white px-3 py-2.5 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold uppercase tracking-wide"
-        onClick={() => setIsOpen(true)}
-      >
-        I&apos;ve had an orgasm!
-      </button>
+      {!hideButton && (
+        <button
+          className="w-full bg-pink-500 dark:bg-pink-600 text-white px-3 py-2.5 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold uppercase tracking-wide"
+          onClick={openModal}
+        >
+          I&apos;ve had an orgasm!
+        </button>
+      )}
 
       <AnimatePresence>
         {isOpen && (

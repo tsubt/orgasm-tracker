@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/solid";
 import Sidebar from "./Sidebar";
 import { Session } from "next-auth";
+import AddOrgasmButton from "../header/AddOrgasmButton";
 
 export default function SidebarWrapper({
   session,
@@ -22,17 +23,20 @@ export default function SidebarWrapper({
           <h1 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wide">
             OrgasmTracker
           </h1>
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-2 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-800 rounded"
-            aria-label="Toggle menu"
-          >
-            {isOpen ? (
-              <XMarkIcon className="h-6 w-6" />
-            ) : (
-              <Bars3Icon className="h-6 w-6" />
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            {session && <AddOrgasmButton />}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="p-2 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-800 rounded"
+              aria-label="Toggle menu"
+            >
+              {isOpen ? (
+                <XMarkIcon className="h-6 w-6" />
+              ) : (
+                <Bars3Icon className="h-6 w-6" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -50,7 +54,7 @@ export default function SidebarWrapper({
           isOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
       >
-        <div className="lg:w-64 w-64 bg-gray-100 dark:bg-gray-900 border-r-4 border-pink-500 flex flex-col min-h-screen lg:min-h-screen h-screen lg:h-auto">
+        <div className="lg:w-64 w-64 bg-gray-100 dark:bg-gray-900 border-r-4 border-pink-500 flex flex-col h-screen lg:h-full">
           <Sidebar
             session={session}
             username={username}

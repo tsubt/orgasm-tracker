@@ -27,7 +27,7 @@ export default function Sidebar({
       {session && session.user ? (
         <>
           {/* User Info Section */}
-          <div className="p-5 border-b-2 border-gray-300 dark:border-gray-800">
+          <div className="p-5 border-b-2 border-gray-300 dark:border-gray-800 flex-shrink-0">
             <div className="flex items-center gap-3 mb-1">
               <div className="relative h-10 w-10 flex-shrink-0">
                 <Image
@@ -49,12 +49,12 @@ export default function Sidebar({
           </div>
 
           {/* Primary Action */}
-          <div className="p-4 border-b-2 border-gray-300 dark:border-gray-800">
+          <div className="p-4 border-b-2 border-gray-300 dark:border-gray-800 flex-shrink-0">
             <Orgasm />
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto min-h-0">
             {navItems.map((item) => (
               <NavLink
                 key={item.href}
@@ -75,14 +75,14 @@ export default function Sidebar({
           </nav>
 
           {/* Footer */}
-          <div className="border-t-2 border-gray-300 dark:border-gray-800">
+          <div className="border-t-2 border-gray-300 dark:border-gray-800 flex-shrink-0 mt-auto">
             <Footer />
           </div>
         </>
       ) : (
         <>
           {/* Guest Section */}
-          <div className="p-5 border-b-2 border-gray-300 dark:border-gray-800">
+          <div className="p-5 border-b-2 border-gray-300 dark:border-gray-800 flex-shrink-0">
             <h1 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-1">
               OrgasmTracker
             </h1>
@@ -92,7 +92,7 @@ export default function Sidebar({
           </div>
 
           {/* Sign In Section */}
-          <div className="flex-1 p-5 flex items-center justify-center overflow-y-auto">
+          <div className="flex-1 p-5 flex items-center justify-center overflow-y-auto min-h-0">
             <div className="flex flex-col items-center gap-4">
               <p className="text-gray-900 dark:text-white text-center">
                 Please sign in to access your dashboard
@@ -104,7 +104,7 @@ export default function Sidebar({
           </div>
 
           {/* Footer */}
-          <div className="border-t-2 border-gray-300 dark:border-gray-800">
+          <div className="border-t-2 border-gray-300 dark:border-gray-800 flex-shrink-0 mt-auto">
             <Footer />
           </div>
         </>
