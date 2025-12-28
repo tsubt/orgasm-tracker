@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { getDelayData, getDelayLabel, ProcessedData } from "./dataProcessing";
+import { getDelayData, ProcessedData } from "./dataProcessing";
 
 interface WrappedDelayChartProps {
   orgasms: Orgasm[];

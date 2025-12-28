@@ -7,7 +7,6 @@ import {
   XAxis,
   YAxis,
   ResponsiveContainer,
-  Legend,
   Tooltip,
   Cell,
 } from "recharts";
@@ -59,7 +58,13 @@ export default function WrappedDailyChart({
     return interpolateColor(intensity, "#510258", "#EA69F6");
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: Array<{ payload: { date: string; total: number } }>;
+  }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (

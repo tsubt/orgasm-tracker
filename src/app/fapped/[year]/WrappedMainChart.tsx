@@ -7,7 +7,6 @@ import {
   XAxis,
   YAxis,
   ResponsiveContainer,
-  Cell,
   Legend,
 } from "recharts";
 import { getMainChartData } from "./dataProcessing";

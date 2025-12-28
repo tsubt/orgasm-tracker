@@ -163,7 +163,6 @@ export function processYearData(
 
 export function getMainChartData(orgasms: Orgasm[]): MainChartData[] {
   const typeOrder = ["FULL", "RUINED", "HANDSFREE", "ANAL"];
-  const sexOrder = ["SOLO", "VIRTUAL", "PHYSICAL"];
 
   const data: { [type: string]: { [sex: string]: number } } = {};
 

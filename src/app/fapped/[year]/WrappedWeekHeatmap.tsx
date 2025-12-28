@@ -2,7 +2,6 @@
 
 import { Orgasm } from "@prisma/client";
 import { getWeekHeatmapData, ProcessedData } from "./dataProcessing";
-import dayjs from "dayjs";
 
 interface WrappedWeekHeatmapProps {
   orgasms: Orgasm[];
@@ -10,33 +9,6 @@ interface WrappedWeekHeatmapProps {
 }
 
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const TIME_PERIODS: { [key: number]: string } = {
-  0: "Night time",
-  1: "Night time",
-  2: "Night time",
-  3: "Night time",
-  4: "Night time",
-  5: "Night time",
-  6: "Early morning",
-  7: "Early morning",
-  8: "Early morning",
-  9: "Late morning",
-  10: "Late morning",
-  11: "Late morning",
-  12: "Afternoon",
-  13: "Afternoon",
-  14: "Afternoon",
-  15: "Afternoon",
-  16: "Afternoon",
-  17: "Afternoon",
-  18: "Early evening",
-  19: "Early evening",
-  20: "Early evening",
-  21: "Late evening",
-  22: "Late evening",
-  23: "Bedtime",
-};
 
 export default function WrappedWeekHeatmap({
   orgasms,
