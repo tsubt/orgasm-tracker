@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -27,7 +27,11 @@ const SexTypes = Object.keys(SexType).map((x) => {
   };
 });
 
-export default function Orgasm({ hideButton = false }: { hideButton?: boolean }) {
+export default function Orgasm({
+  hideButton = false,
+}: {
+  hideButton?: boolean;
+}) {
   const { isOpen, openModal, closeModal } = useOrgasmModal();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
