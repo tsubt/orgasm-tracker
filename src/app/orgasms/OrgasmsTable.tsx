@@ -3,10 +3,15 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { Orgasm, OrgasmType, SexType } from "@prisma/client";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const OrgasmTypes = Object.keys(OrgasmType).map((x) => {
   return {
@@ -24,10 +29,15 @@ const SexTypes = Object.keys(SexType).map((x) => {
 
 const ITEMS_PER_PAGE = 20;
 
+type EditOrgasm = Orgasm & {
+  _localDate?: string;
+  _localTime?: string;
+};
+
 export default function OrgasmsTable() {
   const [orgasms, setOrgasms] = useState<Orgasm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editOrgasm, setEditOrgasm] = useState<Orgasm | null>(null);
+  const [editOrgasm, setEditOrgasm] = useState<EditOrgasm | null>(null);
   const [deleteOrgasmConfirm, setDeleteOrgasmConfirm] = useState<Orgasm | null>(
     null
   );
@@ -47,7 +57,16 @@ export default function OrgasmsTable() {
       const response = await fetch("/api/orgasms");
       if (response.ok) {
         const data = await response.json();
-        setOrgasms(data.orgasms || []);
+        // Sort by timestamp descending (most recent first)
+        const sorted = (data.orgasms || []).sort((a: Orgasm, b: Orgasm) => {
+          if (!a.timestamp && !b.timestamp) return 0;
+          if (!a.timestamp) return 1;
+          if (!b.timestamp) return -1;
+          return (
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+        });
+        setOrgasms(sorted);
         setCurrentPage(1); // Reset to first page when fetching new data
       }
     } catch (error) {
@@ -66,6 +85,35 @@ export default function OrgasmsTable() {
     setEditOrgasm(null);
     setEditErrorMessage(null);
 
+    // Get user's timezone
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // Convert local date/time to UTC timestamp
+    // The date/time in editOrgasm is stored as _localDate and _localTime
+    const localDate =
+      orgasmToEdit._localDate ||
+      (orgasmToEdit.timestamp
+        ? dayjs(orgasmToEdit.timestamp)
+            .tz(Intl.DateTimeFormat().resolvedOptions().timeZone)
+            .format("YYYY-MM-DD")
+        : "");
+    const localTime =
+      orgasmToEdit._localTime ||
+      (orgasmToEdit.timestamp
+        ? dayjs(orgasmToEdit.timestamp)
+            .tz(Intl.DateTimeFormat().resolvedOptions().timeZone)
+            .format("HH:mm")
+        : "");
+    const dateTimeString = `${localDate} ${localTime}`;
+
+    // Parse the string as if it's in the user's timezone, then convert to UTC timestamp
+    const localDateTime = dayjs.tz(
+      dateTimeString,
+      "YYYY-MM-DD HH:mm",
+      userTimezone
+    );
+    const timestamp = localDateTime.utc().toDate();
+
     // Show loading toast with ID
     const toastId = toast.loading("Updating orgasm...", { id: "edit-orgasm" });
 
@@ -77,8 +125,7 @@ export default function OrgasmsTable() {
         },
         body: JSON.stringify({
           id: orgasmToEdit.id,
-          date: orgasmToEdit.date,
-          time: orgasmToEdit.time,
+          timestamp: timestamp.toISOString(),
           type: orgasmToEdit.type,
           sex: orgasmToEdit.sex,
           note: orgasmToEdit.note,
@@ -160,7 +207,9 @@ export default function OrgasmsTable() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 w-full">
-        <p className="text-lg text-gray-900 dark:text-white">Loading orgasms...</p>
+        <p className="text-lg text-gray-900 dark:text-white">
+          Loading orgasms...
+        </p>
       </div>
     );
   }
@@ -168,7 +217,9 @@ export default function OrgasmsTable() {
   if (orgasms.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 w-full">
-        <p className="text-lg text-gray-900 dark:text-white">No orgasms to show (yet).</p>
+        <p className="text-lg text-gray-900 dark:text-white">
+          No orgasms to show (yet).
+        </p>
       </div>
     );
   }
@@ -193,7 +244,7 @@ export default function OrgasmsTable() {
             <thead>
               <tr className="bg-pink-500 dark:bg-pink-600">
                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">
-                  Date & Time
+                  Time
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-white">
                   Type
@@ -213,47 +264,78 @@ export default function OrgasmsTable() {
               {paginatedOrgasms.map((orgasm, index) => {
                 const actualIndex = startIndex + index;
                 return (
-                <tr
-                  key={orgasm.id}
-                  className={`${
-                    actualIndex % 2 === 0
-                      ? "bg-white dark:bg-gray-800"
-                      : "bg-gray-50 dark:bg-gray-700"
-                  } border-t border-gray-200 dark:border-gray-600`}
-                >
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                    {dayjs(`${orgasm.date} ${orgasm.time}`).format(
-                      "DD MMM YYYY @ HH:mm"
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 capitalize">
-                    {orgasm.type.toLowerCase()}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 capitalize">
-                    {orgasm.sex.toLowerCase()}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                    {orgasm.note || "-"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex flex-row items-center justify-center gap-3">
-                      <button
-                        onClick={() => setEditOrgasm(orgasm)}
-                        className="text-gray-600 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 transition-colors cursor-pointer"
-                        title="Edit"
-                      >
-                        <PencilSquareIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteOrgasmConfirm(orgasm)}
-                        className="text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
-                        title="Delete"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                  <tr
+                    key={orgasm.id}
+                    className={`${
+                      actualIndex % 2 === 0
+                        ? "bg-white dark:bg-gray-800"
+                        : "bg-gray-50 dark:bg-gray-700"
+                    } border-t border-gray-200 dark:border-gray-600`}
+                  >
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      {orgasm.timestamp
+                        ? (() => {
+                            const userTimezone =
+                              Intl.DateTimeFormat().resolvedOptions().timeZone;
+                            const localDateTime = dayjs(orgasm.timestamp).tz(
+                              userTimezone
+                            );
+                            return (
+                              <>
+                                <span className="font-medium">
+                                  {localDateTime.format("h:mm A")}
+                                </span>
+                                <span className="text-gray-500 dark:text-gray-400 ml-2">
+                                  {localDateTime.format("DD MMM YYYY")}
+                                </span>
+                              </>
+                            );
+                          })()
+                        : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 capitalize">
+                      {orgasm.type.toLowerCase()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 capitalize">
+                      {orgasm.sex.toLowerCase()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      {orgasm.note || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex flex-row items-center justify-center gap-3">
+                        <button
+                          onClick={() => {
+                            if (!orgasm.timestamp) return;
+                            // Convert UTC timestamp to local for editing
+                            const userTimezone =
+                              Intl.DateTimeFormat().resolvedOptions().timeZone;
+                            // Parse the UTC timestamp and convert to user's local timezone
+                            const utcDateTime = dayjs(orgasm.timestamp).utc();
+                            const localDateTime = utcDateTime.tz(userTimezone);
+                            // Store local date/time strings for the form, but keep the original timestamp
+                            setEditOrgasm({
+                              ...orgasm,
+                              // Store local date/time as temporary fields for the form
+                              _localDate: localDateTime.format("YYYY-MM-DD"),
+                              _localTime: localDateTime.format("HH:mm"),
+                            } as EditOrgasm);
+                          }}
+                          className="text-gray-600 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 transition-colors cursor-pointer"
+                          title="Edit"
+                        >
+                          <PencilSquareIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteOrgasmConfirm(orgasm)}
+                          className="text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+                          title="Delete"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
@@ -265,58 +347,60 @@ export default function OrgasmsTable() {
           <div className="border-t border-gray-200 dark:border-gray-600 px-4 py-3 bg-gray-50 dark:bg-gray-700">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700 dark:text-gray-300">
-                Showing {startIndex + 1} to {Math.min(endIndex, orgasms.length)} of{" "}
-                {orgasms.length} orgasms
+                Showing {startIndex + 1} to {Math.min(endIndex, orgasms.length)}{" "}
+                of {orgasms.length} orgasms
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                 >
                   Previous
                 </button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    // Show first page, last page, current page, and pages around current
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                            currentPage === page
-                              ? "bg-pink-500 dark:bg-pink-600 text-white"
-                              : "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    } else if (
-                      page === currentPage - 2 ||
-                      page === currentPage + 2
-                    ) {
-                      return (
-                        <span
-                          key={page}
-                          className="px-2 text-gray-500 dark:text-gray-400"
-                        >
-                          ...
-                        </span>
-                      );
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => {
+                      // Show first page, last page, current page, and pages around current
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => handlePageChange(page)}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                              currentPage === page
+                                ? "bg-pink-500 dark:bg-pink-600 text-white"
+                                : "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span
+                            key={page}
+                            className="px-2 text-gray-500 dark:text-gray-400"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
                     }
-                    return null;
-                  })}
+                  )}
                 </div>
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                 >
                   Next
                 </button>
@@ -363,10 +447,19 @@ export default function OrgasmsTable() {
                     <input
                       type="date"
                       id="editDate"
-                      value={editOrgasm.date}
+                      value={
+                        editOrgasm._localDate ||
+                        (editOrgasm.timestamp
+                          ? dayjs(editOrgasm.timestamp)
+                              .tz(
+                                Intl.DateTimeFormat().resolvedOptions().timeZone
+                              )
+                              .format("YYYY-MM-DD")
+                          : "")
+                      }
                       onChange={(e) =>
                         setEditOrgasm((prev) =>
-                          prev ? { ...prev, date: e.target.value } : null
+                          prev ? { ...prev, _localDate: e.target.value } : null
                         )
                       }
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -383,10 +476,19 @@ export default function OrgasmsTable() {
                     <input
                       type="time"
                       id="editTime"
-                      value={editOrgasm.time}
+                      value={
+                        editOrgasm._localTime ||
+                        (editOrgasm.timestamp
+                          ? dayjs(editOrgasm.timestamp)
+                              .tz(
+                                Intl.DateTimeFormat().resolvedOptions().timeZone
+                              )
+                              .format("HH:mm")
+                          : "")
+                      }
                       onChange={(e) =>
                         setEditOrgasm((prev) =>
-                          prev ? { ...prev, time: e.target.value } : null
+                          prev ? { ...prev, _localTime: e.target.value } : null
                         )
                       }
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
@@ -542,9 +644,9 @@ export default function OrgasmsTable() {
                 <div className="w-full bg-gray-50 rounded p-4 space-y-2">
                   <p className="text-sm">
                     <strong>Date:</strong>{" "}
-                    {dayjs(
-                      `${deleteOrgasmConfirm.date} ${deleteOrgasmConfirm.time}`
-                    ).format("HH:mm DD MMM YYYY")}
+                    {dayjs(`${deleteOrgasmConfirm.timestamp}`).format(
+                      "HH:mm DD MMM YYYY"
+                    )}
                   </p>
                   {deleteOrgasmConfirm.note && (
                     <p className="text-sm italic text-gray-600">

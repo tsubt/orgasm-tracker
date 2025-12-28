@@ -20,7 +20,7 @@ export async function GET() {
       where: {
         userId: session.user.id,
       },
-      orderBy: [{ date: "desc" }, { time: "desc" }],
+      orderBy: { timestamp: "desc" },
     });
 
     return NextResponse.json({ orgasms }, { status: 200 });
@@ -41,10 +41,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { date, time, type, sex, note } = body;
+    const { timestamp, type, sex, note } = body;
 
     // Validate input
-    if (!date || !time || !type || !sex) {
+    if (!timestamp || !type || !sex) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -63,17 +63,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid sex type" }, { status: 400 });
     }
 
-    // Create the orgasm
+    // Parse timestamp (should be ISO string from client)
+    const timestampDate = new Date(timestamp);
+    if (isNaN(timestampDate.getTime())) {
+      return NextResponse.json(
+        { error: "Invalid timestamp format" },
+        { status: 400 }
+      );
+    }
+
+    // Create the orgasm - only use timestamp, ignore date/time fields
     const orgasm = await prisma.orgasm.create({
       data: {
         userId: session.user.id,
-        date,
-        time,
+        timestamp: timestampDate,
         type,
         sex,
         note: note || null,
-        // Calculate timestamp from date and time
-        timestamp: dayjs(`${date} ${time}`).toDate(),
+        // Set date/time to empty strings or null since they're obsolete
+        date: "",
+        time: "",
       },
     });
 
@@ -95,10 +104,10 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, date, time, type, sex, note } = body;
+    const { id, timestamp, type, sex, note } = body;
 
     // Validate input
-    if (!id || !date || !time || !type || !sex) {
+    if (!id || !timestamp || !type || !sex) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -130,17 +139,24 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Update the orgasm
+    // Parse timestamp (should be ISO string from client)
+    const timestampDate = new Date(timestamp);
+    if (isNaN(timestampDate.getTime())) {
+      return NextResponse.json(
+        { error: "Invalid timestamp format" },
+        { status: 400 }
+      );
+    }
+
+    // Update the orgasm - only use timestamp, ignore date/time fields
     const orgasm = await prisma.orgasm.update({
       where: { id },
       data: {
-        date,
-        time,
+        timestamp: timestampDate,
         type,
         sex,
         note: note || null,
-        // Calculate timestamp from date and time
-        timestamp: dayjs(`${date} ${time}`).toDate(),
+        // Don't update date/time fields since they're obsolete
       },
     });
 

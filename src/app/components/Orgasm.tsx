@@ -4,11 +4,13 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { OrgasmType, SexType } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const OrgasmTypes = Object.keys(OrgasmType).map((x) => {
   return {
@@ -42,9 +44,16 @@ export default function Orgasm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const date = dateRef.current?.value || defaultDate;
-    const time = timeRef.current?.value || defaultTime;
+    const localDate = dateRef.current?.value || defaultDate;
+    const localTime = timeRef.current?.value || defaultTime;
     const note = noteRef.current?.value || null;
+
+    // Get user's timezone
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // Convert local date/time to UTC timestamp
+    const localDateTime = dayjs.tz(`${localDate} ${localTime}`, userTimezone);
+    const timestamp = localDateTime.utc().toDate();
 
     // Hide modal immediately
     setIsOpen(false);
@@ -60,8 +69,7 @@ export default function Orgasm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          date,
-          time,
+          timestamp: timestamp.toISOString(),
           type,
           sex,
           note,
