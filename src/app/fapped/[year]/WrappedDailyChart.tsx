@@ -69,7 +69,9 @@ export default function WrappedDailyChart({
       const data = payload[0].payload;
       return (
         <div className="bg-[#2c2c2c] border border-[#3c3c3c] rounded p-2">
-          <p className="text-[#e9e9e9]">{dayjs(data.date).format("MMM D, YYYY")}</p>
+          <p className="text-[#e9e9e9]">
+            {dayjs(data.date).format("MMM D, YYYY")}
+          </p>
           <p className="text-[#c9c9c9]">Total: {data.total}</p>
         </div>
       );
@@ -83,7 +85,10 @@ export default function WrappedDailyChart({
         The most was {processedData.maxPerDay} in a day
       </h2>
       <ResponsiveContainer width="100%" height={400}>
-        <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+        <BarChart
+          data={data}
+          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+        >
           <XAxis
             dataKey="date"
             tick={{ fill: "#c9c9c9", fontSize: 10 }}
@@ -93,7 +98,12 @@ export default function WrappedDailyChart({
             tickFormatter={(value) => dayjs(value).format("MMM D")}
           />
           <YAxis
-            label={{ value: "Number in a day", angle: -90, position: "insideLeft", fill: "#c9c9c9" }}
+            label={{
+              value: "Number in a day",
+              angle: -90,
+              position: "insideLeft",
+              fill: "#c9c9c9",
+            }}
             tick={{ fill: "#c9c9c9" }}
           />
           <Tooltip content={<CustomTooltip />} />
