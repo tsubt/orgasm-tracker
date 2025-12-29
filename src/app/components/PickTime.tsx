@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 const OPTIONS = [
   "All",
@@ -14,8 +14,6 @@ const OPTIONS = [
 ];
 
 export default function PickTime() {
-  const [init, setInit] = useState(false);
-
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -30,14 +28,6 @@ export default function PickTime() {
     },
     [searchParams]
   );
-
-  // get users timezone
-  useEffect(() => {
-    if (init) return;
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    router.replace(pathname + "?" + createQueryString("tz", tz));
-    setInit(true);
-  }, [init, router, pathname, createQueryString]);
 
   return (
     <div className="flex gap-4 items-center">
