@@ -226,6 +226,7 @@ export default function WrappedCarousel({
             orgasms={processedData.yearOrgasms}
             processedData={processedData}
             year={year}
+            onTimelineHoverChange={setIsPaused}
           />
         </motion.div>
       </AnimatePresence>

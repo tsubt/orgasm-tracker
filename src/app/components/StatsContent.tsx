@@ -7,6 +7,7 @@ import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import relativeTime from "dayjs/plugin/relativeTime";
 import PickPeriod from "./charts/PickPeriod";
+import Link from "next/link";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -25,6 +26,14 @@ export default async function StatsContent({
 }) {
   return (
     <div className="flex flex-col gap-6 w-full">
+      <div className="flex justify-center">
+        <Link
+          href="/fapped/2025"
+          className="bg-pink-500 dark:bg-pink-600 text-white px-6 py-3 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide"
+        >
+          Your 2025 Fapped
+        </Link>
+      </div>
       <Suspense fallback={null}>
         <LastOrgasm userId={userId} tz={tz} />
       </Suspense>

@@ -15,6 +15,7 @@ interface WrappedSlideProps {
   orgasms: Orgasm[];
   processedData: ProcessedData;
   year: number;
+  onTimelineHoverChange?: (isHovering: boolean) => void;
 }
 
 export default function WrappedSlide({
@@ -22,6 +23,7 @@ export default function WrappedSlide({
   orgasms,
   processedData,
   year,
+  onTimelineHoverChange,
 }: WrappedSlideProps) {
   const renderChart = () => {
     switch (plot.name) {
@@ -36,7 +38,12 @@ export default function WrappedSlide({
       case "p_commit_freq":
         return <WrappedCommitHeatmap orgasms={orgasms} year={year} />;
       case "p_timeline":
-        return <WrappedTimeline orgasms={orgasms} />;
+        return (
+          <WrappedTimeline
+            orgasms={orgasms}
+            onHoverChange={onTimelineHoverChange}
+          />
+        );
       default:
         return null;
     }
