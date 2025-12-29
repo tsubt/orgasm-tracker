@@ -50,6 +50,11 @@ export default function AccountSettingsForm({
       setNewUsernameOK("invalid");
       return;
     }
+    // Check if username contains only alphanumeric characters, underscores, and dots
+    if (!/^[a-zA-Z0-9_.]+$/.test(newUsername)) {
+      setNewUsernameOK("invalid");
+      return;
+    }
 
     setNewUsernameOK("checking");
     checkUsername(newUsername).then((available) => {
@@ -99,7 +104,11 @@ export default function AccountSettingsForm({
               <input
                 type="text"
                 value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
+                onChange={(e) => {
+                  // Only allow alphanumeric characters, underscores, and dots
+                  const value = e.target.value.replace(/[^a-zA-Z0-9_.]/g, "");
+                  setNewUsername(value);
+                }}
                 placeholder="No username set"
                 className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 px-3 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 dark:focus:ring-pink-400"
               />
@@ -120,13 +129,14 @@ export default function AccountSettingsForm({
               ) : newUsernameOK === "invalid" ? (
                 <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400">
                   <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
-                  Must be at least 3 characters
+                  {newUsername.length < 3
+                    ? "Must be at least 3 characters"
+                    : "Only letters and numbers allowed"}
                 </div>
               ) : null}
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              If your username is blank, your profile will not be visible to
-              anyone.
+              Username must be at least 3 characters and contain only letters, numbers, underscores, and dots (no spaces, emojis, or other special characters). If your username is blank, your profile will not be visible to anyone.
             </p>
           </div>
         </div>
