@@ -1,8 +1,15 @@
 import { Suspense } from "react";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import UsersList from "./UsersList";
 import GlobalStats from "./GlobalStats";
 
-export default function UsersPage() {
+export default async function UsersPage() {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/");
+  }
   return (
     <div className="w-full p-8">
       <div className="max-w-4xl mx-auto flex flex-col gap-8">

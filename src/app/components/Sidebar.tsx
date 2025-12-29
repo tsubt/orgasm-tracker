@@ -98,22 +98,17 @@ export default function Sidebar({
             <h1 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-1">
               OrgasmTracker
             </h1>
-            <p className="text-gray-600 dark:text-gray-500 text-xs uppercase tracking-widest">
-              Sign in to continue
+            <p className="text-gray-600 dark:text-gray-500 text-xs uppercase tracking-widest mt-1">
+              Track your journey
             </p>
           </div>
 
-          {/* Sign In Section */}
-          <div className="flex-1 p-5 flex items-center justify-center overflow-y-auto min-h-0">
-            <div className="flex flex-col items-center gap-4">
-              <p className="text-gray-900 dark:text-white text-center">
-                Please sign in to access your dashboard
-              </p>
-              <div className="flex items-center justify-center">
-                <SignIn />
-              </div>
+          {/* Navigation */}
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto min-h-0">
+            <div className="w-full">
+              <SignIn />
             </div>
-          </div>
+          </nav>
 
           {/* Footer */}
           <div className="border-t-2 border-gray-300 dark:border-gray-800 flex-shrink-0 mt-auto">

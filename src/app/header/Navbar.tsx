@@ -4,16 +4,21 @@ import { Bars3Icon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 import User from "./User";
 import AddOrgasmButton from "./AddOrgasmButton";
+import { auth } from "@/auth";
 
-const items = [
+const allItems = [
   { name: "About", href: "/about" },
-  { name: "Users", href: "/users" },
+  { name: "Users", href: "/users", requiresAuth: true },
   { name: "Orgasms", href: "/orgasms" },
 ];
 
 // on small devices, the navbar is just a hamburger that opens a drawer
 // on large devices, the navbar is a horizontal list of links
-export default function Navbar() {
+export default async function Navbar() {
+  const session = await auth();
+  const items = allItems.filter(
+    (item) => !item.requiresAuth || (session && session.user)
+  );
   //   const [open, setOpen] = useState(false);
 
   // close drawer when router changes
