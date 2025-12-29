@@ -10,6 +10,7 @@ const navItems = [
   { name: "Orgasms", href: "/orgasms", icon: "📝" },
   { name: "Users", href: "/users", icon: "👥" },
   { name: "Settings", href: "/settings", icon: "⚙️" },
+  { name: "Docs", href: "/docs", icon: "📚" },
 ];
 
 export default function Sidebar({
@@ -106,6 +107,9 @@ export default function Sidebar({
           {/* Navigation */}
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto min-h-0">
             <div className="w-full">
+              <NavLink href="/docs" icon="📚" onClick={onMobileNavClick}>
+                Docs
+              </NavLink>
               <SignIn />
             </div>
           </nav>
