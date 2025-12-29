@@ -9,6 +9,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import isoWeek from "dayjs/plugin/isoWeek";
 import PickPeriod from "./charts/PickPeriod";
 import Link from "next/link";
+import EventDotChart from "./charts/EventDotChart";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -46,6 +47,12 @@ export default async function StatsContent({
         </Suspense>
         <Suspense fallback={<LoadingSummaryStats />}>
           <SummaryStats userId={userId} time={time} tz={tz} />
+        </Suspense>
+      </div>
+
+      <div className="bg-gray-100 dark:bg-gray-800 rounded flex flex-col gap-4 p-4 w-full">
+        <Suspense fallback={null}>
+          <EventDotChartSection userId={userId} tz={tz} />
         </Suspense>
       </div>
 
@@ -446,6 +453,38 @@ function LoadingLastOrgasm() {
   );
 }
 
+async function EventDotChartSection({
+  userId,
+  tz,
+}: {
+  userId: string;
+  tz: string;
+}) {
+  // Fetch all orgasms for the event dot chart
+  const orgasms = await prisma.orgasm.findMany({
+    where: {
+      userId,
+      timestamp: { not: null },
+    },
+    orderBy: {
+      timestamp: "desc",
+    },
+  });
+
+  if (orgasms.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        Timeline
+      </h3>
+      <EventDotChart orgasms={orgasms} tz={tz} />
+    </div>
+  );
+}
+
 function LoadingBreakdownStats() {
   return (
     <div className="flex flex-col gap-6 animate-pulse">
@@ -547,11 +586,12 @@ async function BreakdownStats({
     PHYSICAL: orgasms.filter((o) => o.sex === "PHYSICAL").length,
   };
 
+  // Colors matching Fapped summary
   const typeColors = {
-    FULL: "bg-pink-500",
-    RUINED: "bg-pink-400",
-    HANDSFREE: "bg-pink-300",
-    ANAL: "bg-pink-600",
+    FULL: "bg-[#EF4444]", // Red
+    RUINED: "bg-[#A855F7]", // Purple
+    HANDSFREE: "bg-[#06B6D4]", // Cyan
+    ANAL: "bg-[#22C55E]", // Green
   };
 
   const partnerColors = {
