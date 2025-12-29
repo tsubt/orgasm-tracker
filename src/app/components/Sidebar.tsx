@@ -74,6 +74,19 @@ export default function Sidebar({
             />
           </nav>
 
+          {/* Feedback Button */}
+          <div className="border-t-2 border-gray-300 dark:border-gray-800 flex-shrink-0 p-4">
+            <a
+              href="https://forms.gle/LQNy66npPHePWV9q6"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onMobileNavClick}
+              className="w-full bg-pink-500 dark:bg-pink-600 text-white px-3 py-2.5 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide flex items-center justify-center"
+            >
+              Share feedback
+            </a>
+          </div>
+
           {/* Footer */}
           <div className="border-t-2 border-gray-300 dark:border-gray-800 flex-shrink-0 mt-auto">
             <Footer />
