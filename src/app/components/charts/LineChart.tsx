@@ -53,7 +53,7 @@ export default function ChartLine({
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data}>
+      <LineChart>
         {/* <CartesianGrid /> */}
         <XAxis dataKey="x" type="number" domain={[0, 100]} stroke={axisColor} />
         <YAxis stroke={axisColor} />

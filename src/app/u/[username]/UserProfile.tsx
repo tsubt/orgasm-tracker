@@ -1,6 +1,8 @@
 import { prisma } from "@/prisma";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import type { Orgasm } from "@prisma/client";
 import Charts from "@/app/components/charts";
 import PickPeriod from "@/app/components/charts/PickPeriod";
@@ -8,6 +10,8 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 
 dayjs.extend(isoWeek);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 type DateOrgasmType = {
   date: string;
@@ -48,6 +52,7 @@ export default async function UserProfile({
         where: {
           userId: user.id,
         },
+        orderBy: { timestamp: "desc" },
       })
     : [];
 
@@ -135,6 +140,39 @@ export default async function UserProfile({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Debug table */}
+      <div className="w-full">
+        <table style={{ borderCollapse: "collapse", width: "100%", border: "1px solid #ccc", color: "black" }}>
+          <thead>
+            <tr style={{ backgroundColor: "#f0f0f0" }}>
+              <th style={{ border: "1px solid #ccc", padding: "8px", textAlign: "left", color: "black" }}>Raw Timestamp</th>
+              <th style={{ border: "1px solid #ccc", padding: "8px", textAlign: "left", color: "black" }}>Local Date + Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orgasms.map((orgasm) => {
+              const rawTimestamp = orgasm.timestamp
+                ? orgasm.timestamp.toISOString()
+                : "N/A";
+
+              let localFormatted = "N/A";
+              if (orgasm.timestamp) {
+                localFormatted = dayjs(orgasm.timestamp).format("YYYY-MM-DD HH:mm:ss");
+              } else if (orgasm.date && orgasm.time) {
+                localFormatted = `${orgasm.date} ${orgasm.time}`;
+              }
+
+              return (
+                <tr key={orgasm.id}>
+                  <td style={{ border: "1px solid #ccc", padding: "8px", color: "black" }}>{rawTimestamp}</td>
+                  <td style={{ border: "1px solid #ccc", padding: "8px", color: "black" }}>{localFormatted}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {/* Chart */}

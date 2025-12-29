@@ -18,16 +18,24 @@ export default function HeatMap({ orgasms }: HeatMapProps) {
   const today = dayjs();
 
   // Group orgasms by date for the current year
+  // Use timestamp when available, fall back to date field
   const orgasmsByDate: { [date: string]: number } = {};
-  orgasms
-    .filter((o) => {
-      const orgasmYear = new Date(o.date).getFullYear();
-      return orgasmYear === currentYear;
-    })
-    .forEach((o) => {
-      const dateStr = o.date;
+  orgasms.forEach((o) => {
+    let dateStr: string;
+    if (o.timestamp) {
+      dateStr = dayjs(o.timestamp).format("YYYY-MM-DD");
+    } else if (o.date && o.date.trim() !== "") {
+      dateStr = o.date;
+    } else {
+      // Skip orgasms without valid date information
+      return;
+    }
+
+    const orgasmYear = dayjs(dateStr).year();
+    if (orgasmYear === currentYear) {
       orgasmsByDate[dateStr] = (orgasmsByDate[dateStr] || 0) + 1;
-    });
+    }
+  });
 
   // Find max frequency for color intensity
   const maxFreq = Math.max(
@@ -55,7 +63,8 @@ export default function HeatMap({ orgasms }: HeatMapProps) {
   while (currentDate.isBefore(lastSunday) || currentDate.isSame(lastSunday)) {
     const dayOfWeek = currentDate.isoWeekday() - 1; // 0 = Monday, 6 = Sunday
 
-    // Increment week index when we encounter Monday (start of new week)
+    // Increment week index at the start of each week (Monday)
+    // This ensures all days of the week use the same weekIndex
     if (dayOfWeek === 0 && currentDate.isAfter(firstMonday)) {
       weekIndex++;
     }
