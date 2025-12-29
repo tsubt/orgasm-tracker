@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { deleteAccount } from "./actions";
 
@@ -12,7 +11,6 @@ export default function DeleteAccount() {
   const [isOpen, setIsOpen] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  const router = useRouter();
 
   const isConfirmed = confirmationText === CONFIRMATION_TEXT;
 

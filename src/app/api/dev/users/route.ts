@@ -1,6 +1,5 @@
 import { prisma } from "@/prisma";
 import { NextResponse } from "next/server";
-import dayjs from "dayjs";
 
 export async function GET() {
   try {
