@@ -70,6 +70,9 @@ export default async function YearChart({ orgasms }: { orgasms: Orgasm[] }) {
     };
   });
 
+  // Sort years in descending order (newest first)
+  cumYear.sort((a, b) => parseInt(b.name) - parseInt(a.name));
+
   return (
     <div>
       <ChartLine data={cumYear} />

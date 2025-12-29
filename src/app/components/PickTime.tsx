@@ -31,9 +31,10 @@ export default function PickTime() {
   );
 
   // Reset loading state when the time parameter changes
+  const currentTime = searchParams.get("time");
   useEffect(() => {
     setIsLoading(false);
-  }, [searchParams.get("time")]);
+  }, [currentTime]);
 
   return (
     <div className={`flex gap-4 items-center ${isLoading ? "cursor-wait" : ""}`}>

@@ -1,7 +1,6 @@
 "use client";
 
 import { Orgasm } from "@prisma/client";
-import { getTimelineData } from "./dataProcessing";
 import dayjs from "dayjs";
 import { useState } from "react";
 
@@ -122,7 +121,7 @@ export default function WrappedTimeline({
               />
 
               {/* Orgasm markers */}
-              {sexData.map((orgasm, idx) => {
+              {sexData.map((orgasm) => {
                 const date = dayjs(orgasm.timestamp).toDate();
                 const xPos = getXPosition(date);
                 const isHovered = hoveredOrgasm?.id === orgasm.id;
@@ -144,7 +143,6 @@ export default function WrappedTimeline({
                       setHoveredOrgasm(orgasm);
                       onHoverChange?.(true);
                       const rect = e.currentTarget.getBoundingClientRect();
-                      const containerRect = e.currentTarget.closest('.w-full')?.getBoundingClientRect();
                       setTooltipPosition({
                         x: rect.left + rect.width / 2,
                         y: rect.top,
