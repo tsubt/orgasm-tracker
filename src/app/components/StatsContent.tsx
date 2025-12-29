@@ -41,7 +41,7 @@ export default async function StatsContent({
         <LastOrgasm userId={userId} tz={tz} />
       </Suspense>
 
-      <div className="bg-gray-100 dark:bg-gray-800 rounded flex flex-col gap-4 p-4 w-full">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={null}>
           <PickTime />
         </Suspense>
@@ -50,19 +50,19 @@ export default async function StatsContent({
         </Suspense>
       </div>
 
-      <div className="bg-gray-100 dark:bg-gray-800 rounded flex flex-col gap-4 p-4 w-full">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={null}>
           <EventDotChartSection userId={userId} tz={tz} />
         </Suspense>
       </div>
 
-      <div className="bg-gray-100 dark:bg-gray-800 rounded flex flex-col gap-4 p-4 w-full">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={<LoadingBreakdownStats />}>
           <BreakdownStats userId={userId} time={time} tz={tz} />
         </Suspense>
       </div>
 
-      <div className="bg-gray-100 dark:bg-gray-800 rounded flex flex-col gap-4 p-4 w-full">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={null}>
           <PickPeriod />
         </Suspense>

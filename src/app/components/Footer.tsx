@@ -14,7 +14,7 @@ export default function Footer() {
     <footer className="p-3 text-gray-900 dark:text-white">
       <div className="flex flex-col gap-2 text-xs">
         <div className="text-pink-600 dark:text-pink-400 font-bold">
-          OrgasmTracker &copy; {currentYear}
+          OrgasmTracker &copy; 2022 &ndash; {currentYear}
         </div>
         <div className="text-gray-600 dark:text-gray-500">
           By{" "}

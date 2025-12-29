@@ -1,40 +1,27 @@
 import { prisma } from "@/prisma";
 import dayjs from "dayjs";
-import isoWeek from "dayjs/plugin/isoWeek";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import type { Orgasm } from "@prisma/client";
-import Charts from "@/app/components/charts";
-import PickPeriod from "@/app/components/charts/PickPeriod";
-import { Suspense } from "react";
+import isoWeek from "dayjs/plugin/isoWeek";
+import { auth } from "@/auth";
 import { notFound } from "next/navigation";
+import BioEditor from "./BioEditor";
+import OrgasmFeed from "./OrgasmFeed";
+import HeatMap from "@/app/components/charts/HeatMap";
+import { Suspense } from "react";
 
-dayjs.extend(isoWeek);
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-type DateOrgasmType = {
-  date: string;
-  orgasms: Orgasm[];
-};
-
-function groupBy<T>(
-  array: T[],
-  predicate: (value: T, index: number, array: T[]) => string
-) {
-  return array.reduce((acc, value, index, array) => {
-    (acc[predicate(value, index, array)] ||= []).push(value);
-    return acc;
-  }, {} as { [key: string]: T[] });
-}
+dayjs.extend(isoWeek);
 
 export default async function UserProfile({
   username,
-  period,
 }: {
   username: string;
-  period: string;
 }) {
+  const session = await auth();
+  const currentUserId = session?.user?.id;
+
   // Check if user exists and has public profile
   const user = await prisma.user.findUnique({
     where: {
@@ -46,117 +33,148 @@ export default async function UserProfile({
     notFound();
   }
 
+  const isOwnProfile = currentUserId === user.id;
+
   // Fetch orgasms if publicOrgasms is enabled
   const orgasms = user.publicOrgasms
     ? await prisma.orgasm.findMany({
         where: {
           userId: user.id,
+          timestamp: { not: null },
         },
         orderBy: { timestamp: "desc" },
       })
     : [];
 
-  // Filter orgasms with timestamps (date/time fields are deprecated)
+  // Filter orgasms with timestamps
   const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
 
-  if (validOrgasms.length === 0) {
-    return <>No orgasms to show.</>;
-  }
-
-  // Group orgasms by date (YYYY-MM-DD format from timestamp)
-  const dates = groupBy(validOrgasms, (orgasm) =>
-    dayjs(orgasm.timestamp).format("YYYY-MM-DD")
-  );
-  const dateOrgasms: DateOrgasmType[] = [];
-  for (const [date, orgasmsForDate] of Object.entries(dates)) {
-    dateOrgasms.push({
-      date,
-      orgasms: orgasmsForDate,
-    });
-  }
-
   // Calculate stats
-  const today = dayjs();
-  const n = validOrgasms.length;
+  const now = dayjs();
+  const totalCount = validOrgasms.length;
 
-  // Find last orgasm date
-  const last = dateOrgasms
-    .map((d) => dayjs(d.date))
-    .reduce((a, b) => (a.isAfter(b) ? a : b));
-  const daysSinceLast = today.diff(last, "day");
+  // Get current year, month, week counts
+  const currentYear = now.year();
+  const currentMonth = now.month();
+  const currentWeek = now.isoWeek();
 
-  // Calculate time between orgasms
-  const times = dateOrgasms
-    .map((o) => dayjs(o.date))
-    .sort((a, b) => a.diff(b))
-    .map((d, i, arr) => {
-      if (i === 0) return null;
-      return d.diff(arr[i - 1], "day");
-    })
-    .filter((d) => d !== null)
-    .map((d) => (d ? d : 0));
+  const thisYearCount = validOrgasms.filter((o) => {
+    const date = dayjs(o.timestamp);
+    return date.year() === currentYear;
+  }).length;
 
-  // Calculate longest streak
-  const streaks = times
-    .reduce(
-      (acc, cur) => {
-        if (cur === 1) {
-          acc[acc.length - 1] += 1;
-        } else {
-          acc.push(0);
-        }
-        return acc;
-      },
-      [0]
-    )
-    .map((x) => x + 1);
-  const longestStreak = streaks.reduce((a, b) => (a > b ? a : b), 0);
+  const thisMonthCount = validOrgasms.filter((o) => {
+    const date = dayjs(o.timestamp);
+    return date.year() === currentYear && date.month() === currentMonth;
+  }).length;
 
-  // Calculate longest gap
-  const longestGap = times.length ? Math.max(...times) - 1 : 0;
+  const thisWeekCount = validOrgasms.filter((o) => {
+    const date = dayjs(o.timestamp);
+    return (
+      date.year() === currentYear && date.isoWeek() === currentWeek
+    );
+  }).length;
+
+  // Format join date - use earliest orgasm if it's earlier than joinedAt
+  const earliestOrgasm = validOrgasms.length > 0
+    ? validOrgasms.reduce((earliest, current) => {
+        const earliestDate = dayjs(earliest.timestamp);
+        const currentDate = dayjs(current.timestamp);
+        return currentDate.isBefore(earliestDate) ? current : earliest;
+      })
+    : null;
+
+  const accountJoinDate = dayjs(user.joinedAt);
+  const effectiveJoinDate = earliestOrgasm
+    ? dayjs(earliestOrgasm.timestamp).isBefore(accountJoinDate)
+      ? dayjs(earliestOrgasm.timestamp)
+      : accountJoinDate
+    : accountJoinDate;
+
+  const joinDateFormatted = effectiveJoinDate.format("MMMM YYYY");
 
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-4">
-      {/* Basic stats */}
-      <div className="flex flex-col items-center justify-center gap-8 md:flex-row md:gap-12">
-        <div className="mb-4 flex items-center justify-center gap-8">
-          <div className="flex flex-col">
-            <div>total of</div>
-            <div className="text-bold text-4xl">{n}</div>
-            <div>orgasm{n !== 1 && "s"}</div>
+    <div className="w-full max-w-4xl mx-auto">
+      {/* Profile Header */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+        <div className="flex flex-col gap-4">
+          {/* Username */}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              @{user.username}
+            </h1>
           </div>
-          <div className="flex flex-col">
-            <div>currently</div>
-            <div className="text-bold text-4xl">{daysSinceLast}</div>
-            <div>day{daysSinceLast !== 1 && "s"} without</div>
+
+          {/* Join Date */}
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Joined {joinDateFormatted}
           </div>
-        </div>
-        <div className="mb-4 flex items-center justify-center gap-8">
-          <div className="flex flex-col">
-            <div>longest streak</div>
-            <div>
-              <div className="text-bold text-4xl">{longestStreak}</div> day
-              {longestStreak !== 1 && "s"}
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <div>longest break</div>
-            <div>
-              <div className="text-bold text-4xl">{longestGap}</div> day
-              {longestGap !== 1 && "s"}
-            </div>
+
+          {/* Bio */}
+          <div className="mt-2">
+            <Suspense fallback={<div className="h-12" />}>
+              <BioEditor initialBio={user.bio} isOwnProfile={isOwnProfile} />
+            </Suspense>
           </div>
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="bg-black/5 rounded flex flex-col gap-4 p-4 w-full">
-        <Suspense fallback={null}>
-          <PickPeriod />
-        </Suspense>
-        <Suspense fallback={<>Loading charts ...</>}>
-          <Charts userId={user.id} period={period} />
-        </Suspense>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center hover:shadow-md hover:bg-white dark:hover:bg-gray-700 transition-all">
+          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            {totalCount.toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Total</div>
+        </div>
+
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center hover:shadow-md hover:bg-white dark:hover:bg-gray-700 transition-all">
+          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            {thisYearCount.toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            {currentYear}
+          </div>
+        </div>
+
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center hover:shadow-md hover:bg-white dark:hover:bg-gray-700 transition-all">
+          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            {thisMonthCount.toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            This Month
+          </div>
+        </div>
+
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center hover:shadow-md hover:bg-white dark:hover:bg-gray-700 transition-all">
+          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            {thisWeekCount.toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            This Week
+          </div>
+        </div>
+      </div>
+
+      {/* HeatMap */}
+      {validOrgasms.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Activity
+          </h2>
+          <HeatMap orgasms={validOrgasms} />
+        </div>
+      )}
+
+      {/* Feed */}
+      <div className="bg-gray-50 dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Feed
+        </h2>
+        <OrgasmFeed
+          orgasms={validOrgasms}
+          tz={Intl.DateTimeFormat().resolvedOptions().timeZone}
+        />
       </div>
     </div>
   );

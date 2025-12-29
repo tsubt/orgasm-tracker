@@ -43,7 +43,7 @@ export default async function RootLayout({
         <OrgasmModalProvider>
           <div className="flex flex-1 flex-col lg:flex-row w-full h-screen bg-gray-50 dark:bg-gray-950">
             <SidebarWrapper session={session} username={username} />
-            <div className="flex-1 bg-white dark:bg-gray-900 overflow-y-auto lg:ml-0 pt-16 lg:pt-0">
+            <div className="flex-1 bg-gray-100 dark:bg-gray-900 overflow-y-auto lg:ml-0 pt-16 lg:pt-0">
               {children}
             </div>
           </div>

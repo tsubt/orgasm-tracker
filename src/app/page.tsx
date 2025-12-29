@@ -28,7 +28,7 @@ export default async function Home({
 
   return (
     <main className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-      <div className="bg-white dark:bg-gray-900 rounded-lg p-12 border border-gray-200 dark:border-gray-800 text-center">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-12 border border-gray-200 dark:border-gray-800 text-center">
         <Guest />
       </div>
     </main>
