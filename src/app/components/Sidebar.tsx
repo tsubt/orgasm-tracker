@@ -8,7 +8,6 @@ import { Session } from "next-auth";
 const navItems = [
   { name: "Dashboard", href: "/", icon: "📊" },
   { name: "Orgasms", href: "/orgasms", icon: "📝" },
-  { name: "Stats", href: "/stats", icon: "📈" },
   { name: "Users", href: "/users", icon: "👥" },
   { name: "Settings", href: "/settings", icon: "⚙️" },
 ];

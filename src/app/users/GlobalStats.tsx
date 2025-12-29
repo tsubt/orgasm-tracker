@@ -1,19 +1,33 @@
 import { prisma } from "@/prisma";
 
 export default async function GlobalStats() {
-  const [userCount, orgasmCount] = await Promise.all([
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [userCount, orgasmCount, newUsersThisMonth] = await Promise.all([
     prisma.user.count(),
     prisma.orgasm.count(),
+    prisma.user.count({
+      where: {
+        joinedAt: {
+          gte: startOfMonth,
+        },
+      },
+    }),
   ]);
 
   const stats = [
     {
-      title: "User" + (userCount === 1 ? "" : "s"),
+      title: "Total users",
       value: userCount,
     },
     {
-      title: "Orgasm" + (orgasmCount === 1 ? "" : "s"),
+      title: "Total orgasms tracked",
       value: orgasmCount,
+    },
+    {
+      title: "New users this month",
+      value: newUsersThisMonth,
     },
   ];
 
