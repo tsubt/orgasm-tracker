@@ -37,7 +37,8 @@ export async function updateSettings(data: {
   const { username, publicProfile, publicOrgasms } = data;
 
   // Validate username format before saving
-  const isValid = !username || (username.length >= 3 && isValidUsername(username));
+  const isValid =
+    !username || (username.length >= 3 && isValidUsername(username));
 
   await prisma.user.update({
     where: {
@@ -46,11 +47,29 @@ export async function updateSettings(data: {
     data: {
       username: isValid ? username : undefined,
       publicProfile: isValid ? publicProfile : false,
-      publicOrgasms:
-        isValid && publicProfile ? publicOrgasms : false,
+      publicOrgasms: isValid && publicProfile ? publicOrgasms : false,
     },
   });
 
+  revalidatePath("/settings");
+  revalidatePath("/users");
+}
+
+export async function deleteAccount() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Unauthorized");
+  }
+
+  // Delete the user - this will cascade delete all related data
+  // (orgasms, accounts, sessions) due to onDelete: Cascade in schema
+  await prisma.user.delete({
+    where: {
+      id: session.user.id,
+    },
+  });
+
+  revalidatePath("/");
   revalidatePath("/settings");
   revalidatePath("/users");
 }
