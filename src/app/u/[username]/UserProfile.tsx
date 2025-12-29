@@ -56,12 +56,17 @@ export default async function UserProfile({
       })
     : [];
 
-  if (orgasms.length === 0) {
+  // Filter orgasms with timestamps (date/time fields are deprecated)
+  const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
+
+  if (validOrgasms.length === 0) {
     return <>No orgasms to show.</>;
   }
 
-  // Group orgasms by date
-  const dates = groupBy(orgasms, (orgasm) => orgasm.date);
+  // Group orgasms by date (YYYY-MM-DD format from timestamp)
+  const dates = groupBy(validOrgasms, (orgasm) =>
+    dayjs(orgasm.timestamp).format("YYYY-MM-DD")
+  );
   const dateOrgasms: DateOrgasmType[] = [];
   for (const [date, orgasmsForDate] of Object.entries(dates)) {
     dateOrgasms.push({
@@ -72,19 +77,21 @@ export default async function UserProfile({
 
   // Calculate stats
   const today = dayjs();
-  const n = orgasms.length;
+  const n = validOrgasms.length;
 
   // Find last orgasm date
-  const last = dateOrgasms.map((d) => d.date).reduce((a, b) => (a > b ? a : b));
+  const last = dateOrgasms
+    .map((d) => dayjs(d.date))
+    .reduce((a, b) => (a.isAfter(b) ? a : b));
   const daysSinceLast = today.diff(last, "day");
 
   // Calculate time between orgasms
   const times = dateOrgasms
-    .map((o) => o.date)
-    .sort((a, b) => dayjs(a).diff(dayjs(b)))
+    .map((o) => dayjs(o.date))
+    .sort((a, b) => a.diff(b))
     .map((d, i, arr) => {
       if (i === 0) return null;
-      return dayjs(d).diff(dayjs(arr[i - 1]), "day");
+      return d.diff(arr[i - 1], "day");
     })
     .filter((d) => d !== null)
     .map((d) => (d ? d : 0));
@@ -140,39 +147,6 @@ export default async function UserProfile({
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Debug table */}
-      <div className="w-full">
-        <table style={{ borderCollapse: "collapse", width: "100%", border: "1px solid #ccc", color: "black" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#f0f0f0" }}>
-              <th style={{ border: "1px solid #ccc", padding: "8px", textAlign: "left", color: "black" }}>Raw Timestamp</th>
-              <th style={{ border: "1px solid #ccc", padding: "8px", textAlign: "left", color: "black" }}>Local Date + Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orgasms.map((orgasm) => {
-              const rawTimestamp = orgasm.timestamp
-                ? orgasm.timestamp.toISOString()
-                : "N/A";
-
-              let localFormatted = "N/A";
-              if (orgasm.timestamp) {
-                localFormatted = dayjs(orgasm.timestamp).format("YYYY-MM-DD HH:mm:ss");
-              } else if (orgasm.date && orgasm.time) {
-                localFormatted = `${orgasm.date} ${orgasm.time}`;
-              }
-
-              return (
-                <tr key={orgasm.id}>
-                  <td style={{ border: "1px solid #ccc", padding: "8px", color: "black" }}>{rawTimestamp}</td>
-                  <td style={{ border: "1px solid #ccc", padding: "8px", color: "black" }}>{localFormatted}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
 
       {/* Chart */}

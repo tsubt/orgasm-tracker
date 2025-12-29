@@ -123,21 +123,25 @@ async function SummaryStats({
     },
   });
 
-  const n = orgasms.length;
+  // Filter orgasms with timestamps (date/time fields are deprecated)
+  const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
+  const n = validOrgasms.length;
   if (n === 0)
     return (
       <div className="text-gray-700 dark:text-gray-300">No orgasms yet</div>
     );
 
-  const last = orgasms.map((d) => d.date).reduce((a, b) => (a > b ? a : b));
+  const last = validOrgasms
+    .map((o) => dayjs(o.timestamp))
+    .reduce((a, b) => (a.isAfter(b) ? a : b));
   const daysSinceLast = d.diff(last, "day");
 
-  const times = orgasms
-    .map((o) => o.date)
-    .sort((a, b) => dayjs(a).diff(dayjs(b)))
+  const times = validOrgasms
+    .map((o) => dayjs(o.timestamp))
+    .sort((a, b) => a.diff(b))
     .map((d, i, arr) => {
       if (i === 0) return null;
-      return dayjs(d).diff(dayjs(arr[i - 1]), "day");
+      return d.diff(arr[i - 1], "day");
     })
     .filter((d) => d !== null)
     .map((d) => (d ? d : 0));

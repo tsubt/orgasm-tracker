@@ -31,7 +31,7 @@ export default async function SharedWrappedPage({
       userId: userInfo.id,
     },
     orderBy: {
-      date: "asc",
+      timestamp: "asc",
     },
   });
 

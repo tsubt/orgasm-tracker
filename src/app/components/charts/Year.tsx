@@ -14,8 +14,11 @@ export default async function YearChart({ orgasms }: { orgasms: Orgasm[] }) {
   //     return acc;
   //   }, {} as { [key: number]: Orgasm[] });
 
-  const years = orgasms
-    .map((o) => ({ ...o, year: new Date(o.date).getFullYear() }))
+  // Filter orgasms that have timestamps (date/time fields are deprecated)
+  const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
+
+  const years = validOrgasms
+    .map((o) => ({ ...o, year: dayjs(o.timestamp).year() }))
     .groupBy("year");
 
   const currentYear = new Date().getFullYear();
@@ -23,13 +26,19 @@ export default async function YearChart({ orgasms }: { orgasms: Orgasm[] }) {
   // cumulative orgasms per year
   const cumYear = Object.keys(years).map((year) => {
     const yr = years[parseInt(year)].sort(
-      // TODO: convert to TIMESTAMP once released
-      (a, b) => dayjs(a.date).unix() - dayjs(b.date).unix()
+      (a, b) => dayjs(a.timestamp).unix() - dayjs(b.timestamp).unix()
     );
-    const yrGrp = yr.groupBy("date");
 
-    const yrStart = dayjs(yr[0].date).startOf("year");
-    const yrEnd = dayjs(yr[0].date).endOf("year");
+    // Group by date string (YYYY-MM-DD)
+    const yrGrp = yr.reduce((acc, o) => {
+      const dateStr = dayjs(o.timestamp).format("YYYY-MM-DD");
+      if (!acc[dateStr]) acc[dateStr] = [];
+      acc[dateStr].push(o);
+      return acc;
+    }, {} as { [date: string]: typeof yr });
+
+    const yrStart = dayjs(yr[0].timestamp).startOf("year");
+    const yrEnd = dayjs(yr[0].timestamp).endOf("year");
     const yrLength = yrEnd.diff(yrStart, "day");
 
     // for each date, calculate year progress and number of orgasms

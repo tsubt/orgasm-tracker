@@ -31,7 +31,7 @@ export default async function WrappedPage({
       userId: session.user.id,
     },
     orderBy: {
-      date: "asc",
+      timestamp: "asc",
     },
   });
 

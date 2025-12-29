@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid sex type" }, { status: 400 });
     }
 
-    // Parse timestamp (should be ISO string from client)
+    // Parse timestamp
     const timestampDate = new Date(timestamp);
     if (isNaN(timestampDate.getTime())) {
       return NextResponse.json(
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the orgasm - only use timestamp, ignore date/time fields
+    // Create the orgasm
     const orgasm = await prisma.orgasm.create({
       data: {
         userId: session.user.id,
@@ -80,9 +80,6 @@ export async function POST(request: Request) {
         type,
         sex,
         note: note || null,
-        // Set date/time to empty strings or null since they're obsolete
-        date: "",
-        time: "",
       },
     });
 
@@ -139,7 +136,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Parse timestamp (should be ISO string from client)
+    // Parse timestamp
     const timestampDate = new Date(timestamp);
     if (isNaN(timestampDate.getTime())) {
       return NextResponse.json(
@@ -148,7 +145,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Update the orgasm - only use timestamp, ignore date/time fields
+    // Update the orgasm
     const orgasm = await prisma.orgasm.update({
       where: { id },
       data: {
@@ -156,7 +153,6 @@ export async function PUT(request: Request) {
         type,
         sex,
         note: note || null,
-        // Don't update date/time fields since they're obsolete
       },
     });
 

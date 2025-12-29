@@ -147,14 +147,13 @@ function UserCard({
     orgasms: Orgasm[];
   };
 }) {
-  // Get the last orgasm - use timestamp if available, otherwise construct from date and time
+  // Get the last orgasm - use timestamp (date/time fields are deprecated)
   const orgasms = user.orgasms
-    .map((o) => {
-      if (o.timestamp) {
-        return { ...o, datetime: dayjs(o.timestamp) };
-      }
-      return { ...o, datetime: dayjs(`${o.date} ${o.time}`) };
-    })
+    .filter((o) => o.timestamp !== null)
+    .map((o) => ({
+      ...o,
+      datetime: dayjs(o.timestamp),
+    }))
     .sort((x, y) => {
       return x.datetime.isAfter(y.datetime) ? -1 : 1;
     });

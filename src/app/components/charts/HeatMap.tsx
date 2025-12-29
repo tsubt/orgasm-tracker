@@ -18,20 +18,16 @@ export default function HeatMap({ orgasms }: HeatMapProps) {
   const today = dayjs();
 
   // Group orgasms by date for the current year
-  // Use timestamp when available, fall back to date field
+  // Use timestamp field (date/time fields are deprecated)
   const orgasmsByDate: { [date: string]: number } = {};
   orgasms.forEach((o) => {
-    let dateStr: string;
-    if (o.timestamp) {
-      dateStr = dayjs(o.timestamp).format("YYYY-MM-DD");
-    } else if (o.date && o.date.trim() !== "") {
-      dateStr = o.date;
-    } else {
-      // Skip orgasms without valid date information
+    if (!o.timestamp) {
+      // Skip orgasms without timestamp (date/time fields are deprecated)
       return;
     }
 
-    const orgasmYear = dayjs(dateStr).year();
+    const dateStr = dayjs(o.timestamp).format("YYYY-MM-DD");
+    const orgasmYear = dayjs(o.timestamp).year();
     if (orgasmYear === currentYear) {
       orgasmsByDate[dateStr] = (orgasmsByDate[dateStr] || 0) + 1;
     }

@@ -88,22 +88,24 @@ export function processYearData(
   orgasms: Orgasm[],
   year: number
 ): ProcessedData {
-  // Filter by year
+  // Filter by year and timestamp (date/time fields are deprecated)
   const yearOrgasms = orgasms.filter((o) => {
-    const orgasmYear = new Date(o.date).getFullYear();
+    if (!o.timestamp) return false;
+    const orgasmYear = dayjs(o.timestamp).year();
     return orgasmYear === year;
   });
 
-  // Sort by date
+  // Sort by timestamp
   const sorted = [...yearOrgasms].sort(
-    (a, b) => dayjs(a.date).unix() - dayjs(b.date).unix()
+    (a, b) => dayjs(a.timestamp).unix() - dayjs(b.timestamp).unix()
   );
 
   // Calculate max per day
   const byDate: { [date: string]: Orgasm[] } = {};
   sorted.forEach((o) => {
-    if (!byDate[o.date]) byDate[o.date] = [];
-    byDate[o.date].push(o);
+    const dateStr = dayjs(o.timestamp).format("YYYY-MM-DD");
+    if (!byDate[dateStr]) byDate[dateStr] = [];
+    byDate[dateStr].push(o);
   });
   const maxPerDay = Math.max(
     ...Object.values(byDate).map((arr) => arr.length),
@@ -113,8 +115,8 @@ export function processYearData(
   // Calculate longest delay
   let longestDelayDays = 0;
   for (let i = 1; i < sorted.length; i++) {
-    const prev = dayjs(sorted[i - 1].date);
-    const curr = dayjs(sorted[i].date);
+    const prev = dayjs(sorted[i - 1].timestamp);
+    const curr = dayjs(sorted[i].timestamp);
     const diffDays = curr.diff(prev, "day", true);
     if (diffDays > longestDelayDays) {
       longestDelayDays = diffDays;
@@ -127,7 +129,7 @@ export function processYearData(
   const dayTimeCounts: { [key: string]: number } = {};
 
   sorted.forEach((o) => {
-    const dateObj = dayjs(o.date + " " + o.time);
+    const dateObj = dayjs(o.timestamp);
     const hour = dateObj.hour();
     const period = TIME_PERIODS[hour] || "Unknown";
     const dayOfWeek = DAYS_OF_WEEK[dateObj.isoWeekday() - 1]; // isoWeekday: 1=Mon, 7=Sun, array: 0=Mon, 6=Sun
@@ -186,10 +188,14 @@ export function getMainChartData(orgasms: Orgasm[]): MainChartData[] {
 }
 
 export function getDailyChartData(orgasms: Orgasm[]): DailyChartData[] {
+  // Filter orgasms with timestamps (date/time fields are deprecated)
+  const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
+
   const byDate: { [date: string]: Orgasm[] } = {};
-  orgasms.forEach((o) => {
-    if (!byDate[o.date]) byDate[o.date] = [];
-    byDate[o.date].push(o);
+  validOrgasms.forEach((o) => {
+    const dateStr = dayjs(o.timestamp).format("YYYY-MM-DD");
+    if (!byDate[dateStr]) byDate[dateStr] = [];
+    byDate[dateStr].push(o);
   });
 
   return Object.entries(byDate)
@@ -208,14 +214,17 @@ export function getDailyChartData(orgasms: Orgasm[]): DailyChartData[] {
 }
 
 export function getDelayData(orgasms: Orgasm[]): DelayData[] {
-  const sorted = [...orgasms].sort(
-    (a, b) => dayjs(a.date + " " + a.time).unix() - dayjs(b.date + " " + b.time).unix()
+  // Filter orgasms with timestamps (date/time fields are deprecated)
+  const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
+
+  const sorted = [...validOrgasms].sort(
+    (a, b) => dayjs(a.timestamp).unix() - dayjs(b.timestamp).unix()
   );
 
   const delays: number[] = [];
   for (let i = 1; i < sorted.length; i++) {
-    const prev = dayjs(sorted[i - 1].date + " " + sorted[i - 1].time);
-    const curr = dayjs(sorted[i].date + " " + sorted[i].time);
+    const prev = dayjs(sorted[i - 1].timestamp);
+    const curr = dayjs(sorted[i].timestamp);
     const diffSeconds = curr.diff(prev, "second");
     const diffDays = diffSeconds / 60 / 60 / 24;
     if (diffDays > 0) {
@@ -253,10 +262,13 @@ export function getDelayData(orgasms: Orgasm[]): DelayData[] {
 }
 
 export function getWeekHeatmapData(orgasms: Orgasm[]): WeekHeatmapData[] {
+  // Filter orgasms with timestamps (date/time fields are deprecated)
+  const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
+
   const data: { [key: string]: number } = {};
 
-  orgasms.forEach((o) => {
-    const dateObj = dayjs(o.date + " " + o.time);
+  validOrgasms.forEach((o) => {
+    const dateObj = dayjs(o.timestamp);
     const dayOfWeek = dateObj.isoWeekday(); // 1 = Monday, 7 = Sunday
     const hour = dateObj.hour();
     const key = `${dayOfWeek}-${hour}`;
@@ -273,11 +285,14 @@ export function getCommitHeatmapData(
   orgasms: Orgasm[],
   year: number
 ): CommitHeatmapData[] {
+  // Filter orgasms with timestamps (date/time fields are deprecated)
+  const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
+
   const yearStart = dayjs(`${year}-01-01`);
   const data: { [key: string]: number } = {};
 
-  orgasms.forEach((o) => {
-    const dateObj = dayjs(o.date);
+  validOrgasms.forEach((o) => {
+    const dateObj = dayjs(o.timestamp);
     const week = dateObj.diff(yearStart, "week");
     const dayOfWeek = dateObj.isoWeekday(); // 1 = Monday, 7 = Sunday
     const key = `${week}-${dayOfWeek}`;
@@ -291,11 +306,14 @@ export function getCommitHeatmapData(
 }
 
 export function getTimelineData(orgasms: Orgasm[]): TimelineData[] {
-  return orgasms.map((o) => ({
-    date: dayjs(o.date + " " + o.time).toDate(),
-    type: o.type,
-    sex: o.sex,
-  }));
+  // Filter orgasms with timestamps (date/time fields are deprecated)
+  return orgasms
+    .filter((o) => o.timestamp !== null)
+    .map((o) => ({
+      date: dayjs(o.timestamp).toDate(),
+      type: o.type,
+      sex: o.sex,
+    }));
 }
 
 // Helper to get delay label from log days
