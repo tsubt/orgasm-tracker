@@ -11,6 +11,7 @@ interface WrappedCarouselProps {
   orgasms: Orgasm[];
   year: number;
   username: string;
+  joinedAt?: Date | null;
 }
 
 const AUTO_PROGRESS_DURATION = 10000; // 10 seconds per slide
@@ -19,6 +20,7 @@ export default function WrappedCarousel({
   orgasms,
   year,
   username,
+  joinedAt,
 }: WrappedCarouselProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -117,7 +119,7 @@ export default function WrappedCarousel({
       nextSlide();
     }
     setIsPaused(true);
-    setTimeout(() => setIsPaused(false), 3000);
+    // Permanently pause autoprogress after manual navigation
   };
 
   return (
@@ -224,8 +226,10 @@ export default function WrappedCarousel({
           <WrappedSlide
             plot={PLOT_DESCRIPTIONS[currentSlide]}
             orgasms={processedData.yearOrgasms}
+            allOrgasms={orgasms}
             processedData={processedData}
             year={year}
+            joinedAt={joinedAt}
             onTimelineHoverChange={setIsPaused}
           />
         </motion.div>

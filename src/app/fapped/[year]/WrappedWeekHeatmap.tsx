@@ -2,6 +2,7 @@
 
 import { Orgasm } from "@prisma/client";
 import { getWeekHeatmapData, ProcessedData } from "./dataProcessing";
+import { useState } from "react";
 
 interface WrappedWeekHeatmapProps {
   orgasms: Orgasm[];
@@ -14,21 +15,45 @@ export default function WrappedWeekHeatmap({
   orgasms,
   processedData,
 }: WrappedWeekHeatmapProps) {
+  const [hoveredCell, setHoveredCell] = useState<{
+    day: string;
+    startHour: number;
+    endHour: number;
+    count: number;
+  } | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+
   const data = getWeekHeatmapData(orgasms);
 
   // Create a grid: 7 days x 24 hours
+  // The data already contains counts, so we just set them directly
   const grid: { [key: string]: number } = {};
   data.forEach((d) => {
     const key = `${d.dayOfWeek}-${d.hour}`;
-    grid[key] = (grid[key] || 0) + d.count;
+    grid[key] = d.count; // Set directly, not add, since each key is unique
   });
-
-  // Find max for color scaling
-  const maxCount = Math.max(...Object.values(grid), 1);
 
   // Group by hour bins (every 3 hours as per spec)
   const hourBins = [0, 3, 6, 9, 12, 15, 18, 21, 24];
   const binLabels = ["0", "3", "6", "9", "12", "15", "18", "21", "24"];
+
+  // Calculate binned counts to find the actual max
+  const binnedCounts: number[] = [];
+  DAYS_OF_WEEK.forEach((_, dayIdx) => {
+    const dayNum = dayIdx + 1; // 1 = Monday
+    hourBins.slice(0, -1).forEach((startHour) => {
+      const endHour = Math.min(startHour + 3, 24);
+      let count = 0;
+      for (let h = startHour; h < endHour; h++) {
+        const key = `${dayNum}-${h}`;
+        count += grid[key] || 0;
+      }
+      binnedCounts.push(count);
+    });
+  });
+
+  // Find max from binned data for color scaling
+  const maxCount = Math.max(...binnedCounts, 1);
 
   function interpolateColor(
     ratio: number,
@@ -57,10 +82,38 @@ export default function WrappedWeekHeatmap({
     return `rgb(${r}, ${g}, ${b})`;
   }
 
+  // Multi-stop gradient for wider, more continuous color range
+  const getMultiColor = (intensity: number): string => {
+    // 6 stops: dark purple -> purple -> pink -> light pink -> very light pink -> near white
+    const stops = [
+      { ratio: 0, color: "#510258" },      // Dark purple
+      { ratio: 0.2, color: "#7A0A82" },    // Purple
+      { ratio: 0.4, color: "#A314AC" },    // Medium purple
+      { ratio: 0.6, color: "#CC1ED6" },   // Pink
+      { ratio: 0.8, color: "#E628F0" },   // Light pink
+      { ratio: 1.0, color: "#F5E6F7" },   // Near white (very light pink)
+    ];
+
+    if (intensity <= 0) return stops[0].color;
+    if (intensity >= 1) return stops[stops.length - 1].color;
+
+    // Find the two stops to interpolate between
+    for (let i = 0; i < stops.length - 1; i++) {
+      if (intensity >= stops[i].ratio && intensity <= stops[i + 1].ratio) {
+        const localRatio =
+          (intensity - stops[i].ratio) /
+          (stops[i + 1].ratio - stops[i].ratio);
+        return interpolateColor(localRatio, stops[i].color, stops[i + 1].color);
+      }
+    }
+
+    return stops[stops.length - 1].color;
+  };
+
   const getColor = (count: number) => {
     if (count === 0) return "transparent";
     const intensity = Math.min(count / maxCount, 1);
-    return interpolateColor(intensity, "#510258", "#EA69F6");
+    return getMultiColor(intensity);
   };
 
   return (
@@ -107,7 +160,20 @@ export default function WrappedWeekHeatmap({
                       style={{
                         backgroundColor: getColor(count),
                       }}
-                      title={`${day} ${startHour}:00-${endHour}:00: ${count} orgasm${count !== 1 ? "s" : ""}`}
+                      onMouseEnter={(e) => {
+                        if (count > 0) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoveredCell({ day, startHour, endHour, count });
+                          setTooltipPosition({
+                            x: rect.left + rect.width / 2,
+                            y: rect.top,
+                          });
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredCell(null);
+                        setTooltipPosition(null);
+                      }}
                     />
                   );
                 })}
@@ -116,6 +182,28 @@ export default function WrappedWeekHeatmap({
           })}
         </div>
       </div>
+
+      {/* Tooltip */}
+      {hoveredCell && tooltipPosition && (
+        <div
+          className="fixed z-50 bg-[#2c2c2c] border border-[#444] rounded-lg p-3 shadow-2xl pointer-events-none"
+          style={{
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y - 10}px`,
+            transform: "translate(-50%, -100%)",
+          }}
+        >
+          <div className="text-[#e9e9e9]">
+            <div className="font-semibold text-sm mb-1">
+              {hoveredCell.day} {hoveredCell.startHour}:00 - {hoveredCell.endHour}:00
+            </div>
+            <div className="text-xs text-[#c9c9c9]">
+              {hoveredCell.count} orgasm{hoveredCell.count !== 1 ? "s" : ""}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 mt-4 text-xs text-[#c9c9c9] justify-center">
         <span>Fewer</span>
         <div className="flex gap-1">

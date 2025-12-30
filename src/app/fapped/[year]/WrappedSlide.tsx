@@ -13,22 +13,26 @@ import WrappedTimeline from "./WrappedTimeline";
 interface WrappedSlideProps {
   plot: PlotDescription;
   orgasms: Orgasm[];
+  allOrgasms?: Orgasm[];
   processedData: ProcessedData;
   year: number;
+  joinedAt?: Date | null;
   onTimelineHoverChange?: (isHovering: boolean) => void;
 }
 
 export default function WrappedSlide({
   plot,
   orgasms,
+  allOrgasms,
   processedData,
   year,
+  joinedAt,
   onTimelineHoverChange,
 }: WrappedSlideProps) {
   const renderChart = () => {
     switch (plot.name) {
       case "p_main":
-        return <WrappedMainChart orgasms={orgasms} year={year} />;
+        return <WrappedMainChart orgasms={orgasms} allOrgasms={allOrgasms} year={year} joinedAt={joinedAt} />;
       case "p_nday":
         return <WrappedDailyChart orgasms={orgasms} processedData={processedData} />;
       case "p_delay":

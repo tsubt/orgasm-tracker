@@ -36,10 +36,11 @@ export default async function WrappedPage({
   });
 
   const username = userInfo?.username || userInfo?.name || "User";
+  const joinedAt = userInfo?.joinedAt;
 
   return (
     <div className="min-h-screen w-full">
-      <WrappedCarousel orgasms={orgasms} year={yearNum} username={username} />
+      <WrappedCarousel orgasms={orgasms} year={yearNum} username={username} joinedAt={joinedAt} />
     </div>
   );
 }

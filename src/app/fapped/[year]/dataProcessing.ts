@@ -112,12 +112,13 @@ export function processYearData(
     0
   );
 
-  // Calculate longest delay
+  // Calculate longest delay (using same method as getDelayData for consistency)
   let longestDelayDays = 0;
   for (let i = 1; i < sorted.length; i++) {
     const prev = dayjs(sorted[i - 1].timestamp);
     const curr = dayjs(sorted[i].timestamp);
-    const diffDays = curr.diff(prev, "day", true);
+    const diffSeconds = curr.diff(prev, "second");
+    const diffDays = diffSeconds / 60 / 60 / 24;
     if (diffDays > longestDelayDays) {
       longestDelayDays = diffDays;
     }
@@ -127,6 +128,10 @@ export function processYearData(
   const hourCounts: { [hour: number]: number } = {};
   const timeSlotCounts: { [slot: string]: number } = {};
   const dayTimeCounts: { [key: string]: number } = {};
+
+  // For peak calculation, use the same 3-hour bins as the heatmap
+  const hourBins = [0, 3, 6, 9, 12, 15, 18, 21, 24];
+  const binCounts: { [key: string]: number } = {}; // key: "dayOfWeek-startHour"
 
   sorted.forEach((o) => {
     const dateObj = dayjs(o.timestamp);
@@ -138,6 +143,16 @@ export function processYearData(
     hourCounts[hour] = (hourCounts[hour] || 0) + 1;
     timeSlotCounts[period] = (timeSlotCounts[period] || 0) + 1;
     dayTimeCounts[key] = (dayTimeCounts[key] || 0) + 1;
+
+    // Calculate which 3-hour bin this hour falls into
+    const dayOfWeekNum = dateObj.isoWeekday(); // 1 = Monday, 7 = Sunday
+    for (let i = 0; i < hourBins.length - 1; i++) {
+      if (hour >= hourBins[i] && hour < hourBins[i + 1]) {
+        const binKey = `${dayOfWeekNum}-${hourBins[i]}`;
+        binCounts[binKey] = (binCounts[binKey] || 0) + 1;
+        break;
+      }
+    }
   });
 
   // Most common time period
@@ -145,12 +160,20 @@ export function processYearData(
     Object.entries(timeSlotCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ||
     "Unknown";
 
-  // Peak day and time
-  const peakEntry = Object.entries(dayTimeCounts).sort(
+  // Peak day and time (based on 3-hour bins to match heatmap)
+  const peakBinEntry = Object.entries(binCounts).sort(
     (a, b) => b[1] - a[1]
   )[0];
-  const peakDay = peakEntry?.[0]?.split(" ")[0] || "Unknown";
-  const peakTime = peakEntry?.[0]?.split(" ").slice(1).join(" ") || "Unknown";
+
+  let peakDay = "Unknown";
+  let peakTime = "Unknown";
+
+  if (peakBinEntry) {
+    const [dayOfWeekNum, startHour] = peakBinEntry[0].split("-").map(Number);
+    const endHour = Math.min(startHour + 3, 24);
+    peakDay = DAYS_OF_WEEK[dayOfWeekNum - 1]; // Convert 1-7 to 0-6 for array index
+    peakTime = `${startHour}:00-${endHour}:00`;
+  }
 
   return {
     yearOrgasms: sorted,
@@ -221,44 +244,22 @@ export function getDelayData(orgasms: Orgasm[]): DelayData[] {
     (a, b) => dayjs(a.timestamp).unix() - dayjs(b.timestamp).unix()
   );
 
-  const delays: number[] = [];
+  // Return raw log delays (not binned) - let the chart component do the binning
+  const delays: DelayData[] = [];
   for (let i = 1; i < sorted.length; i++) {
     const prev = dayjs(sorted[i - 1].timestamp);
     const curr = dayjs(sorted[i].timestamp);
     const diffSeconds = curr.diff(prev, "second");
     const diffDays = diffSeconds / 60 / 60 / 24;
     if (diffDays > 0) {
-      delays.push(Math.log(diffDays));
+      delays.push({
+        logDays: Math.log(diffDays),
+        count: 1, // Each delay is counted once
+      });
     }
   }
 
-  // Create histogram bins
-  const bins = [
-    Math.log(5 / 60 / 24), // 5 minutes
-    Math.log(1 / 24), // 1 hour
-    Math.log(3 / 24), // 3 hours
-    Math.log(8 / 24), // 8 hours
-    Math.log(1), // 1 day
-    Math.log(3), // 3 days
-    Math.log(10), // 10 days
-    Infinity,
-  ];
-
-  const binCounts: { [key: number]: number } = {};
-  delays.forEach((logDays) => {
-    for (let i = 0; i < bins.length - 1; i++) {
-      if (logDays >= bins[i] && logDays < bins[i + 1]) {
-        const mid = (bins[i] + (bins[i + 1] === Infinity ? bins[i] + 2 : bins[i + 1])) / 2;
-        binCounts[mid] = (binCounts[mid] || 0) + 1;
-        break;
-      }
-    }
-  });
-
-  return Object.entries(binCounts).map(([logDays, count]) => ({
-    logDays: parseFloat(logDays),
-    count,
-  }));
+  return delays;
 }
 
 export function getWeekHeatmapData(orgasms: Orgasm[]): WeekHeatmapData[] {

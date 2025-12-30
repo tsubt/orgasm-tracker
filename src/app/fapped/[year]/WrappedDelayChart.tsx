@@ -35,15 +35,30 @@ export default function WrappedDelayChart({
     Math.log(10), // 10 days
   ];
 
-  const labels = ["5m", "1h", "3h", "8h", "1d", "3d", "10d"];
+  // Create range labels
+  const labels = [
+    "5m-1h",
+    "1h-3h",
+    "3h-8h",
+    "8h-1d",
+    "1d-3d",
+    "3d-10d",
+    "10d+",
+  ];
 
   // Group data into bins for display
   const binnedData = breaks.map((breakPoint, index) => {
     const count = data
       .filter((d) => {
-        if (index === 0) return d.logDays < breakPoint;
-        if (index === breaks.length - 1)
-          return d.logDays >= breaks[index - 1];
+        if (index === 0) {
+          // First bin: >= log(5m) and < log(1h)
+          return d.logDays >= breakPoint && d.logDays < breaks[index + 1];
+        }
+        if (index === breaks.length - 1) {
+          // Last bin: >= log(10 days)
+          return d.logDays >= breakPoint;
+        }
+        // Middle bins: >= previous break and < current break
         return d.logDays >= breaks[index - 1] && d.logDays < breakPoint;
       })
       .reduce((sum, d) => sum + d.count, 0);
@@ -78,4 +93,3 @@ export default function WrappedDelayChart({
     </div>
   );
 }
-

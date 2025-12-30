@@ -40,6 +40,7 @@ export default function WrappedTimeline({
 }: WrappedTimelineProps) {
   const [hoveredOrgasm, setHoveredOrgasm] = useState<Orgasm | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
   // Filter and sort orgasms by timestamp
   const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
@@ -83,7 +84,7 @@ export default function WrappedTimeline({
     <div className="w-full">
       <div className="relative" style={{ height: `${SEX_ORDER.length * 80}px` }}>
         {/* Month labels */}
-        <div className="absolute top-0 left-0 right-0 h-6 flex">
+        <div className="absolute top-0 left-0 right-0 h-6">
           {monthBreaks.map((month, idx) => {
             const xPos = getXPosition(month);
             const monthName = MONTHS[dayjs(month).month()];
@@ -91,7 +92,7 @@ export default function WrappedTimeline({
               <div
                 key={idx}
                 className="absolute text-xs text-[#c9c9c9]"
-                style={{ left: `${xPos}%`, transform: "translateX(-50%)" }}
+                style={{ left: `calc(${xPos}% + 5rem)`, transform: "translateX(-50%)" }}
               >
                 {monthName}
               </div>
@@ -125,6 +126,8 @@ export default function WrappedTimeline({
                 const date = dayjs(orgasm.timestamp).toDate();
                 const xPos = getXPosition(date);
                 const isHovered = hoveredOrgasm?.id === orgasm.id;
+                const isSelected = selectedType === orgasm.type;
+                const isDimmed = selectedType !== null && selectedType !== orgasm.type;
 
                 return (
                   <div
@@ -138,6 +141,7 @@ export default function WrappedTimeline({
                         ? "translate(-50%, -50%) scale(1.5)"
                         : "translate(-50%, -50%) scale(1)",
                       transformOrigin: "center center",
+                      opacity: isDimmed ? 0.3 : 1,
                     }}
                     onMouseEnter={(e) => {
                       setHoveredOrgasm(orgasm);
@@ -159,7 +163,7 @@ export default function WrappedTimeline({
                       style={{
                         width: "2px",
                         backgroundColor: TYPE_COLORS[orgasm.type] || "#999",
-                        boxShadow: isHovered
+                        boxShadow: isHovered || isSelected
                           ? `0 0 8px ${TYPE_COLORS[orgasm.type] || "#999"}`
                           : "none",
                       }}
@@ -218,14 +222,39 @@ export default function WrappedTimeline({
       )}
 
       {/* Legend */}
-      <div className="flex gap-4 justify-center mt-8">
+      <div
+        className="flex gap-4 justify-center mt-8"
+        onMouseEnter={() => onHoverChange?.(true)}
+        onMouseLeave={() => {
+          onHoverChange?.(false);
+          setSelectedType(null);
+        }}
+        onTouchStart={() => onHoverChange?.(true)}
+        onTouchEnd={() => {
+          onHoverChange?.(false);
+          setSelectedType(null);
+        }}
+      >
         {Object.entries(TYPE_COLORS).map(([type, color]) => (
-          <div key={type} className="flex items-center gap-2">
+          <div
+            key={type}
+            className="flex items-center gap-2 cursor-pointer transition-opacity"
+            style={{
+              opacity: selectedType === null || selectedType === type ? 1 : 0.5,
+            }}
+            onMouseEnter={() => setSelectedType(type)}
+            onMouseLeave={() => setSelectedType(null)}
+            onTouchStart={() => setSelectedType(type)}
+            onTouchEnd={() => setSelectedType(null)}
+          >
             <div
-              className="w-4 h-4"
-              style={{ backgroundColor: color }}
+              className="w-4 h-4 transition-all"
+              style={{
+                backgroundColor: color,
+                boxShadow: selectedType === type ? `0 0 6px ${color}` : "none",
+              }}
             />
-            <span className="text-sm text-[#c9c9c9]">
+            <span className="text-sm text-white">
               {type.charAt(0) + type.slice(1).toLowerCase()}
             </span>
           </div>
