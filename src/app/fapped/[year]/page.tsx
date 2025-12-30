@@ -40,7 +40,12 @@ export default async function WrappedPage({
 
   return (
     <div className="min-h-screen w-full">
-      <WrappedCarousel orgasms={orgasms} year={yearNum} username={username} joinedAt={joinedAt} />
+      <WrappedCarousel
+        orgasms={orgasms}
+        year={yearNum}
+        username={username}
+        joinedAt={joinedAt}
+      />
     </div>
   );
 }
