@@ -29,7 +29,10 @@ export default async function StatsContent({
 }) {
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex justify-center">
+      <div className="flex items-center justify-between">
+        <Suspense fallback={<LoadingLastOrgasm />}>
+          <LastOrgasm userId={userId} tz={tz} />
+        </Suspense>
         <Link
           href="/fapped/2025"
           className="bg-pink-500 dark:bg-pink-600 text-white px-6 py-3 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide"
@@ -37,9 +40,6 @@ export default async function StatsContent({
           Your 2025 Fapped
         </Link>
       </div>
-      <Suspense fallback={<LoadingLastOrgasm />}>
-        <LastOrgasm userId={userId} tz={tz} />
-      </Suspense>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={null}>

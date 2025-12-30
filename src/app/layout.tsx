@@ -16,6 +16,11 @@ const quicksand = Quicksand({
 export const metadata: Metadata = {
   title: "OrgasmTracker",
   description: "Keep track of your pleasure",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
 };
 
 export default async function RootLayout({
