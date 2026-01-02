@@ -1,28 +1,57 @@
 "use client";
 
+import { useMemo, memo } from "react";
 import { Orgasm } from "@prisma/client";
 import YearChart from "./Year";
-import { Suspense } from "react";
+import MonthChart from "./MonthChart";
+import WeekChart from "./WeekChart";
+import DayChart from "./DayChart";
 
 interface ChartsClientProps {
   orgasms: Orgasm[];
   period: string;
+  selectedYear: number;
 }
 
-export default function ChartsClient({ orgasms, period }: ChartsClientProps) {
+// Memoize chart components to prevent re-renders when props haven't changed
+const MemoizedYearChart = memo(YearChart);
+const MemoizedMonthChart = memo(MonthChart);
+const MemoizedWeekChart = memo(WeekChart);
+const MemoizedDayChart = memo(DayChart);
+
+export default function ChartsClient({
+  orgasms,
+  period,
+  selectedYear,
+}: ChartsClientProps) {
+  // Filter orgasms by year for charts that need it (Month, Week, Day)
+  // Year chart uses all orgasms, so we don't filter for it
+  const yearOrgasms = useMemo(() => {
+    if (period === "Year") return orgasms; // Year chart needs all orgasms
+    return orgasms.filter((o) => {
+      if (!o.timestamp) return false;
+      const year = new Date(o.timestamp).getFullYear();
+      return year === selectedYear;
+    });
+  }, [orgasms, selectedYear, period]);
+
   switch (period) {
     case "Year":
       return (
-        <Suspense fallback={<>Loading year chart</>}>
-          <YearChart orgasms={orgasms} />
-        </Suspense>
+        <MemoizedYearChart orgasms={orgasms} selectedYear={selectedYear} />
       );
     case "Month":
-      return <>MONTH OF {orgasms.length} ORGASMS</>;
+      return (
+        <MemoizedMonthChart orgasms={yearOrgasms} selectedYear={selectedYear} />
+      );
     case "Week":
-      return <>WEEK OF {orgasms.length} ORGASMS</>;
+      return (
+        <MemoizedWeekChart orgasms={yearOrgasms} selectedYear={selectedYear} />
+      );
     case "Day":
-      return <>DAY OF {orgasms.length} ORGASMS</>;
+      return (
+        <MemoizedDayChart orgasms={yearOrgasms} selectedYear={selectedYear} />
+      );
   }
 
   return <div>Invalid period selected</div>;

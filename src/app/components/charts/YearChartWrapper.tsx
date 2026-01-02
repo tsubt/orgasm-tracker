@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Orgasm } from "@prisma/client";
 import ChartLine from "./LineChart";
 import HeatMap from "./HeatMap";
@@ -12,32 +11,21 @@ interface YearChartWrapperProps {
     highlight?: boolean;
     data: ({ x: number; y: number } & Record<string, unknown>)[];
   }[];
+  selectedYear: number;
 }
 
 export default function YearChartWrapper({
   orgasms,
   lineChartData,
+  selectedYear,
 }: YearChartWrapperProps) {
-  const [selectedYear, setSelectedYear] = useState<string | null>(null);
-
-  // Initialize selectedYear with the highlighted year (current year by default)
-  useEffect(() => {
-    const highlighted = lineChartData.find((entry) => entry.highlight);
-    if (
-      highlighted &&
-      (selectedYear === null || !lineChartData.find((e) => e.name === selectedYear))
-    ) {
-      setSelectedYear(highlighted.name);
-    }
-  }, [lineChartData, selectedYear]);
-
-  // Convert selectedYear string to number for HeatMap
-  const heatMapTimeframe = selectedYear ? parseInt(selectedYear) : undefined;
+  // Convert selectedYear number to string for ChartLine
+  const selectedYearString = selectedYear.toString();
 
   return (
     <div>
-      <ChartLine data={lineChartData} onYearChange={setSelectedYear} />
-      <HeatMap orgasms={orgasms} timeframe={heatMapTimeframe} />
+      <ChartLine data={lineChartData} selectedYear={selectedYearString} />
+      <HeatMap orgasms={orgasms} timeframe={selectedYear} />
     </div>
   );
 }
