@@ -64,7 +64,7 @@ export default async function Stats({
   );
 }
 
-async function LastOrgasm({ userId }: { userId: string; tz: string }) {
+async function LastOrgasm({ userId, tz }: { userId: string; tz: string }) {
   const last = await prisma.orgasm.findFirst({
     where: {
       userId,
@@ -76,12 +76,12 @@ async function LastOrgasm({ userId }: { userId: string; tz: string }) {
 
   if (last === null) return;
 
+  const lastDate = dayjs(last.timestamp).tz(tz);
+
   return (
     <div className="text-pink-50">
-      <h4 className="text-lg font-bold">
-        Last orgasm {dayjs(last.timestamp).fromNow()}
-      </h4>
-      <p>{dayjs(last.timestamp).format("D MMM YYYY, H:ma")}</p>
+      <h4 className="text-lg font-bold">Last orgasm {lastDate.fromNow()}</h4>
+      <p>{lastDate.format("D MMM YYYY, H:ma")}</p>
     </div>
   );
 }

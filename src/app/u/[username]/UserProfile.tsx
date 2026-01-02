@@ -162,7 +162,7 @@ export default async function UserProfile({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Activity
           </h2>
-          <HeatMap orgasms={validOrgasms} />
+          <HeatMap orgasms={validOrgasms} timeframe="last12months" />
         </div>
       )}
 
