@@ -9,6 +9,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import isoWeek from "dayjs/plugin/isoWeek";
 import Link from "next/link";
 import EventDotChart from "./charts/EventDotChart";
+import LastOrgasmDisplay from "./LastOrgasmDisplay";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -80,16 +81,8 @@ async function LastOrgasm({ userId }: { userId: string; tz: string }) {
 
   if (last === null) return null;
 
-  return (
-    <div className="text-gray-900 dark:text-gray-100">
-      <h4 className="text-lg font-bold">
-        Last orgasm {dayjs(last.timestamp).fromNow()}
-      </h4>
-      <p className="text-gray-600 dark:text-gray-400">
-        {dayjs(last.timestamp).format("D MMM YYYY, H:ma")}
-      </p>
-    </div>
-  );
+  // Pass the timestamp to client component for timezone-aware formatting
+  return <LastOrgasmDisplay timestamp={last.timestamp} />;
 }
 
 async function SummaryStats({
