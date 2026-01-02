@@ -96,9 +96,16 @@ export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
           style={{ transform: "translateY(-50%)" }}
         />
 
-        {/* "Now" label on the right */}
-        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 -translate-x-2 text-xs text-gray-500 dark:text-gray-400 z-20">
-          Now
+        {/* "Now" label at the top with faint line */}
+        <div className="absolute right-0 top-0 z-20 flex flex-col items-end">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 pr-2">
+            Now
+          </div>
+          {/* Faint vertical line from top to middle */}
+          <div
+            className="w-px bg-gray-300 dark:bg-gray-600 opacity-30"
+            style={{ height: "60px" }}
+          />
         </div>
 
         {/* Dots for each day */}

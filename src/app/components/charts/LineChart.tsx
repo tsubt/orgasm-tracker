@@ -14,12 +14,14 @@ import {
 
 export default function ChartLine({
   data,
+  onYearChange,
 }: {
   data: {
     name: string;
     highlight?: boolean;
     data: ({ x: number; y: number } & Record<string, unknown>)[];
   }[];
+  onYearChange?: (year: string | null) => void;
 }) {
   const [isDark, setIsDark] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
@@ -59,6 +61,13 @@ export default function ChartLine({
       setSelectedYear(highlighted.name);
     }
   }, [data, selectedYear]);
+
+  // Notify parent when selectedYear changes
+  useEffect(() => {
+    if (onYearChange) {
+      onYearChange(selectedYear);
+    }
+  }, [selectedYear, onYearChange]);
 
   const axisColor = isDark ? "#ffffff" : "#374151"; // white for dark, gray-700 for light
   const accentColor = isDark ? "#DB2777" : "#EC4899"; // pink-600 for dark, pink-500 for light
