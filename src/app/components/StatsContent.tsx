@@ -7,7 +7,6 @@ import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import relativeTime from "dayjs/plugin/relativeTime";
 import isoWeek from "dayjs/plugin/isoWeek";
-import PickPeriod from "./charts/PickPeriod";
 import Link from "next/link";
 import EventDotChart from "./charts/EventDotChart";
 
@@ -20,12 +19,10 @@ export default async function StatsContent({
   userId,
   time,
   tz,
-  period,
 }: {
   userId: string;
   time: string;
   tz: string;
-  period: string;
 }) {
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -63,11 +60,8 @@ export default async function StatsContent({
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
-        <Suspense fallback={null}>
-          <PickPeriod />
-        </Suspense>
         <Suspense fallback={<>Loading charts ...</>}>
-          <Charts userId={userId} period={period} />
+          <Charts userId={userId} />
         </Suspense>
       </div>
     </div>

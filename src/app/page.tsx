@@ -9,7 +9,6 @@ export default async function Home({
 }) {
   const session = await auth();
   const time = (await searchParams).time ?? "All";
-  const period = (await searchParams).period ?? "Year";
 
   if (session && session.user && session.user.id) {
     return (
@@ -19,7 +18,6 @@ export default async function Home({
             userId={session.user.id}
             time={typeof time === "string" ? time : "All"}
             tz="UTC"
-            period={typeof period === "string" ? period : "Year"}
           />
         </div>
       </main>

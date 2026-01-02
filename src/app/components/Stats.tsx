@@ -10,7 +10,6 @@ import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import relativeTime from "dayjs/plugin/relativeTime";
-import PickPeriod from "./charts/PickPeriod";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -20,12 +19,10 @@ export default async function Stats({
   session,
   time,
   tz,
-  period,
 }: {
   session: Session;
   time: string;
   tz: string;
-  period: string;
 }) {
   if (!session.user || !session.user.id) {
     return <></>;
@@ -53,11 +50,8 @@ export default async function Stats({
       </div>
 
       <div className="bg-black/5 rounded flex flex-col gap-4 p-4 w-full">
-        <Suspense fallback={null}>
-          <PickPeriod />
-        </Suspense>
         <Suspense fallback={<>Loading charts ...</>}>
-          <Charts userId={session.user.id} period={period} />
+          <Charts userId={session.user.id} />
         </Suspense>
       </div>
     </div>
