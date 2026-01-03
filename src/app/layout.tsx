@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/prisma";
 import { OrgasmModalProvider } from "./contexts/OrgasmModalContext";
 import Orgasm from "./components/Orgasm";
+import { Analytics } from "@vercel/analytics/next";
 
 const quicksand = Quicksand({
   variable: "--font-quicksand",
@@ -56,6 +57,7 @@ export default async function RootLayout({
           {session && <Orgasm hideButton={true} />}
           <Toaster position="top-center" />
         </OrgasmModalProvider>
+        <Analytics />
       </body>
     </html>
   );

@@ -13,6 +13,7 @@
     "@auth/prisma-adapter": "^2.7.4",
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "^6.15.0",
+    "@vercel/analytics": "^1.6.1",
     "dayjs": "^1.11.13",
     "framer-motion": "^12.4.3",
     "next": "16.1.1",
