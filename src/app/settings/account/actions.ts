@@ -24,6 +24,8 @@ export async function checkUsername(username: string): Promise<boolean> {
   return count === 0;
 }
 
+const VALID_CHART_NAMES = ["Line", "Frequency", "Calendar", "Week", "Radial", "Timeline"];
+
 export async function updateSettings(data: {
   username: string;
   publicProfile: boolean;
@@ -53,6 +55,7 @@ export async function updateSettings(data: {
 
   revalidatePath("/settings");
   revalidatePath("/users");
+  revalidatePath(`/u/${username}`);
 }
 
 export async function deleteAccount() {

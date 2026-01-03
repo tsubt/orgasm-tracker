@@ -1,7 +1,7 @@
 import { prisma } from "@/prisma";
 import { Suspense } from "react";
 import PickTime from "./PickTime";
-import Charts from "./charts";
+import DashboardCharts from "./DashboardCharts";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -51,7 +51,7 @@ export default async function StatsContent({
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={<>Loading charts ...</>}>
-          <Charts userId={userId} tz={tz} />
+          <DashboardChartsWrapper userId={userId} tz={tz} />
         </Suspense>
       </div>
     </div>
@@ -427,6 +427,22 @@ function LoadingLastOrgasm() {
       <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
     </div>
   );
+}
+
+async function DashboardChartsWrapper({
+  userId,
+  tz,
+}: {
+  userId: string;
+  tz: string;
+}) {
+  const orgasms = await prisma.orgasm.findMany({
+    where: {
+      userId: userId,
+    },
+  });
+
+  return <DashboardCharts orgasms={orgasms} tz={tz} userId={userId} />;
 }
 
 function Stat({

@@ -58,9 +58,12 @@ model User {
   publicOrgasms Boolean @default(false)
   publicProfile Boolean @default(false)
 
-  accounts Account[]
-  sessions Session[]
-  orgasms  Orgasm[]
+  defaultProfileChart String?
+
+  accounts        Account[]
+  sessions        Session[]
+  orgasms         Orgasm[]
+  dashboardCharts DashboardChart[]
 }
 
 model VerificationToken {
@@ -95,5 +98,16 @@ model Orgasm {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+model DashboardChart {
+  id            String @id @default(cuid())
+  userId        String
+  chartName     String
+  chartPosition Int
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chartPosition])
   @@index([userId])
 }

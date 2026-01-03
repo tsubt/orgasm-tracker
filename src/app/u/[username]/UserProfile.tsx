@@ -7,18 +7,15 @@ import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import BioEditor from "./BioEditor";
 import OrgasmFeed from "./OrgasmFeed";
-import Charts from "@/app/components/charts";
+import ProfileChart from "@/app/components/ProfileChart";
+import ProfileChartEditor from "./ProfileChartEditor";
 import { Suspense } from "react";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isoWeek);
 
-export default async function UserProfile({
-  username,
-}: {
-  username: string;
-}) {
+export default async function UserProfile({ username }: { username: string }) {
   const session = await auth();
   const currentUserId = session?.user?.id;
 
@@ -70,19 +67,18 @@ export default async function UserProfile({
 
   const thisWeekCount = validOrgasms.filter((o) => {
     const date = dayjs(o.timestamp);
-    return (
-      date.year() === currentYear && date.isoWeek() === currentWeek
-    );
+    return date.year() === currentYear && date.isoWeek() === currentWeek;
   }).length;
 
   // Format join date - use earliest orgasm if it's earlier than joinedAt
-  const earliestOrgasm = validOrgasms.length > 0
-    ? validOrgasms.reduce((earliest, current) => {
-        const earliestDate = dayjs(earliest.timestamp);
-        const currentDate = dayjs(current.timestamp);
-        return currentDate.isBefore(earliestDate) ? current : earliest;
-      })
-    : null;
+  const earliestOrgasm =
+    validOrgasms.length > 0
+      ? validOrgasms.reduce((earliest, current) => {
+          const earliestDate = dayjs(earliest.timestamp);
+          const currentDate = dayjs(current.timestamp);
+          return currentDate.isBefore(earliestDate) ? current : earliest;
+        })
+      : null;
 
   const accountJoinDate = dayjs(user.joinedAt);
   const effectiveJoinDate = earliestOrgasm
@@ -159,11 +155,29 @@ export default async function UserProfile({
       {/* Charts */}
       {validOrgasms.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Activity
-          </h2>
-          <Suspense fallback={<div className="text-gray-500 dark:text-gray-400">Loading charts...</div>}>
-            <Charts userId={user.id} tz="UTC" />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Activity
+            </h2>
+            {isOwnProfile && (
+              <ProfileChartEditor
+                currentChart={user.defaultProfileChart || "Frequency"}
+                userId={user.id}
+              />
+            )}
+          </div>
+          <Suspense
+            fallback={
+              <div className="text-gray-500 dark:text-gray-400">
+                Loading charts...
+              </div>
+            }
+          >
+            <ProfileChart
+              orgasms={validOrgasms}
+              tz="UTC"
+              defaultChart={user.defaultProfileChart}
+            />
           </Suspense>
         </div>
       )}
