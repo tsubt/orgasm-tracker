@@ -7,7 +7,7 @@ import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import BioEditor from "./BioEditor";
 import OrgasmFeed from "./OrgasmFeed";
-import HeatMap from "@/app/components/charts/HeatMap";
+import Charts from "@/app/components/charts";
 import { Suspense } from "react";
 
 dayjs.extend(utc);
@@ -156,13 +156,15 @@ export default async function UserProfile({
         </div>
       </div>
 
-      {/* HeatMap */}
+      {/* Charts */}
       {validOrgasms.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Activity
           </h2>
-          <HeatMap orgasms={validOrgasms} timeframe="last12months" />
+          <Suspense fallback={<div className="text-gray-500 dark:text-gray-400">Loading charts...</div>}>
+            <Charts userId={user.id} tz="UTC" />
+          </Suspense>
         </div>
       )}
 
