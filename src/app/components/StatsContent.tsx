@@ -8,8 +8,8 @@ import utc from "dayjs/plugin/utc";
 import relativeTime from "dayjs/plugin/relativeTime";
 import isoWeek from "dayjs/plugin/isoWeek";
 import Link from "next/link";
-import EventDotChart from "./charts/EventDotChart";
 import LastOrgasmDisplay from "./LastOrgasmDisplay";
+import BreakdownStatsClient from "./BreakdownStatsClient";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -46,23 +46,12 @@ export default async function StatsContent({
         <Suspense fallback={<LoadingSummaryStats />}>
           <SummaryStats userId={userId} time={time} tz={tz} />
         </Suspense>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
-        <Suspense fallback={null}>
-          <EventDotChartSection userId={userId} tz={tz} />
-        </Suspense>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
-        <Suspense fallback={<LoadingBreakdownStats />}>
-          <BreakdownStats userId={userId} time={time} tz={tz} />
-        </Suspense>
+        <BreakdownStatsClient userId={userId} tz={tz} />
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={<>Loading charts ...</>}>
-          <Charts userId={userId} />
+          <Charts userId={userId} tz={tz} />
         </Suspense>
       </div>
     </div>
@@ -436,240 +425,6 @@ function LoadingLastOrgasm() {
     <div className="animate-pulse space-y-2">
       <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-64"></div>
       <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-48"></div>
-    </div>
-  );
-}
-
-async function EventDotChartSection({
-  userId,
-  tz,
-}: {
-  userId: string;
-  tz: string;
-}) {
-  // Fetch all orgasms for the event dot chart
-  const orgasms = await prisma.orgasm.findMany({
-    where: {
-      userId,
-      timestamp: { not: null },
-    },
-    orderBy: {
-      timestamp: "desc",
-    },
-  });
-
-  if (orgasms.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Timeline
-      </h3>
-      <EventDotChart orgasms={orgasms} tz={tz} />
-    </div>
-  );
-}
-
-function LoadingBreakdownStats() {
-  return (
-    <div className="flex flex-col gap-6 animate-pulse">
-      {/* Type Breakdown Loading */}
-      <div>
-        <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-20 mb-2"></div>
-        <div className="w-full h-8 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
-        <div className="flex flex-wrap gap-4 mt-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-700 rounded"></div>
-              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Partner Breakdown Loading */}
-      <div>
-        <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-24 mb-2"></div>
-        <div className="w-full h-8 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
-        <div className="flex flex-wrap gap-4 mt-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-700 rounded"></div>
-              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-async function BreakdownStats({
-  userId,
-  time,
-  tz,
-}: {
-  userId: string;
-  time: string;
-  tz: string;
-}) {
-  const d = dayjs().tz(tz);
-
-  const orgasms = await prisma.orgasm.findMany({
-    where: {
-      userId,
-      timestamp:
-        time === "This year"
-          ? {
-              gte: d.startOf("year").toDate(),
-            }
-          : time === "This month"
-          ? {
-              gte: d.startOf("month").toDate(),
-            }
-          : time === "This week"
-          ? {
-              gte: d.startOf("week").toDate(),
-            }
-          : time === "Last 12 months"
-          ? {
-              gte: d.subtract(12, "month").toDate(),
-            }
-          : time === "Last 30 days"
-          ? {
-              gte: d.subtract(30, "day").toDate(),
-            }
-          : time === "Last 7 days"
-          ? {
-              gte: d.subtract(7, "day").toDate(),
-            }
-          : {},
-    },
-  });
-
-  const total = orgasms.length;
-  if (total === 0) {
-    return (
-      <div className="text-gray-700 dark:text-gray-300">
-        No orgasms in this period
-      </div>
-    );
-  }
-
-  // Count by type
-  const typeCounts = {
-    FULL: orgasms.filter((o) => o.type === "FULL").length,
-    RUINED: orgasms.filter((o) => o.type === "RUINED").length,
-    HANDSFREE: orgasms.filter((o) => o.type === "HANDSFREE").length,
-    ANAL: orgasms.filter((o) => o.type === "ANAL").length,
-  };
-
-  // Count by partner
-  const partnerCounts = {
-    SOLO: orgasms.filter((o) => o.sex === "SOLO").length,
-    VIRTUAL: orgasms.filter((o) => o.sex === "VIRTUAL").length,
-    PHYSICAL: orgasms.filter((o) => o.sex === "PHYSICAL").length,
-  };
-
-  // Colors matching Fapped summary
-  const typeColors = {
-    FULL: "bg-[#EF4444]", // Red
-    RUINED: "bg-[#A855F7]", // Purple
-    HANDSFREE: "bg-[#06B6D4]", // Cyan
-    ANAL: "bg-[#22C55E]", // Green
-  };
-
-  const partnerColors = {
-    SOLO: "bg-blue-500",
-    VIRTUAL: "bg-purple-500",
-    PHYSICAL: "bg-green-500",
-  };
-
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Type Breakdown */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          By Type
-        </h3>
-        <div className="w-full h-8 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">
-          {Object.entries(typeCounts).map(([type, count]) => {
-            const percentage = (count / total) * 100;
-            if (count === 0) return null;
-            return (
-              <div
-                key={type}
-                className={`${
-                  typeColors[type as keyof typeof typeColors]
-                } transition-all`}
-                style={{ width: `${percentage}%` }}
-                title={`${type}: ${count} (${percentage.toFixed(1)}%)`}
-              />
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-600 dark:text-gray-400">
-          {Object.entries(typeCounts).map(([type, count]) => {
-            if (count === 0) return null;
-            const percentage = (count / total) * 100;
-            return (
-              <div key={type} className="flex items-center gap-1">
-                <div
-                  className={`w-3 h-3 rounded ${
-                    typeColors[type as keyof typeof typeColors]
-                  }`}
-                />
-                <span>
-                  {type}: {count} ({percentage.toFixed(1)}%)
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Partner Breakdown */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-          By Partner
-        </h3>
-        <div className="w-full h-8 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">
-          {Object.entries(partnerCounts).map(([partner, count]) => {
-            const percentage = (count / total) * 100;
-            if (count === 0) return null;
-            return (
-              <div
-                key={partner}
-                className={`${
-                  partnerColors[partner as keyof typeof partnerColors]
-                } transition-all`}
-                style={{ width: `${percentage}%` }}
-                title={`${partner}: ${count} (${percentage.toFixed(1)}%)`}
-              />
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-600 dark:text-gray-400">
-          {Object.entries(partnerCounts).map(([partner, count]) => {
-            if (count === 0) return null;
-            const percentage = (count / total) * 100;
-            return (
-              <div key={partner} className="flex items-center gap-1">
-                <div
-                  className={`w-3 h-3 rounded ${
-                    partnerColors[partner as keyof typeof partnerColors]
-                  }`}
-                />
-                <span>
-                  {partner}: {count} ({percentage.toFixed(1)}%)
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

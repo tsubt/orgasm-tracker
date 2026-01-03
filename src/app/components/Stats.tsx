@@ -51,7 +51,7 @@ export default async function Stats({
 
       <div className="bg-black/5 rounded flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={<>Loading charts ...</>}>
-          <Charts userId={session.user.id} />
+          <Charts userId={session.user.id} tz={tz} />
         </Suspense>
       </div>
     </div>

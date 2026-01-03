@@ -8,10 +8,11 @@ import ChartsClient from "./ChartsClient";
 
 interface ChartsWithPeriodProps {
   orgasms: Orgasm[];
+  tz: string;
 }
 
-export default function ChartsWithPeriod({ orgasms }: ChartsWithPeriodProps) {
-  const [period, setPeriod] = useState<string>("Year");
+export default function ChartsWithPeriod({ orgasms, tz }: ChartsWithPeriodProps) {
+  const [period, setPeriod] = useState<string>("Line");
 
   // Calculate available years from orgasms
   const availableYears = useMemo(() => {
@@ -37,7 +38,7 @@ export default function ChartsWithPeriod({ orgasms }: ChartsWithPeriodProps) {
 
   return (
     <>
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center justify-between mb-6">
         <PickPeriod period={period} onPeriodChange={setPeriod} />
         {availableYears.length > 0 && (
           <div className="flex items-center gap-2">
@@ -66,6 +67,7 @@ export default function ChartsWithPeriod({ orgasms }: ChartsWithPeriodProps) {
         orgasms={orgasms}
         period={period}
         selectedYear={selectedYear}
+        tz={tz}
       />
     </>
   );

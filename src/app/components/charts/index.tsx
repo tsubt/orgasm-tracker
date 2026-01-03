@@ -3,8 +3,10 @@ import ChartsWithPeriod from "./ChartsWithPeriod";
 
 export default async function Charts({
   userId,
+  tz,
 }: {
   userId: string;
+  tz: string;
 }) {
   const orgasms = await prisma.orgasm.findMany({
     where: {
@@ -12,5 +14,5 @@ export default async function Charts({
     },
   });
 
-  return <ChartsWithPeriod orgasms={orgasms} />;
+  return <ChartsWithPeriod orgasms={orgasms} tz={tz} />;
 }
