@@ -50,7 +50,10 @@ function LoadingCalendarChart() {
     <div className="w-full">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
         {Array.from({ length: 12 }).map((_, i) => (
-          <div key={i} className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-48"></div>
+          <div
+            key={i}
+            className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-48"
+          ></div>
         ))}
       </div>
     </div>
@@ -62,7 +65,10 @@ function LoadingWeekChart() {
     <div className="w-full">
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-1 sm:gap-1.5 md:gap-2">
         {Array.from({ length: 52 }).map((_, i) => (
-          <div key={i} className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-24"></div>
+          <div
+            key={i}
+            className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-24"
+          ></div>
         ))}
       </div>
     </div>
@@ -72,7 +78,10 @@ function LoadingWeekChart() {
 function LoadingRadialChart() {
   return (
     <div className="w-full flex justify-center">
-      <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-full" style={{ width: "600px", height: "600px" }}></div>
+      <div
+        className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-full"
+        style={{ width: "600px", height: "600px" }}
+      ></div>
     </div>
   );
 }
@@ -81,7 +90,10 @@ function LoadingTimelineChart() {
   return (
     <div className="w-full overflow-hidden">
       <div className="relative overflow-hidden" style={{ height: "120px" }}>
-        <div className="absolute top-1/2 left-0 right-0 h-px bg-gray-300 dark:bg-gray-600 opacity-30" style={{ transform: "translateY(-50%)" }} />
+        <div
+          className="absolute top-1/2 left-0 right-0 h-px bg-gray-300 dark:bg-gray-600 opacity-30"
+          style={{ transform: "translateY(-50%)" }}
+        />
       </div>
     </div>
   );
@@ -106,7 +118,6 @@ export default function ChartsClient({
       return year === selectedYear;
     });
   }, [orgasms, selectedYear, period]);
-
 
   switch (period) {
     case "Line":
@@ -134,7 +145,10 @@ export default function ChartsClient({
     case "Week":
       return (
         <Suspense fallback={<LoadingWeekChart />}>
-          <MemoizedWeekChart orgasms={yearOrgasms} selectedYear={selectedYear} />
+          <MemoizedWeekChart
+            orgasms={yearOrgasms}
+            selectedYear={selectedYear}
+          />
         </Suspense>
       );
     case "Radial":
