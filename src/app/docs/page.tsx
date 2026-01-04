@@ -47,6 +47,51 @@ export default function DocsPage() {
 
           <section className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Tracking Chastity Sessions
+            </h2>
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+                ⚠️ Important
+              </p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                Chastity tracking must be enabled in your Settings page before you
+                can use this feature. Go to Settings and check the &quot;Track
+                chastity status&quot; option.
+              </p>
+            </div>
+            <p>
+              OrgasmTracker now includes chastity session tracking. You can record
+              periods when you&apos;re locked and track your chastity history:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-4">
+              <li>
+                <strong>Start Time:</strong> When the session began (required)
+              </li>
+              <li>
+                <strong>End Time:</strong> When the session ended (optional - leave
+                blank for active sessions)
+              </li>
+              <li>
+                <strong>Notes:</strong> Optional details about the session
+              </li>
+            </ul>
+            <p>
+              You can access the Chastity page from the sidebar to view all your
+              sessions in a table format. The table shows start time, end time,
+              duration, and notes. You can edit or delete any session. Active
+              sessions (without an end time) are marked as &quot;Active&quot; and
+              show the current duration.
+            </p>
+            <p>
+              If you have chastity tracking enabled, you&apos;ll also see your
+              current chastity status on the dashboard, showing whether you&apos;re
+              currently locked or unlocked, and how long you&apos;ve been in your
+              current state.
+            </p>
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Dashboard
             </h2>
             <p>
