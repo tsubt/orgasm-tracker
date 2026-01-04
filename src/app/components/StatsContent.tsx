@@ -10,6 +10,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import Link from "next/link";
 import LastOrgasmDisplay from "./LastOrgasmDisplay";
 import BreakdownStatsClient from "./BreakdownStatsClient";
+import ChastityStatus from "./ChastityStatus";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -25,6 +26,11 @@ export default async function StatsContent({
   time: string;
   tz: string;
 }) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { trackChastityStatus: true },
+  });
+
   return (
     <div className="flex flex-col gap-6 w-full">
       <div className="flex items-center justify-between">
@@ -38,6 +44,12 @@ export default async function StatsContent({
           Your 2025 Fapped
         </Link>
       </div>
+
+      {user?.trackChastityStatus && (
+        <Suspense fallback={null}>
+          <ChastityStatus trackChastityStatus={user.trackChastityStatus} />
+        </Suspense>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={null}>
@@ -442,7 +454,20 @@ async function DashboardChartsWrapper({
     },
   });
 
-  return <DashboardCharts orgasms={orgasms} tz={tz} userId={userId} />;
+  const chastitySessions = await prisma.chastitySession.findMany({
+    where: {
+      userId: userId,
+    },
+  });
+
+  return (
+    <DashboardCharts
+      orgasms={orgasms}
+      tz={tz}
+      userId={userId}
+      chastitySessions={chastitySessions}
+    />
+  );
 }
 
 function Stat({

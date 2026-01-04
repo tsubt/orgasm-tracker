@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Orgasm } from "@prisma/client";
+import { Orgasm, ChastitySession } from "@prisma/client";
 import dayjs from "dayjs";
 import PickPeriod from "./PickPeriod";
 import ChartsClient from "./ChartsClient";
@@ -9,9 +9,14 @@ import ChartsClient from "./ChartsClient";
 interface ChartsWithPeriodProps {
   orgasms: Orgasm[];
   tz: string;
+  chastitySessions: ChastitySession[];
 }
 
-export default function ChartsWithPeriod({ orgasms, tz }: ChartsWithPeriodProps) {
+export default function ChartsWithPeriod({
+  orgasms,
+  tz,
+  chastitySessions,
+}: ChartsWithPeriodProps) {
   const [period, setPeriod] = useState<string>("Line");
 
   // Calculate available years from orgasms
@@ -68,6 +73,7 @@ export default function ChartsWithPeriod({ orgasms, tz }: ChartsWithPeriodProps)
         period={period}
         selectedYear={selectedYear}
         tz={tz}
+        chastitySessions={chastitySessions}
       />
     </>
   );

@@ -18,6 +18,7 @@ export default async function AccountSettingsPage() {
       username: true,
       publicProfile: true,
       publicOrgasms: true,
+      trackChastityStatus: true,
     },
   });
 
@@ -27,6 +28,7 @@ export default async function AccountSettingsPage() {
         initialUsername={userSettings?.username || ""}
         initialPublicProfile={userSettings?.publicProfile || false}
         initialPublicOrgasms={userSettings?.publicOrgasms || false}
+        initialTrackChastityStatus={userSettings?.trackChastityStatus || false}
       />
     </div>
   );

@@ -5,6 +5,8 @@ import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import { useState } from "react";
+import { PencilSquareIcon } from "@heroicons/react/24/solid";
+import { useRouter } from "next/navigation";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -24,7 +26,8 @@ interface EventDotChartProps {
 
 export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
   const [hoveredOrgasm, setHoveredOrgasm] = useState<Orgasm | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number; alignLeft?: boolean } | null>(null);
+  const router = useRouter();
 
   // Filter and sort orgasms by timestamp (newest first for display)
   const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
@@ -88,7 +91,7 @@ export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
   dayPositions.sort((a, b) => a.x - b.x);
 
   return (
-    <div className="w-full overflow-hidden">
+    <div className="w-full overflow-hidden relative">
       <div className="relative overflow-hidden" style={{ height: "120px" }}>
         {/* Subtle background line */}
         <div
@@ -97,7 +100,7 @@ export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
         />
 
         {/* "Now" label at the top with faint line */}
-        <div className="absolute right-0 top-0 z-20 flex flex-col items-end">
+        <div className="absolute right-0 top-0 z-10 flex flex-col items-end">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 pr-2">
             Now
           </div>
@@ -136,9 +139,16 @@ export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
                   onMouseEnter={(e) => {
                     setHoveredOrgasm(orgasm);
                     const rect = e.currentTarget.getBoundingClientRect();
+                    const chartContainer = e.currentTarget.closest('.w-full');
+                    const chartRect = chartContainer?.getBoundingClientRect();
+                    // Position tooltip to avoid the "Now" label on the right
+                    // If near the right edge (within 120px), position it to the left of the dot
+                    const viewportWidth = window.innerWidth;
+                    const isNearRightEdge = rect.right > viewportWidth - 120;
                     setTooltipPosition({
-                      x: rect.left + rect.width / 2,
+                      x: isNearRightEdge ? rect.left - 10 : rect.left + rect.width / 2,
                       y: rect.top,
+                      alignLeft: isNearRightEdge,
                     });
                   }}
                   onMouseLeave={() => {
@@ -165,11 +175,18 @@ export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
       {/* Tooltip */}
       {hoveredOrgasm && tooltipPosition && (
         <div
-          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-3 shadow-lg pointer-events-none min-w-[180px]"
+          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-3 shadow-lg min-w-[180px]"
           style={{
             left: `${tooltipPosition.x}px`,
             top: `${tooltipPosition.y - 10}px`,
-            transform: "translate(-50%, -100%)",
+            transform: tooltipPosition.alignLeft ? "translate(-100%, -100%)" : "translate(-50%, -100%)",
+          }}
+          onMouseEnter={() => {
+            // Keep tooltip visible when hovering over it
+          }}
+          onMouseLeave={() => {
+            setHoveredOrgasm(null);
+            setTooltipPosition(null);
           }}
         >
           <div className="text-gray-900 dark:text-gray-100 space-y-1 text-sm">
@@ -189,6 +206,17 @@ export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
               <span className="text-xs capitalize">
                 {hoveredOrgasm.type.toLowerCase()}
               </span>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  router.push(`/orgasms?edit=${hoveredOrgasm.id}`);
+                }}
+                className="text-gray-600 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 transition-colors cursor-pointer"
+                title="Edit"
+              >
+                <PencilSquareIcon className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>

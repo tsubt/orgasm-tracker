@@ -1,22 +1,32 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Orgasm } from "@prisma/client";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Orgasm, ChastitySession } from "@prisma/client";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface MonthCalendarProps {
   month: number; // 1-12
   year: number;
   orgasms: Orgasm[];
+  chastitySessions?: ChastitySession[];
 }
 
 export default function MonthCalendar({
   month,
   year,
   orgasms,
+  chastitySessions = [],
 }: MonthCalendarProps) {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
-  const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +48,51 @@ export default function MonthCalendar({
       orgasmsByDate[dateStr].push(o);
     }
   });
+
+  // Create a set of locked dates (days within chastity sessions)
+  const lockedDates = useMemo(() => {
+    const locked = new Set<string>();
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    chastitySessions.forEach((session) => {
+      const startTime = dayjs(session.startTime).utc().tz(userTimezone);
+      const endTime = session.endTime
+        ? dayjs(session.endTime).utc().tz(userTimezone)
+        : dayjs(); // If no end time, consider it active until now
+
+      // Check if this session overlaps with the current month/year
+      const sessionStart = startTime.startOf("day");
+      const sessionEnd = endTime.endOf("day");
+      const monthStart = firstDay.startOf("day");
+      const monthEnd = firstDay.endOf("month").endOf("day");
+
+      // Skip if session doesn't overlap with this month
+      if (sessionEnd.isBefore(monthStart) || sessionStart.isAfter(monthEnd)) {
+        return;
+      }
+
+      // Add all days within the session that fall in this month
+      let current = sessionStart.isAfter(monthStart)
+        ? sessionStart
+        : monthStart;
+      const end = sessionEnd.isBefore(monthEnd) ? sessionEnd : monthEnd;
+
+      while (!current.isAfter(end, "day")) {
+        if (current.month() + 1 === month && current.year() === year) {
+          locked.add(current.format("YYYY-MM-DD"));
+        }
+        current = current.add(1, "day");
+      }
+    });
+
+    return locked;
+  }, [chastitySessions, month, year, firstDay]);
+
+  // Check if a date is locked
+  const isDateLocked = (date: string | null): boolean => {
+    if (!date) return false;
+    return lockedDates.has(date);
+  };
 
   // Days of the week labels
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -62,7 +117,10 @@ export default function MonthCalendar({
     calendarCells.push({ day: null, date: null });
   }
 
-  const handleCellHover = (date: string | null, event: React.MouseEvent<HTMLDivElement>) => {
+  const handleCellHover = (
+    date: string | null,
+    event: React.MouseEvent<HTMLDivElement>
+  ) => {
     if (date && orgasmsByDate[date]) {
       setHoveredDate(date);
       setHoverPosition({ x: event.clientX, y: event.clientY });
@@ -80,31 +138,30 @@ export default function MonthCalendar({
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       const offset = 10;
-      
+
       let left = hoverPosition.x + offset;
       let top = hoverPosition.y + offset;
-      
+
       // Check right edge overflow
       if (left + tooltipRect.width > viewportWidth) {
         left = hoverPosition.x - tooltipRect.width - offset;
       }
-      
+
       // Check left edge overflow
       if (left < 0) {
         left = offset;
       }
-      
+
       // Check bottom edge overflow
       if (top + tooltipRect.height > viewportHeight) {
         top = hoverPosition.y - tooltipRect.height - offset;
       }
-      
+
       // Check top edge overflow
       if (top < 0) {
         top = offset;
       }
-      
-      // eslint-disable-next-line react-compiler/react-compiler
+
       setTooltipStyle({
         left: `${left}px`,
         top: `${top}px`,
@@ -118,14 +175,35 @@ export default function MonthCalendar({
   };
 
   const getColorClass = (date: string | null) => {
-    if (!date || !orgasmsByDate[date] || orgasmsByDate[date].length === 0) {
-      return "bg-gray-100 dark:bg-gray-800";
+    const isLocked = isDateLocked(date);
+    const hasOrgasms =
+      date && orgasmsByDate[date] && orgasmsByDate[date].length > 0;
+
+    // If locked and has orgasms, use blue colors
+    if (isLocked && hasOrgasms) {
+      const count = orgasmsByDate[date!].length;
+      if (count === 1) return "bg-blue-300 dark:bg-blue-900";
+      if (count === 2) return "bg-blue-400 dark:bg-blue-800";
+      if (count === 3) return "bg-blue-500 dark:bg-blue-700";
+      return "bg-blue-600 dark:bg-blue-600";
     }
-    const count = orgasmsByDate[date].length;
-    if (count === 1) return "bg-pink-300 dark:bg-pink-900";
-    if (count === 2) return "bg-pink-400 dark:bg-pink-800";
-    if (count === 3) return "bg-pink-500 dark:bg-pink-700";
-    return "bg-pink-600 dark:bg-pink-600";
+
+    // If locked but no orgasms, use green
+    if (isLocked) {
+      return "bg-green-200 dark:bg-green-900";
+    }
+
+    // If not locked and has orgasms, use pink colors
+    if (hasOrgasms) {
+      const count = orgasmsByDate[date!].length;
+      if (count === 1) return "bg-pink-300 dark:bg-pink-900";
+      if (count === 2) return "bg-pink-400 dark:bg-pink-800";
+      if (count === 3) return "bg-pink-500 dark:bg-pink-700";
+      return "bg-pink-600 dark:bg-pink-600";
+    }
+
+    // Default: no orgasms, not locked
+    return "bg-gray-100 dark:bg-gray-800";
   };
 
   const monthName = firstDay.format("MMMM");
@@ -164,8 +242,12 @@ export default function MonthCalendar({
         {/* Calendar grid - hidden on md and smaller, shown on lg+ */}
         <div className="hidden lg:grid grid-cols-7 gap-1">
           {calendarCells.map((cell, index) => {
-            const hasOrgasms = cell.date && orgasmsByDate[cell.date] && orgasmsByDate[cell.date].length > 0;
-            const isToday = cell.date && dayjs(cell.date).isSame(dayjs(), "day");
+            const hasOrgasms =
+              cell.date &&
+              orgasmsByDate[cell.date] &&
+              orgasmsByDate[cell.date].length > 0;
+            const isToday =
+              cell.date && dayjs(cell.date).isSame(dayjs(), "day");
 
             return (
               <div
@@ -210,7 +292,8 @@ export default function MonthCalendar({
               {dayjs(hoveredDate).format("MMMM D, YYYY")}
             </div>
             <div className="text-xs text-gray-600 dark:text-gray-400">
-              {orgasmsByDate[hoveredDate].length} {orgasmsByDate[hoveredDate].length === 1 ? "orgasm" : "orgasms"}
+              {orgasmsByDate[hoveredDate].length}{" "}
+              {orgasmsByDate[hoveredDate].length === 1 ? "orgasm" : "orgasms"}
             </div>
             <div className="space-y-1 pt-1 border-t border-gray-200 dark:border-gray-700">
               {orgasmsByDate[hoveredDate].map((orgasm) => (

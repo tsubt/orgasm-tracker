@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, memo, Suspense } from "react";
-import { Orgasm } from "@prisma/client";
+import { Orgasm, ChastitySession } from "@prisma/client";
 import LineChartOnly from "./LineChartOnly";
 import MonthChart from "./MonthChart";
 import WeekChart from "./WeekChart";
@@ -14,6 +14,7 @@ interface ChartsClientProps {
   period: string;
   selectedYear: number;
   tz: string;
+  chastitySessions: ChastitySession[];
 }
 
 // Memoize chart components to prevent re-renders when props haven't changed
@@ -91,6 +92,7 @@ export default function ChartsClient({
   period,
   selectedYear,
   tz,
+  chastitySessions,
 }: ChartsClientProps) {
   // Filter orgasms by year for charts that need it (Calendar, Week, Radial)
   // Line and Frequency charts use all orgasms
@@ -122,7 +124,11 @@ export default function ChartsClient({
     case "Calendar":
       return (
         <Suspense fallback={<LoadingCalendarChart />}>
-          <MemoizedMonthChart orgasms={yearOrgasms} selectedYear={selectedYear} />
+          <MemoizedMonthChart
+            orgasms={yearOrgasms}
+            selectedYear={selectedYear}
+            chastitySessions={chastitySessions}
+          />
         </Suspense>
       );
     case "Week":

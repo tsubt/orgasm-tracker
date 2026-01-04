@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useRef } from "react";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,10 +11,12 @@ export default function AccountSettingsForm({
   initialUsername,
   initialPublicProfile,
   initialPublicOrgasms,
+  initialTrackChastityStatus,
 }: {
   initialUsername: string;
   initialPublicProfile: boolean;
   initialPublicOrgasms: boolean;
+  initialTrackChastityStatus: boolean;
 }) {
   const router = useRouter();
   const [newUsername, setNewUsername] = useState(initialUsername);
@@ -27,46 +29,142 @@ export default function AccountSettingsForm({
   const [newOVisibility, setNewOVisibility] = useState<"public" | "private">(
     initialPublicOrgasms ? "public" : "private"
   );
+  const [trackChastityStatus, setTrackChastityStatus] = useState(
+    initialTrackChastityStatus
+  );
+  const [hasActiveSession, setHasActiveSession] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Sync state with props when they change - use a ref to track if we've initialized
+  const prevInitialUsername = useRef(initialUsername);
+  const prevInitialPublicProfile = useRef(initialPublicProfile);
+  const prevInitialPublicOrgasms = useRef(initialPublicOrgasms);
+  const prevInitialTrackChastityStatus = useRef(initialTrackChastityStatus);
+
   useEffect(() => {
-    setNewUsername(initialUsername);
-    setNewVisibility(initialPublicProfile ? "public" : "private");
-    setNewOVisibility(initialPublicOrgasms ? "public" : "private");
-  }, [initialUsername, initialPublicProfile, initialPublicOrgasms]);
+    if (prevInitialUsername.current !== initialUsername) {
+      prevInitialUsername.current = initialUsername;
+      startTransition(() => {
+        setNewUsername(initialUsername);
+      });
+    }
+    if (prevInitialPublicProfile.current !== initialPublicProfile) {
+      prevInitialPublicProfile.current = initialPublicProfile;
+      startTransition(() => {
+        setNewVisibility(initialPublicProfile ? "public" : "private");
+      });
+    }
+    if (prevInitialPublicOrgasms.current !== initialPublicOrgasms) {
+      prevInitialPublicOrgasms.current = initialPublicOrgasms;
+      startTransition(() => {
+        setNewOVisibility(initialPublicOrgasms ? "public" : "private");
+      });
+    }
+    if (prevInitialTrackChastityStatus.current !== initialTrackChastityStatus) {
+      prevInitialTrackChastityStatus.current = initialTrackChastityStatus;
+      startTransition(() => {
+        setTrackChastityStatus(initialTrackChastityStatus);
+      });
+    }
+  }, [
+    initialUsername,
+    initialPublicProfile,
+    initialPublicOrgasms,
+    initialTrackChastityStatus,
+    startTransition,
+  ]);
+
+  // Check for active session when trackChastityStatus changes
+  useEffect(() => {
+    if (!trackChastityStatus) {
+      startTransition(() => {
+        setHasActiveSession(false);
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch("/api/chastity")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.sessions) {
+          const active = data.sessions.find(
+            (s: { endTime: Date | null }) => !s.endTime
+          );
+          startTransition(() => {
+            if (!cancelled) {
+              setHasActiveSession(!!active);
+            }
+          });
+        }
+      })
+      .catch(() => {
+        // Ignore errors
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trackChastityStatus, startTransition]);
 
   useEffect(() => {
     let cancelled = false;
 
     if (newUsername === "") {
-      setNewUsernameOK("empty");
+      startTransition(() => {
+        if (!cancelled) {
+          setNewUsernameOK("empty");
+        }
+      });
       return;
     }
     if (newUsername === initialUsername) {
-      setNewUsernameOK("ok");
+      startTransition(() => {
+        if (!cancelled) {
+          setNewUsernameOK("ok");
+        }
+      });
       return;
     }
     if (newUsername.length < 3) {
-      setNewUsernameOK("invalid");
+      startTransition(() => {
+        if (!cancelled) {
+          setNewUsernameOK("invalid");
+        }
+      });
       return;
     }
     // Check if username contains only alphanumeric characters, underscores, and dots
     if (!/^[a-zA-Z0-9_.]+$/.test(newUsername)) {
-      setNewUsernameOK("invalid");
+      startTransition(() => {
+        if (!cancelled) {
+          setNewUsernameOK("invalid");
+        }
+      });
       return;
     }
 
-    setNewUsernameOK("checking");
+    startTransition(() => {
+      if (!cancelled) {
+        setNewUsernameOK("checking");
+      }
+    });
     checkUsername(newUsername).then((available) => {
       if (!cancelled) {
-        setNewUsernameOK(available ? "ok" : "taken");
+        startTransition(() => {
+          if (!cancelled) {
+            setNewUsernameOK(available ? "ok" : "taken");
+          }
+        });
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [newUsername, initialUsername]);
+  }, [newUsername, initialUsername, startTransition]);
 
   const handleSave = async () => {
     if (newUsernameOK !== "ok" && newUsernameOK !== "empty") return;
@@ -78,11 +176,14 @@ export default function AccountSettingsForm({
           username: newUsername,
           publicProfile: newVisibility === "public",
           publicOrgasms: newOVisibility === "public",
+          trackChastityStatus,
         });
         toast.success("Settings saved!", { id: toastId });
         router.refresh();
       } catch (error) {
-        toast.error("Failed to save settings");
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to save settings";
+        toast.error(errorMessage);
         console.error(error);
       }
     });
@@ -136,7 +237,10 @@ export default function AccountSettingsForm({
               ) : null}
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Username must be at least 3 characters and contain only letters, numbers, underscores, and dots (no spaces, emojis, or other special characters). If your username is blank, your profile will not be visible to anyone.
+              Username must be at least 3 characters and contain only letters,
+              numbers, underscores, and dots (no spaces, emojis, or other
+              special characters). If your username is blank, your profile will
+              not be visible to anyone.
             </p>
           </div>
         </div>
@@ -236,6 +340,53 @@ export default function AccountSettingsForm({
           </div>
         )}
 
+        {/* Chastity Tracking Section */}
+        <div className="flex flex-col gap-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            Chastity tracking
+          </h3>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="trackChastityStatus"
+                checked={trackChastityStatus}
+                onChange={(e) => {
+                  if (!e.target.checked && hasActiveSession) {
+                    // Prevent unchecking if there's an active session
+                    return;
+                  }
+                  setTrackChastityStatus(e.target.checked);
+                }}
+                disabled={!trackChastityStatus && hasActiveSession}
+                className="mt-1 h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 rounded focus:ring-pink-500 dark:focus:ring-pink-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <div className="flex-1">
+                <label
+                  htmlFor="trackChastityStatus"
+                  className={`text-gray-900 dark:text-white cursor-pointer ${
+                    !trackChastityStatus && hasActiveSession
+                      ? "cursor-not-allowed opacity-50"
+                      : ""
+                  }`}
+                >
+                  Track chastity status
+                </label>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Enable tracking of chastity sessions with start and end times.
+                  This is currently in development, so please let me know if you
+                  have suggestions or feedback.
+                </p>
+                {!trackChastityStatus && hasActiveSession && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-2">
+                    You have an active session. Please end it before disabling
+                    chastity tracking.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Save Button */}
         <div className="flex items-center justify-end pt-4 border-t border-gray-200 dark:border-gray-700">

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import ChartsClient from "./charts/ChartsClient";
-import { Orgasm } from "@prisma/client";
+import { Orgasm, ChastitySession } from "@prisma/client";
 import dayjs from "dayjs";
 
 const CHART_OPTIONS = ["Line", "Frequency", "Calendar", "Week", "Radial", "Timeline"];
@@ -19,12 +19,14 @@ interface DashboardChartsProps {
   orgasms: Orgasm[];
   tz: string;
   userId: string;
+  chastitySessions?: ChastitySession[];
 }
 
 export default function DashboardCharts({
   orgasms,
   tz,
   userId,
+  chastitySessions = [],
 }: DashboardChartsProps) {
   const [charts, setCharts] = useState<DashboardChart[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -159,13 +161,13 @@ export default function DashboardCharts({
           key={chart.id}
           className="relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4"
         >
-          <div className="absolute top-4 right-4 z-10">
+          <div className="absolute top-4 right-4 z-50">
             <div className="relative">
               <button
                 onClick={() =>
                   setEditingChartId(editingChartId === chart.id ? null : chart.id)
                 }
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-pink-500 dark:hover:text-pink-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-pink-500 dark:hover:text-pink-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors bg-white dark:bg-gray-800 shadow-sm"
                 title="Edit chart"
               >
                 <PencilIcon className="h-4 w-4" />
@@ -202,6 +204,7 @@ export default function DashboardCharts({
             period={chart.chartName}
             selectedYear={selectedYear}
             tz={tz}
+            chastitySessions={chastitySessions}
           />
         </div>
       ))}

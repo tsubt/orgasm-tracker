@@ -30,17 +30,34 @@ export async function updateSettings(data: {
   username: string;
   publicProfile: boolean;
   publicOrgasms: boolean;
+  trackChastityStatus?: boolean;
 }) {
   const session = await auth();
   if (!session?.user) {
     throw new Error("Unauthorized");
   }
 
-  const { username, publicProfile, publicOrgasms } = data;
+  const { username, publicProfile, publicOrgasms, trackChastityStatus } = data;
 
   // Validate username format before saving
   const isValid =
     !username || (username.length >= 3 && isValidUsername(username));
+
+  // If disabling chastity tracking, check for active session
+  if (trackChastityStatus === false) {
+    const activeSession = await prisma.chastitySession.findFirst({
+      where: {
+        userId: session.user.id,
+        endTime: null,
+      },
+    });
+
+    if (activeSession) {
+      throw new Error(
+        "Cannot disable chastity tracking while there is an active session. Please end the session first."
+      );
+    }
+  }
 
   await prisma.user.update({
     where: {
@@ -50,12 +67,15 @@ export async function updateSettings(data: {
       username: isValid ? username : undefined,
       publicProfile: isValid ? publicProfile : false,
       publicOrgasms: isValid && publicProfile ? publicOrgasms : false,
+      trackChastityStatus:
+        trackChastityStatus !== undefined ? trackChastityStatus : undefined,
     },
   });
 
   revalidatePath("/settings");
   revalidatePath("/users");
   revalidatePath(`/u/${username}`);
+  revalidatePath("/");
 }
 
 export async function deleteAccount() {

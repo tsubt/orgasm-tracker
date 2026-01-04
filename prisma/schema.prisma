@@ -58,12 +58,15 @@ model User {
   publicOrgasms Boolean @default(false)
   publicProfile Boolean @default(false)
 
+  trackChastityStatus Boolean @default(false)
+
   defaultProfileChart String?
 
-  accounts        Account[]
-  sessions        Session[]
-  orgasms         Orgasm[]
-  dashboardCharts DashboardChart[]
+  accounts         Account[]
+  sessions         Session[]
+  orgasms          Orgasm[]
+  dashboardCharts  DashboardChart[]
+  chastitySessions ChastitySession[]
 }
 
 model VerificationToken {
@@ -110,4 +113,17 @@ model DashboardChart {
 
   @@unique([userId, chartPosition])
   @@index([userId])
+}
+
+model ChastitySession {
+  id        String    @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime?
+  note      String?   @db.Text
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, startTime])
 }

@@ -14,5 +14,17 @@ export default async function Charts({
     },
   });
 
-  return <ChartsWithPeriod orgasms={orgasms} tz={tz} />;
+  const chastitySessions = await prisma.chastitySession.findMany({
+    where: {
+      userId: userId,
+    },
+  });
+
+  return (
+    <ChartsWithPeriod
+      orgasms={orgasms}
+      tz={tz}
+      chastitySessions={chastitySessions}
+    />
+  );
 }
