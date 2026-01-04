@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Orgasm } from "@prisma/client";
+import { Orgasm, ChastitySession } from "@prisma/client";
 import ChartsClient from "./charts/ChartsClient";
 import dayjs from "dayjs";
 
@@ -11,12 +11,14 @@ interface ProfileChartProps {
   orgasms: Orgasm[];
   tz: string;
   defaultChart?: string | null;
+  chastitySessions?: ChastitySession[];
 }
 
 export default function ProfileChart({
   orgasms,
   tz,
   defaultChart,
+  chastitySessions = [],
 }: ProfileChartProps) {
   // Use defaultChart or fallback to "Frequency"
   const initialChartType = defaultChart || "Frequency";
@@ -95,6 +97,7 @@ export default function ProfileChart({
         period={chartType}
         selectedYear={selectedYear}
         tz={tz}
+        chastitySessions={chastitySessions}
       />
     </div>
   );

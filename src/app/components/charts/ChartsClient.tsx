@@ -14,7 +14,7 @@ interface ChartsClientProps {
   period: string;
   selectedYear: number;
   tz: string;
-  chastitySessions: ChastitySession[];
+  chastitySessions?: ChastitySession[];
 }
 
 // Memoize chart components to prevent re-renders when props haven't changed
@@ -92,7 +92,7 @@ export default function ChartsClient({
   period,
   selectedYear,
   tz,
-  chastitySessions,
+  chastitySessions = [],
 }: ChartsClientProps) {
   // Filter orgasms by year for charts that need it (Calendar, Week, Radial)
   // Line and Frequency charts use all orgasms
