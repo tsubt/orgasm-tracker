@@ -20,6 +20,7 @@ export default async function SettingsPage() {
       publicProfile: true,
       publicOrgasms: true,
       trackChastityStatus: true,
+      firstDayOfWeek: true,
     },
   });
 
@@ -34,6 +35,7 @@ export default async function SettingsPage() {
           initialPublicProfile={userSettings?.publicProfile || false}
           initialPublicOrgasms={userSettings?.publicOrgasms || false}
           initialTrackChastityStatus={userSettings?.trackChastityStatus || false}
+          initialFirstDayOfWeek={userSettings?.firstDayOfWeek ?? 1}
         />
 
         {/* Danger Zone */}

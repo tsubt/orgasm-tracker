@@ -12,11 +12,13 @@ export default function AccountSettingsForm({
   initialPublicProfile,
   initialPublicOrgasms,
   initialTrackChastityStatus,
+  initialFirstDayOfWeek,
 }: {
   initialUsername: string;
   initialPublicProfile: boolean;
   initialPublicOrgasms: boolean;
   initialTrackChastityStatus: boolean;
+  initialFirstDayOfWeek: number;
 }) {
   const router = useRouter();
   const [newUsername, setNewUsername] = useState(initialUsername);
@@ -32,6 +34,7 @@ export default function AccountSettingsForm({
   const [trackChastityStatus, setTrackChastityStatus] = useState(
     initialTrackChastityStatus
   );
+  const [firstDayOfWeek, setFirstDayOfWeek] = useState(initialFirstDayOfWeek);
   const [hasActiveSession, setHasActiveSession] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -40,6 +43,7 @@ export default function AccountSettingsForm({
   const prevInitialPublicProfile = useRef(initialPublicProfile);
   const prevInitialPublicOrgasms = useRef(initialPublicOrgasms);
   const prevInitialTrackChastityStatus = useRef(initialTrackChastityStatus);
+  const prevInitialFirstDayOfWeek = useRef(initialFirstDayOfWeek);
 
   useEffect(() => {
     if (prevInitialUsername.current !== initialUsername) {
@@ -66,11 +70,18 @@ export default function AccountSettingsForm({
         setTrackChastityStatus(initialTrackChastityStatus);
       });
     }
+    if (prevInitialFirstDayOfWeek.current !== initialFirstDayOfWeek) {
+      prevInitialFirstDayOfWeek.current = initialFirstDayOfWeek;
+      startTransition(() => {
+        setFirstDayOfWeek(initialFirstDayOfWeek);
+      });
+    }
   }, [
     initialUsername,
     initialPublicProfile,
     initialPublicOrgasms,
     initialTrackChastityStatus,
+    initialFirstDayOfWeek,
     startTransition,
   ]);
 
@@ -177,6 +188,7 @@ export default function AccountSettingsForm({
           publicProfile: newVisibility === "public",
           publicOrgasms: newOVisibility === "public",
           trackChastityStatus,
+          firstDayOfWeek,
         });
         toast.success("Settings saved!", { id: toastId });
         router.refresh();
@@ -339,6 +351,38 @@ export default function AccountSettingsForm({
             </div>
           </div>
         )}
+
+        {/* First Day of Week Section */}
+        <div className="flex flex-col gap-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            Calendar Settings
+          </h3>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="firstDayOfWeek"
+              className="text-sm font-medium text-gray-900 dark:text-white"
+            >
+              First day of week
+            </label>
+            <select
+              id="firstDayOfWeek"
+              value={firstDayOfWeek}
+              onChange={(e) => setFirstDayOfWeek(parseInt(e.target.value))}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500 dark:focus:ring-pink-400"
+            >
+              <option value={0}>Sunday</option>
+              <option value={1}>Monday</option>
+              <option value={2}>Tuesday</option>
+              <option value={3}>Wednesday</option>
+              <option value={4}>Thursday</option>
+              <option value={5}>Friday</option>
+              <option value={6}>Saturday</option>
+            </select>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Choose which day the calendar view should start on.
+            </p>
+          </div>
+        </div>
 
         {/* Chastity Tracking Section */}
         <div className="flex flex-col gap-4">

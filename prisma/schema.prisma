@@ -62,6 +62,8 @@ model User {
 
   defaultProfileChart String?
 
+  firstDayOfWeek Int @default(1) // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
   accounts         Account[]
   sessions         Session[]
   orgasms          Orgasm[]

@@ -10,12 +10,14 @@ interface ChartsWithPeriodProps {
   orgasms: Orgasm[];
   tz: string;
   chastitySessions: ChastitySession[];
+  firstDayOfWeek: number;
 }
 
 export default function ChartsWithPeriod({
   orgasms,
   tz,
   chastitySessions,
+  firstDayOfWeek,
 }: ChartsWithPeriodProps) {
   const [period, setPeriod] = useState<string>("Line");
 
@@ -74,6 +76,7 @@ export default function ChartsWithPeriod({
         selectedYear={selectedYear}
         tz={tz}
         chastitySessions={chastitySessions}
+        firstDayOfWeek={firstDayOfWeek}
       />
     </>
   );

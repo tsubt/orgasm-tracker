@@ -19,6 +19,7 @@ export default async function AccountSettingsPage() {
       publicProfile: true,
       publicOrgasms: true,
       trackChastityStatus: true,
+      firstDayOfWeek: true,
     },
   });
 
@@ -29,6 +30,7 @@ export default async function AccountSettingsPage() {
         initialPublicProfile={userSettings?.publicProfile || false}
         initialPublicOrgasms={userSettings?.publicOrgasms || false}
         initialTrackChastityStatus={userSettings?.trackChastityStatus || false}
+        initialFirstDayOfWeek={userSettings?.firstDayOfWeek ?? 1}
       />
     </div>
   );

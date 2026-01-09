@@ -20,11 +20,17 @@ export default async function Charts({
     },
   });
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { firstDayOfWeek: true },
+  });
+
   return (
     <ChartsWithPeriod
       orgasms={orgasms}
       tz={tz}
       chastitySessions={chastitySessions}
+      firstDayOfWeek={user?.firstDayOfWeek ?? 1}
     />
   );
 }

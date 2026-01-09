@@ -31,13 +31,14 @@ export async function updateSettings(data: {
   publicProfile: boolean;
   publicOrgasms: boolean;
   trackChastityStatus?: boolean;
+  firstDayOfWeek?: number;
 }) {
   const session = await auth();
   if (!session?.user) {
     throw new Error("Unauthorized");
   }
 
-  const { username, publicProfile, publicOrgasms, trackChastityStatus } = data;
+  const { username, publicProfile, publicOrgasms, trackChastityStatus, firstDayOfWeek } = data;
 
   // Validate username format before saving
   const isValid =
@@ -69,6 +70,8 @@ export async function updateSettings(data: {
       publicOrgasms: isValid && publicProfile ? publicOrgasms : false,
       trackChastityStatus:
         trackChastityStatus !== undefined ? trackChastityStatus : undefined,
+      firstDayOfWeek:
+        firstDayOfWeek !== undefined ? firstDayOfWeek : undefined,
     },
   });
 

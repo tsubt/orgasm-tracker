@@ -20,6 +20,7 @@ interface DashboardChartsProps {
   tz: string;
   userId: string;
   chastitySessions?: ChastitySession[];
+  firstDayOfWeek: number;
 }
 
 export default function DashboardCharts({
@@ -27,6 +28,7 @@ export default function DashboardCharts({
   tz,
   userId,
   chastitySessions = [],
+  firstDayOfWeek,
 }: DashboardChartsProps) {
   const [charts, setCharts] = useState<DashboardChart[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -205,6 +207,7 @@ export default function DashboardCharts({
             selectedYear={selectedYear}
             tz={tz}
             chastitySessions={chastitySessions}
+            firstDayOfWeek={firstDayOfWeek}
           />
         </div>
       ))}

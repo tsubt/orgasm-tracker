@@ -15,6 +15,7 @@ interface ChartsClientProps {
   selectedYear: number;
   tz: string;
   chastitySessions?: ChastitySession[];
+  firstDayOfWeek: number;
 }
 
 // Memoize chart components to prevent re-renders when props haven't changed
@@ -105,6 +106,7 @@ export default function ChartsClient({
   selectedYear,
   tz,
   chastitySessions = [],
+  firstDayOfWeek,
 }: ChartsClientProps) {
   // Filter orgasms by year for charts that need it (Calendar, Week, Radial)
   // Line and Frequency charts use all orgasms
@@ -139,6 +141,7 @@ export default function ChartsClient({
             orgasms={yearOrgasms}
             selectedYear={selectedYear}
             chastitySessions={chastitySessions}
+            firstDayOfWeek={firstDayOfWeek}
           />
         </Suspense>
       );

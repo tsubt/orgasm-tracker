@@ -14,6 +14,7 @@ interface MonthCalendarProps {
   year: number;
   orgasms: Orgasm[];
   chastitySessions?: ChastitySession[];
+  firstDayOfWeek: number; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 }
 
 export default function MonthCalendar({
@@ -21,6 +22,7 @@ export default function MonthCalendar({
   year,
   orgasms,
   chastitySessions = [],
+  firstDayOfWeek,
 }: MonthCalendarProps) {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{
@@ -33,7 +35,11 @@ export default function MonthCalendar({
   // Get the first day of the month and the number of days
   const firstDay = dayjs(`${year}-${month.toString().padStart(2, "0")}-01`);
   const daysInMonth = firstDay.daysInMonth();
-  const startDayOfWeek = firstDay.day(); // 0 = Sunday, 6 = Saturday
+  const firstDayOfMonth = firstDay.day(); // 0 = Sunday, 6 = Saturday
+  
+  // Calculate the offset based on user's preferred first day of week
+  // Adjust startDayOfWeek so that the calendar starts on the user's preferred day
+  const startDayOfWeek = (firstDayOfMonth - firstDayOfWeek + 7) % 7;
 
   // Group orgasms by date for this month
   const orgasmsByDate: { [date: string]: Orgasm[] } = {};
@@ -94,8 +100,12 @@ export default function MonthCalendar({
     return lockedDates.has(date);
   };
 
-  // Days of the week labels
-  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Days of the week labels - reorder based on firstDayOfWeek
+  const allDayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dayLabels = [
+    ...allDayLabels.slice(firstDayOfWeek),
+    ...allDayLabels.slice(0, firstDayOfWeek),
+  ];
 
   // Generate calendar cells
   const calendarCells: Array<{ day: number | null; date: string | null }> = [];

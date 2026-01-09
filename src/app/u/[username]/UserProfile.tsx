@@ -24,6 +24,18 @@ export default async function UserProfile({ username }: { username: string }) {
     where: {
       username: username,
     },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      image: true,
+      bio: true,
+      publicProfile: true,
+      publicOrgasms: true,
+      defaultProfileChart: true,
+      firstDayOfWeek: true,
+      joinedAt: true,
+    },
   });
 
   if (!user || !user.publicProfile) {
@@ -177,6 +189,7 @@ export default async function UserProfile({ username }: { username: string }) {
               orgasms={validOrgasms}
               tz="UTC"
               defaultChart={user.defaultProfileChart}
+              firstDayOfWeek={user.firstDayOfWeek ?? 1}
             />
           </Suspense>
         </div>

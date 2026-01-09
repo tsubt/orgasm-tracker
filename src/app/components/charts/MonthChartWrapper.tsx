@@ -7,12 +7,14 @@ interface MonthChartWrapperProps {
   orgasms: Orgasm[];
   selectedYear: number;
   chastitySessions: ChastitySession[];
+  firstDayOfWeek: number;
 }
 
 export default function MonthChartWrapper({
   orgasms,
   selectedYear,
   chastitySessions,
+  firstDayOfWeek,
 }: MonthChartWrapperProps) {
   // Note: orgasms are already filtered by year in ChartsClient
   // No need to filter again here
@@ -44,6 +46,7 @@ export default function MonthChartWrapper({
             year={selectedYear}
             orgasms={orgasms}
             chastitySessions={chastitySessions}
+            firstDayOfWeek={firstDayOfWeek}
           />
         ))}
       </div>

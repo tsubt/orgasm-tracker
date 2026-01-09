@@ -12,6 +12,7 @@ interface ProfileChartProps {
   tz: string;
   defaultChart?: string | null;
   chastitySessions?: ChastitySession[];
+  firstDayOfWeek: number;
 }
 
 export default function ProfileChart({
@@ -19,6 +20,7 @@ export default function ProfileChart({
   tz,
   defaultChart,
   chastitySessions = [],
+  firstDayOfWeek,
 }: ProfileChartProps) {
   // Use defaultChart or fallback to "Frequency"
   const initialChartType = defaultChart || "Frequency";
@@ -98,6 +100,7 @@ export default function ProfileChart({
         selectedYear={selectedYear}
         tz={tz}
         chastitySessions={chastitySessions}
+        firstDayOfWeek={firstDayOfWeek}
       />
     </div>
   );

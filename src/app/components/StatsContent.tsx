@@ -460,12 +460,18 @@ async function DashboardChartsWrapper({
     },
   });
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { firstDayOfWeek: true },
+  });
+
   return (
     <DashboardCharts
       orgasms={orgasms}
       tz={tz}
       userId={userId}
       chastitySessions={chastitySessions}
+      firstDayOfWeek={user?.firstDayOfWeek ?? 1}
     />
   );
 }
