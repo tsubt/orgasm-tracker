@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Orgasm, ChastitySession } from "@prisma/client";
 import MonthCalendar from "./MonthCalendar";
+import dayjs from "dayjs";
 
 interface MonthChartWrapperProps {
   orgasms: Orgasm[];
@@ -18,6 +20,25 @@ export default function MonthChartWrapper({
 }: MonthChartWrapperProps) {
   // Note: orgasms are already filtered by year in ChartsClient
   // No need to filter again here
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
 
   return (
     <div className="w-full">
@@ -37,8 +58,22 @@ export default function MonthChartWrapper({
         </div>
       </div>
 
-      {/* Calendar grid: 4 columns x 3 rows on large screens */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+      {/* Mobile: Show only current month with dropdown */}
+      <div className="lg:hidden">
+        <MonthCalendar
+          month={selectedMonth}
+          year={selectedYear}
+          orgasms={orgasms}
+          chastitySessions={chastitySessions}
+          firstDayOfWeek={firstDayOfWeek}
+          selectedMonth={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          monthNames={monthNames}
+        />
+      </div>
+
+      {/* Desktop: Show all 12 months */}
+      <div className="hidden lg:grid grid-cols-4 gap-6">
         {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
           <MonthCalendar
             key={month}

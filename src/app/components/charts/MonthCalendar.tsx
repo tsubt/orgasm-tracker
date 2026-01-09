@@ -15,6 +15,9 @@ interface MonthCalendarProps {
   orgasms: Orgasm[];
   chastitySessions?: ChastitySession[];
   firstDayOfWeek: number; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  selectedMonth?: number; // For mobile dropdown
+  onMonthChange?: (month: number) => void; // For mobile dropdown
+  monthNames?: string[]; // For mobile dropdown
 }
 
 export default function MonthCalendar({
@@ -23,6 +26,9 @@ export default function MonthCalendar({
   orgasms,
   chastitySessions = [],
   firstDayOfWeek,
+  selectedMonth,
+  onMonthChange,
+  monthNames,
 }: MonthCalendarProps) {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{
@@ -30,6 +36,7 @@ export default function MonthCalendar({
     y: number;
   } | null>(null);
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const [isTouchTooltip, setIsTouchTooltip] = useState<boolean>(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Get the first day of the month and the number of days
@@ -183,6 +190,7 @@ export default function MonthCalendar({
     if (!date) {
       setHoveredDate(null);
       setHoverPosition(null);
+      setIsTouchTooltip(false);
       return;
     }
 
@@ -194,9 +202,83 @@ export default function MonthCalendar({
     if (hasOrgasms || hasChastityEvents) {
       setHoveredDate(date);
       setHoverPosition({ x: event.clientX, y: event.clientY });
+      setIsTouchTooltip(false);
     } else {
       setHoveredDate(null);
       setHoverPosition(null);
+      setIsTouchTooltip(false);
+    }
+  };
+
+  const handleCellClick = (
+    date: string | null,
+    event: React.MouseEvent<HTMLDivElement>
+  ) => {
+    if (!date) {
+      setHoveredDate(null);
+      setHoverPosition(null);
+      setIsTouchTooltip(false);
+      return;
+    }
+
+    const hasOrgasms = orgasmsByDate[date] && orgasmsByDate[date].length > 0;
+    const chastityEvents = getChastityEventsForDate(date);
+    const hasChastityEvents =
+      chastityEvents.starts.length > 0 || chastityEvents.ends.length > 0;
+
+    if (hasOrgasms || hasChastityEvents) {
+      // Toggle tooltip if clicking the same date, otherwise show new date
+      if (hoveredDate === date) {
+        setHoveredDate(null);
+        setHoverPosition(null);
+        setIsTouchTooltip(false);
+      } else {
+        setHoveredDate(date);
+        setHoverPosition({ x: event.clientX, y: event.clientY });
+        setIsTouchTooltip(false);
+      }
+    } else {
+      setHoveredDate(null);
+      setHoverPosition(null);
+      setIsTouchTooltip(false);
+    }
+  };
+
+  const handleCellTouch = (
+    date: string | null,
+    event: React.TouchEvent<HTMLDivElement>
+  ) => {
+    event.preventDefault(); // Prevent mouse events from firing
+    if (!date) {
+      setHoveredDate(null);
+      setHoverPosition(null);
+      setIsTouchTooltip(false);
+      return;
+    }
+
+    const hasOrgasms = orgasmsByDate[date] && orgasmsByDate[date].length > 0;
+    const chastityEvents = getChastityEventsForDate(date);
+    const hasChastityEvents =
+      chastityEvents.starts.length > 0 || chastityEvents.ends.length > 0;
+
+    if (hasOrgasms || hasChastityEvents) {
+      // Toggle tooltip if tapping the same date, otherwise show new date
+      if (hoveredDate === date) {
+        setHoveredDate(null);
+        setHoverPosition(null);
+        setIsTouchTooltip(false);
+      } else {
+        const touch = event.touches[0] || event.changedTouches[0];
+        if (touch) {
+          setHoveredDate(date);
+          setHoverPosition({ x: touch.clientX, y: touch.clientY });
+          setIsTouchTooltip(true);
+        }
+      }
+    } else {
+      setHoveredDate(null);
+      setHoverPosition(null);
+      setIsTouchTooltip(false);
     }
   };
 
@@ -239,9 +321,41 @@ export default function MonthCalendar({
     }
   }, [hoverPosition]);
 
+  // Close tooltip when clicking outside (only for mouse events, not touch)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        hoveredDate &&
+        !isTouchTooltip &&
+        tooltipRef.current &&
+        !tooltipRef.current.contains(event.target as Node)
+      ) {
+        // Check if click is on a calendar cell
+        const target = event.target as HTMLElement;
+        const calendarCell = target.closest("[data-calendar-cell]");
+        if (!calendarCell) {
+          setHoveredDate(null);
+          setHoverPosition(null);
+          setIsTouchTooltip(false);
+        }
+      }
+    };
+
+    if (hoveredDate && !isTouchTooltip) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [hoveredDate, isTouchTooltip]);
+
   const handleCellLeave = () => {
-    setHoveredDate(null);
-    setHoverPosition(null);
+    // Only close on mouse leave if it's not a touch tooltip
+    if (!isTouchTooltip) {
+      setHoveredDate(null);
+      setHoverPosition(null);
+    }
   };
 
   const getColorClass = (date: string | null) => {
@@ -307,21 +421,52 @@ export default function MonthCalendar({
     0
   );
 
+  const isMobile = selectedMonth !== undefined && onMonthChange !== undefined;
+
   return (
     <div className="relative">
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
         {/* Month header */}
         <div className="flex items-center justify-center gap-2 mb-2 sm:mb-2">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {monthName}
-          </h3>
+          {isMobile && monthNames ? (
+            <div className="relative inline-flex items-center">
+              <select
+                value={selectedMonth}
+                onChange={(e) => onMonthChange(parseInt(e.target.value))}
+                className="appearance-none text-sm font-semibold text-gray-900 dark:text-gray-100 bg-transparent border-none outline-none cursor-pointer pr-5"
+              >
+                {monthNames.map((name, index) => (
+                  <option key={index + 1} value={index + 1}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <svg
+                className="absolute right-0 pointer-events-none w-4 h-4 text-gray-500 dark:text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          ) : (
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {monthName}
+            </h3>
+          )}
           <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded-full bg-pink-100 dark:bg-pink-900 text-pink-800 dark:text-pink-200">
             {monthTotal}
           </span>
         </div>
 
-        {/* Day labels - hidden on md and smaller, shown on lg+ */}
-        <div className="hidden lg:grid grid-cols-7 gap-1 mb-1">
+        {/* Day labels */}
+        <div className="grid grid-cols-7 gap-1 mb-1">
           {dayLabels.map((label) => (
             <div
               key={label}
@@ -332,8 +477,8 @@ export default function MonthCalendar({
           ))}
         </div>
 
-        {/* Calendar grid - hidden on md and smaller, shown on lg+ */}
-        <div className="hidden lg:grid grid-cols-7 gap-1">
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7 gap-1">
           {calendarCells.map((cell, index) => {
             const hasOrgasms =
               cell.date &&
@@ -350,6 +495,7 @@ export default function MonthCalendar({
             return (
               <div
                 key={index}
+                data-calendar-cell
                 className={`
                   aspect-square flex items-center justify-center text-xs
                   ${cell.day === null ? "opacity-0" : "cursor-pointer"}
@@ -360,6 +506,8 @@ export default function MonthCalendar({
                 `}
                 onMouseEnter={(e) => handleCellHover(cell.date, e)}
                 onMouseLeave={handleCellLeave}
+                onClick={(e) => handleCellClick(cell.date, e)}
+                onTouchStart={(e) => handleCellTouch(cell.date, e)}
               >
                 {cell.day !== null && (
                   <span
