@@ -161,35 +161,54 @@ function UserCard({
   const lastOrgasm = orgasms[0];
 
   return (
-    <div className="flex items-start justify-between rounded-lg bg-white dark:bg-gray-800 p-4 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-      <div className="flex flex-col gap-2 flex-1">
-        <Link
-          href={"/u/" + user.username}
-          className="text-lg font-semibold text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 transition-colors"
-        >
-          @{user.username}
-        </Link>
-        <div className="flex flex-row gap-1 text-sm text-gray-700 dark:text-gray-300 items-center">
-          {orgasms.length ? (
-            <>
-              <span className="font-medium">{orgasms.length}</span>
-              <span>orgasm{orgasms.length > 1 ? "s" : ""} tracked</span>
-              {lastOrgasm && (
-                <span className="text-gray-600 dark:text-gray-400">
-                  {" "}• Last orgasm {lastOrgasm.datetime.fromNow()}
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="text-gray-500 dark:text-gray-400">No orgasms tracked</span>
-          )}
+    <Link
+      href={"/u/" + user.username}
+      className="block rounded-lg bg-white dark:bg-gray-800 p-4 md:p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+    >
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4">
+        {/* Main content */}
+        <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <div className="text-lg md:text-xl font-semibold text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 transition-colors">
+            @{user.username}
+          </div>
+
+          {/* Orgasm stats */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-gray-700 dark:text-gray-300">
+            {orgasms.length ? (
+              <>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium text-base">{orgasms.length}</span>
+                  <span>orgasm{orgasms.length > 1 ? "s" : ""} tracked</span>
+                </div>
+                {lastOrgasm && (
+                  <>
+                    <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Last orgasm {lastOrgasm.datetime.fromNow()}
+                    </span>
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="text-gray-500 dark:text-gray-400">No orgasms tracked</span>
+            )}
+          </div>
+        </div>
+
+        {/* Metadata - right side on desktop, below on mobile */}
+        <div className="flex flex-col md:items-end gap-1 text-xs text-gray-600 dark:text-gray-400 md:ml-4 md:flex-shrink-0">
+          <div className="flex md:flex-col gap-2 md:gap-1">
+            <div>
+              <span className="text-gray-500 dark:text-gray-500 md:hidden">Joined: </span>
+              {dayjs(user.joinedAt).format("DD MMM YYYY")}
+            </div>
+            <div className="md:border-t md:border-gray-200 md:dark:border-gray-700 md:pt-1 md:mt-1">
+              <span className="text-gray-500 dark:text-gray-500 md:hidden">Last seen: </span>
+              {dayjs(user.lastSeen).fromNow()}
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="flex flex-col items-end gap-1 text-xs text-gray-600 dark:text-gray-400 ml-4">
-        <div>Joined {dayjs(user.joinedAt).format("DD MMM YYYY")}</div>
-        <div>Last seen {dayjs(user.lastSeen).fromNow()}</div>
-      </div>
-    </div>
+    </Link>
   );
 }

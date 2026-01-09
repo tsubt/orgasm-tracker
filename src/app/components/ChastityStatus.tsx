@@ -191,7 +191,7 @@ export default function ChastityStatus({
       <div className="w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
         {activeSession ? (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h4 className="text-lg font-bold text-gray-900 dark:text-white">
                   Chastity status: locked{" "}
@@ -220,7 +220,7 @@ export default function ChastityStatus({
                     setIsEndModalOpen(true);
                   }
                 }}
-                className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide"
+                className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide w-full md:w-auto"
               >
                 End session
               </button>
@@ -232,7 +232,7 @@ export default function ChastityStatus({
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h4 className="text-lg font-bold text-gray-900 dark:text-white">
                 Chastity status: unlocked
@@ -247,7 +247,7 @@ export default function ChastityStatus({
                 if (startNoteRef.current) startNoteRef.current.value = "";
                 setIsStartModalOpen(true);
               }}
-              className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide"
+              className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide w-full md:w-auto"
             >
               Start a session
             </button>

@@ -10,7 +10,7 @@ export default async function ChastityPage() {
   }
 
   return (
-    <div className="w-full p-8">
+    <div className="w-full p-4 md:p-8">
       <div className="max-w-6xl mx-auto flex flex-col gap-8 h-full">
         <ChastityPageContent />
       </div>

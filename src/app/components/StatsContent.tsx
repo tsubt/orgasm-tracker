@@ -33,13 +33,13 @@ export default async function StatsContent({
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <Suspense fallback={<LoadingLastOrgasm />}>
           <LastOrgasm userId={userId} tz={tz} />
         </Suspense>
         <Link
           href="/fapped/2025"
-          className="bg-pink-500 dark:bg-pink-600 text-white px-6 py-3 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide"
+          className="bg-pink-500 dark:bg-pink-600 text-white px-6 py-3 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide w-full md:w-auto text-center"
         >
           Your 2025 Fapped
         </Link>
@@ -375,7 +375,7 @@ async function SummaryStats({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-4">
+      <div className="grid grid-cols-2 md:flex md:items-center gap-3 md:gap-4">
         <Stat count={n} title="total of" unit={["orgasm", "orgasms"]} />
         <Stat
           count={daysSinceLast}
@@ -416,11 +416,11 @@ async function SummaryStats({
 function LoadingSummaryStats() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-4">
+      <div className="grid grid-cols-2 md:flex md:items-center gap-3 md:gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="animate-pulse bg-gray-300 dark:bg-gray-700 size-30 rounded shadow"
+            className="animate-pulse bg-gray-300 dark:bg-gray-700 w-full md:size-30 rounded shadow h-20 md:h-auto"
           ></div>
         ))}
       </div>
@@ -486,9 +486,9 @@ function Stat({
   unit: [string, string];
 }) {
   return (
-    <div className="bg-pink-500 dark:bg-pink-600 size-30 rounded shadow flex flex-col items-center justify-center gap-2 p-2 text-white">
+    <div className="bg-pink-500 dark:bg-pink-600 w-full md:size-30 rounded shadow flex flex-col items-center justify-center gap-1 md:gap-2 p-3 md:p-2 text-white">
       <div className="text-xs">{title}</div>
-      <div className="bold text-4xl">{count}</div>
+      <div className="bold text-2xl md:text-4xl">{count}</div>
       <div className="text-xs">{count === 1 ? unit[0] : unit[1]}</div>
     </div>
   );

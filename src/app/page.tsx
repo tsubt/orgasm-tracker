@@ -12,7 +12,7 @@ export default async function Home({
 
   if (session && session.user && session.user.id) {
     return (
-      <main className="w-full p-8">
+      <main className="w-full p-4 md:p-8">
         <div className="max-w-4xl">
           <StatsContent
             userId={session.user.id}

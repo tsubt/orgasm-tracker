@@ -196,120 +196,123 @@ export default function HeatMap({ orgasms, timeframe }: HeatMapProps) {
   return (
     <div className="mt-6 w-full" ref={containerRef}>
       <div className="flex flex-col gap-2">
-        {/* Month labels */}
-        <div className="flex gap-0.5 items-start">
-          <div
-            className="flex-shrink-0"
-            style={{ width: `${labelWidth}px` }}
-          ></div>
-          <div className="flex gap-0.5 flex-1">
-            {Array.from({ length: numWeeks }).map((_, weekIdx) => {
-              // Find the first day of this week
-              const firstDayOfWeek = firstMonday.add(weekIdx, "week");
-              // Only show month label if it's the first week of the month or first week overall
-              // For "thisYear", skip if it's from outside the current year
-              // For "last12months", show if it's within the period
-              const isFirstWeekOfMonth =
-                weekIdx === 0 || firstDayOfWeek.date() <= 7;
-              const isInPeriod = firstDayOfWeek.isAfter(periodStart.subtract(1, "day")) &&
-                                firstDayOfWeek.isBefore(periodEnd.add(1, "day"));
-              const shouldShowLabel = timeframe === "last12months"
-                ? (isFirstWeekOfMonth && isInPeriod)
-                : (isFirstWeekOfMonth && firstDayOfWeek.year() === displayYear);
+        {/* Scrollable container for month labels and grid */}
+        <div className="overflow-x-auto">
+          {/* Month labels */}
+          <div className="flex gap-0.5 items-start">
+            <div
+              className="flex-shrink-0"
+              style={{ width: `${labelWidth}px` }}
+            ></div>
+            <div className="flex gap-0.5" style={{ minWidth: `${numWeeks * (squareSize + gapSize)}px` }}>
+              {Array.from({ length: numWeeks }).map((_, weekIdx) => {
+                // Find the first day of this week
+                const firstDayOfWeek = firstMonday.add(weekIdx, "week");
+                // Only show month label if it's the first week of the month or first week overall
+                // For "thisYear", skip if it's from outside the current year
+                // For "last12months", show if it's within the period
+                const isFirstWeekOfMonth =
+                  weekIdx === 0 || firstDayOfWeek.date() <= 7;
+                const isInPeriod = firstDayOfWeek.isAfter(periodStart.subtract(1, "day")) &&
+                                  firstDayOfWeek.isBefore(periodEnd.add(1, "day"));
+                const shouldShowLabel = timeframe === "last12months"
+                  ? (isFirstWeekOfMonth && isInPeriod)
+                  : (isFirstWeekOfMonth && firstDayOfWeek.year() === displayYear);
 
-              return (
+                return (
+                  <div
+                    key={weekIdx}
+                    className="text-xs text-gray-500 dark:text-gray-400 text-center flex-shrink-0"
+                    style={{
+                      width: `${squareSize}px`,
+                      minWidth: `${squareSize}px`,
+                    }}
+                  >
+                    {shouldShowLabel ? firstDayOfWeek.format("MMM") : ""}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Grid */}
+          <div className="flex gap-0.5">
+            {/* Day of week labels */}
+            <div
+              className="flex flex-col gap-0.5 flex-shrink-0"
+              style={{ width: `${labelWidth}px` }}
+            >
+              {daysOfWeek.map((day, idx) => (
                 <div
-                  key={weekIdx}
-                  className="text-xs text-gray-500 dark:text-gray-400 text-center flex-shrink-0"
+                  key={day}
+                  className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-end pr-2"
                   style={{
-                    width: `${squareSize}px`,
-                    minWidth: `${squareSize}px`,
+                    height: `${squareSize}px`,
+                    minHeight: `${squareSize}px`,
                   }}
                 >
-                  {shouldShowLabel ? firstDayOfWeek.format("MMM") : ""}
+                  {idx % 2 === 1 ? day : ""}
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              ))}
+            </div>
 
-        {/* Grid */}
-        <div className="flex gap-0.5">
-          {/* Day of week labels */}
-          <div
-            className="flex flex-col gap-0.5 flex-shrink-0"
-            style={{ width: `${labelWidth}px` }}
-          >
-            {daysOfWeek.map((day, idx) => (
-              <div
-                key={day}
-                className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-end pr-2"
-                style={{
-                  height: `${squareSize}px`,
-                  minHeight: `${squareSize}px`,
-                }}
-              >
-                {idx % 2 === 1 ? day : ""}
-              </div>
-            ))}
-          </div>
+            {/* Heatmap grid */}
+            <div className="flex flex-col gap-0.5" style={{ minWidth: `${numWeeks * (squareSize + gapSize)}px` }}>
+              {grid.map((row, dayIdx) => (
+                <div key={dayIdx} className="flex gap-0.5">
+                  {row.map((cell, weekIdx) => {
+                    if (cell === null) {
+                      // Day is outside the current year
+                      return (
+                        <div
+                          key={weekIdx}
+                          className="rounded-sm bg-transparent opacity-0 flex-shrink-0"
+                          style={{
+                            width: `${squareSize}px`,
+                            height: `${squareSize}px`,
+                          }}
+                        />
+                      );
+                    }
 
-          {/* Heatmap grid */}
-          <div className="flex flex-col gap-0.5 flex-1">
-            {grid.map((row, dayIdx) => (
-              <div key={dayIdx} className="flex gap-0.5">
-                {row.map((cell, weekIdx) => {
-                  if (cell === null) {
-                    // Day is outside the current year
+                    const isToday = cell.date.isSame(today, "day");
+                    const isFuture = cell.date.isAfter(today, "day");
+                    const isBeforePeriod = cell.date.isBefore(periodStart, "day");
+                    const isAfterPeriod = cell.date.isAfter(periodEnd, "day");
+
+                    // Calculate animation delay based on week index (left to right)
+                    const animationDelay = weekIdx * 0.015; // 15ms per column for wave effect
+
+                    // Apply reduced opacity after animation for future/past dates
+                    const needsReducedOpacity = isFuture || isBeforePeriod || isAfterPeriod;
+
+                    // Get target color for animation
+                    const targetColor = getColorValue(cell.count, isDark);
+
                     return (
                       <div
-                        key={weekIdx}
-                        className="rounded-sm bg-transparent opacity-0 flex-shrink-0"
+                        key={`${cell.date.format("YYYY-MM-DD")}-${animationKey}`}
+                        className={`rounded-sm flex-shrink-0 ${
+                          isToday ? "ring-1 ring-pink-400 dark:ring-pink-500" : ""
+                        } ${
+                          needsReducedOpacity ? "opacity-30" : ""
+                        } animate-fade-in-left`}
                         style={{
                           width: `${squareSize}px`,
                           height: `${squareSize}px`,
-                        }}
+                          animationDelay: `${animationDelay}s`,
+                          animationFillMode: "forwards",
+                          "--target-color": targetColor,
+                        } as React.CSSProperties & { "--target-color": string }}
+                        title={`${cell.date.format("MMM D, YYYY")}: ${
+                          cell.count
+                        } ${cell.count === 1 ? "orgasm" : "orgasms"}`}
                       />
                     );
-                  }
-
-                  const isToday = cell.date.isSame(today, "day");
-                  const isFuture = cell.date.isAfter(today, "day");
-                  const isBeforePeriod = cell.date.isBefore(periodStart, "day");
-                  const isAfterPeriod = cell.date.isAfter(periodEnd, "day");
-
-                  // Calculate animation delay based on week index (left to right)
-                  const animationDelay = weekIdx * 0.015; // 15ms per column for wave effect
-
-                  // Apply reduced opacity after animation for future/past dates
-                  const needsReducedOpacity = isFuture || isBeforePeriod || isAfterPeriod;
-
-                  // Get target color for animation
-                  const targetColor = getColorValue(cell.count, isDark);
-
-                  return (
-                    <div
-                      key={`${cell.date.format("YYYY-MM-DD")}-${animationKey}`}
-                      className={`rounded-sm flex-shrink-0 ${
-                        isToday ? "ring-1 ring-pink-400 dark:ring-pink-500" : ""
-                      } ${
-                        needsReducedOpacity ? "opacity-30" : ""
-                      } animate-fade-in-left`}
-                      style={{
-                        width: `${squareSize}px`,
-                        height: `${squareSize}px`,
-                        animationDelay: `${animationDelay}s`,
-                        animationFillMode: "forwards",
-                        "--target-color": targetColor,
-                      } as React.CSSProperties & { "--target-color": string }}
-                      title={`${cell.date.format("MMM D, YYYY")}: ${
-                        cell.count
-                      } ${cell.count === 1 ? "orgasm" : "orgasms"}`}
-                    />
-                  );
-                })}
-              </div>
-            ))}
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

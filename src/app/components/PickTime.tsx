@@ -37,26 +37,52 @@ export default function PickTime() {
   }, [currentTime]);
 
   return (
-    <div className={`flex gap-4 items-center ${isLoading ? "cursor-wait" : ""}`}>
-      {OPTIONS.map((option) => (
-        <button
-          key={option}
-          className={`${
-            curtime === option
-              ? "border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100"
-              : "border-transparent text-gray-600 dark:text-gray-400"
-          } text-xs font-semibold tracking-wide border-b-2 hover:text-gray-900 dark:hover:text-gray-100 transition-colors ${
-            isLoading ? "cursor-wait opacity-70" : "cursor-pointer"
-          }`}
-          onClick={() => {
+    <>
+      {/* Mobile: Dropdown */}
+      <div className={`md:hidden ${isLoading ? "cursor-wait" : ""}`}>
+        <select
+          value={curtime}
+          onChange={(e) => {
             setIsLoading(true);
-            router.replace(pathname + "?" + createQueryString("time", option));
+            router.replace(
+              pathname + "?" + createQueryString("time", e.target.value)
+            );
           }}
           disabled={isLoading}
+          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500 dark:focus:ring-pink-600 disabled:opacity-50 disabled:cursor-wait"
         >
-          {option}
-        </button>
-      ))}
-    </div>
+          {OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Desktop: Buttons */}
+      <div
+        className={`hidden md:flex gap-4 items-center ${isLoading ? "cursor-wait" : ""}`}
+      >
+        {OPTIONS.map((option) => (
+          <button
+            key={option}
+            className={`${
+              curtime === option
+                ? "border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100"
+                : "border-transparent text-gray-600 dark:text-gray-400"
+            } text-xs font-semibold tracking-wide border-b-2 hover:text-gray-900 dark:hover:text-gray-100 transition-colors ${
+              isLoading ? "cursor-wait opacity-70" : "cursor-pointer"
+            }`}
+            onClick={() => {
+              setIsLoading(true);
+              router.replace(pathname + "?" + createQueryString("time", option));
+            }}
+            disabled={isLoading}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }

@@ -189,9 +189,15 @@ export default function RadialTimePlot({ orgasms }: RadialTimePlotProps) {
   }, [hoverPosition]);
 
   return (
-    <div className="w-full flex justify-center">
-      <div className="relative">
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <div className="w-full flex justify-center overflow-x-auto">
+      <div className="relative w-full max-w-[600px]">
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="w-full h-auto"
+          preserveAspectRatio="xMidYMid meet"
+        >
           {/* Hour labels (at base, near center) */}
           {hourLabels.map((label) => (
             <text

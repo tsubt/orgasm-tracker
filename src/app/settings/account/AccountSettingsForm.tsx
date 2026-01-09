@@ -213,7 +213,7 @@ export default function AccountSettingsForm({
             Username
           </h3>
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row md:items-center gap-2">
               <input
                 type="text"
                 value={newUsername}
@@ -226,21 +226,21 @@ export default function AccountSettingsForm({
                 className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 px-3 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 dark:focus:ring-pink-400"
               />
               {newUsernameOK === "ok" ? (
-                <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
+                <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400 md:flex-shrink-0">
                   <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
                   Available
                 </div>
               ) : newUsernameOK === "taken" ? (
-                <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400">
+                <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400 md:flex-shrink-0">
                   <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
                   Taken
                 </div>
               ) : newUsernameOK === "checking" ? (
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-2 text-xs md:flex-shrink-0">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-pink-500 dark:border-pink-400 border-t-transparent"></div>
                 </div>
               ) : newUsernameOK === "invalid" ? (
-                <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400">
+                <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400 md:flex-shrink-0">
                   <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
                   {newUsername.length < 3
                     ? "Must be at least 3 characters"
@@ -315,35 +315,35 @@ export default function AccountSettingsForm({
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
               Public orgasm feed
             </h3>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="orgasmsVisible"
-                    id="publicOs"
-                    checked={newOVisibility === "public"}
-                    onChange={() => setNewOVisibility("public")}
-                    className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400"
-                  />
-                  <span className="text-gray-900 dark:text-white">
-                    Include my orgasms
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="orgasmsVisible"
-                    id="privateOs"
-                    checked={newOVisibility === "private"}
-                    onChange={() => setNewOVisibility("private")}
-                    className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400"
-                  />
-                  <span className="text-gray-900 dark:text-white">
-                    Exclude my orgasms
-                  </span>
-                </label>
-              </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="orgasmsVisible"
+                  id="publicOs"
+                  checked={newOVisibility === "public"}
+                  onChange={() => setNewOVisibility("public")}
+                  className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400"
+                />
+                <span className="text-gray-900 dark:text-white">
+                  Include my orgasms
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="orgasmsVisible"
+                  id="privateOs"
+                  checked={newOVisibility === "private"}
+                  onChange={() => setNewOVisibility("private")}
+                  className="h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 focus:ring-pink-500 dark:focus:ring-pink-400"
+                />
+                <span className="text-gray-900 dark:text-white">
+                  Exclude my orgasms
+                </span>
+              </label>
+            </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 When your profile is public, you can also choose to publish your
                 orgasms on the public feed.

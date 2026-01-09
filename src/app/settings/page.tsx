@@ -25,7 +25,7 @@ export default async function SettingsPage() {
   });
 
   return (
-    <div className="w-full p-8">
+    <div className="w-full p-4 md:p-8">
       <div className="max-w-4xl mx-auto flex flex-col gap-8">
         <h2 className="text-lg font-bold uppercase tracking-wider text-gray-900 dark:text-white">
           Settings
@@ -49,7 +49,7 @@ export default async function SettingsPage() {
                 Irreversible and destructive actions
               </p>
             </div>
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col gap-1">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   Delete Account
@@ -58,7 +58,9 @@ export default async function SettingsPage() {
                   Permanently delete your account and all associated data
                 </p>
               </div>
-              <DeleteAccount />
+              <div className="md:flex-shrink-0">
+                <DeleteAccount />
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 export default function DocsPage() {
   return (
-    <div className="w-full p-8">
+    <div className="w-full p-4 md:p-8">
       <div className="max-w-4xl mx-auto flex flex-col gap-8">
         <h1 className="text-2xl font-bold uppercase tracking-wider text-gray-900 dark:text-white">
           Documentation

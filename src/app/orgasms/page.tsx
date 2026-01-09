@@ -10,7 +10,7 @@ export default async function OrgasmsPage() {
   }
 
   return (
-    <div className="w-full p-8">
+    <div className="w-full p-4 md:p-8">
       <div className="max-w-6xl mx-auto flex flex-col gap-8 h-full">
         <h2 className="text-2xl font-bold uppercase tracking-wider text-gray-900 dark:text-white">
           Manage your Orgasms
