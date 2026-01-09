@@ -36,7 +36,7 @@ export default function MonthCalendar({
   const firstDay = dayjs(`${year}-${month.toString().padStart(2, "0")}-01`);
   const daysInMonth = firstDay.daysInMonth();
   const firstDayOfMonth = firstDay.day(); // 0 = Sunday, 6 = Saturday
-  
+
   // Calculate the offset based on user's preferred first day of week
   // Adjust startDayOfWeek so that the calendar starts on the user's preferred day
   const startDayOfWeek = (firstDayOfMonth - firstDayOfWeek + 7) % 7;
