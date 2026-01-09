@@ -100,6 +100,26 @@ export default function MonthCalendar({
     return lockedDates.has(date);
   };
 
+  // Check if an orgasm occurred during a chastity session
+  const isOrgasmDuringChastity = (orgasm: Orgasm): boolean => {
+    if (!orgasm.timestamp) return false;
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const orgasmTime = dayjs(orgasm.timestamp).utc().tz(userTimezone);
+
+    return chastitySessions.some((session) => {
+      const startTime = dayjs(session.startTime).utc().tz(userTimezone);
+      const endTime = session.endTime
+        ? dayjs(session.endTime).utc().tz(userTimezone)
+        : dayjs(); // If no end time, consider it active until now
+
+      // Check if orgasm occurred during this session (inclusive boundaries)
+      return (
+        (orgasmTime.isAfter(startTime) || orgasmTime.isSame(startTime)) &&
+        (orgasmTime.isBefore(endTime) || orgasmTime.isSame(endTime))
+      );
+    });
+  };
+
   // Days of the week labels - reorder based on firstDayOfWeek
   const allDayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const dayLabels = [
@@ -127,11 +147,51 @@ export default function MonthCalendar({
     calendarCells.push({ day: null, date: null });
   }
 
+  // Find sessions that start or end on a given date
+  const getChastityEventsForDate = (date: string | null) => {
+    if (!date) return { starts: [], ends: [] };
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const targetDate = dayjs(date).tz(userTimezone);
+
+    const starts: ChastitySession[] = [];
+    const ends: ChastitySession[] = [];
+
+    chastitySessions.forEach((session) => {
+      const startTime = dayjs(session.startTime).utc().tz(userTimezone);
+      const endTime = session.endTime
+        ? dayjs(session.endTime).utc().tz(userTimezone)
+        : null;
+
+      // Check if session starts on this date
+      if (startTime.isSame(targetDate, "day")) {
+        starts.push(session);
+      }
+
+      // Check if session ends on this date
+      if (endTime && endTime.isSame(targetDate, "day")) {
+        ends.push(session);
+      }
+    });
+
+    return { starts, ends };
+  };
+
   const handleCellHover = (
     date: string | null,
     event: React.MouseEvent<HTMLDivElement>
   ) => {
-    if (date && orgasmsByDate[date]) {
+    if (!date) {
+      setHoveredDate(null);
+      setHoverPosition(null);
+      return;
+    }
+
+    const hasOrgasms = orgasmsByDate[date] && orgasmsByDate[date].length > 0;
+    const chastityEvents = getChastityEventsForDate(date);
+    const hasChastityEvents =
+      chastityEvents.starts.length > 0 || chastityEvents.ends.length > 0;
+
+    if (hasOrgasms || hasChastityEvents) {
       setHoveredDate(date);
       setHoverPosition({ x: event.clientX, y: event.clientY });
     } else {
@@ -185,31 +245,54 @@ export default function MonthCalendar({
   };
 
   const getColorClass = (date: string | null) => {
-    const isLocked = isDateLocked(date);
-    const hasOrgasms =
-      date && orgasmsByDate[date] && orgasmsByDate[date].length > 0;
+    if (!date) return "bg-gray-100 dark:bg-gray-800";
 
-    // If locked and has orgasms, use blue colors
-    if (isLocked && hasOrgasms) {
-      const count = orgasmsByDate[date!].length;
+    const isLocked = isDateLocked(date);
+    const orgasmsOnDate = orgasmsByDate[date] || [];
+    const hasOrgasms = orgasmsOnDate.length > 0;
+
+    // Determine event types and their priorities
+    // Priority: Orgasm = 3, Locked orgasm = 2, Locked = 1
+    let hasLockedOrgasm = false;
+    let hasStandardOrgasm = false;
+
+    if (hasOrgasms) {
+      // Check if any orgasm occurred during a chastity session
+      hasLockedOrgasm = orgasmsOnDate.some((orgasm) =>
+        isOrgasmDuringChastity(orgasm)
+      );
+      // Check if any orgasm occurred outside a chastity session
+      hasStandardOrgasm = orgasmsOnDate.some(
+        (orgasm) => !isOrgasmDuringChastity(orgasm)
+      );
+    }
+
+    // Apply priority system: show highest priority event
+    // Priority 3: Standard orgasm (pink)
+    if (hasStandardOrgasm) {
+      const count = orgasmsOnDate.filter(
+        (orgasm) => !isOrgasmDuringChastity(orgasm)
+      ).length;
+      if (count === 1) return "bg-pink-300 dark:bg-pink-900";
+      if (count === 2) return "bg-pink-400 dark:bg-pink-800";
+      if (count === 3) return "bg-pink-500 dark:bg-pink-700";
+      return "bg-pink-600 dark:bg-pink-600";
+    }
+
+    // Priority 2: Locked orgasm (blue)
+    if (hasLockedOrgasm) {
+      const count = orgasmsOnDate.filter((orgasm) =>
+        isOrgasmDuringChastity(orgasm)
+      ).length;
       if (count === 1) return "bg-blue-300 dark:bg-blue-900";
       if (count === 2) return "bg-blue-400 dark:bg-blue-800";
       if (count === 3) return "bg-blue-500 dark:bg-blue-700";
       return "bg-blue-600 dark:bg-blue-600";
     }
 
-    // If locked but no orgasms, use green
+    // Priority 1: Locked (green)
     if (isLocked) {
       return "bg-green-200 dark:bg-green-900";
-    }
-
-    // If not locked and has orgasms, use pink colors
-    if (hasOrgasms) {
-      const count = orgasmsByDate[date!].length;
-      if (count === 1) return "bg-pink-300 dark:bg-pink-900";
-      if (count === 2) return "bg-pink-400 dark:bg-pink-800";
-      if (count === 3) return "bg-pink-500 dark:bg-pink-700";
-      return "bg-pink-600 dark:bg-pink-600";
     }
 
     // Default: no orgasms, not locked
@@ -256,6 +339,11 @@ export default function MonthCalendar({
               cell.date &&
               orgasmsByDate[cell.date] &&
               orgasmsByDate[cell.date].length > 0;
+            const chastityEvents = getChastityEventsForDate(cell.date);
+            const hasChastityEvents =
+              chastityEvents.starts.length > 0 ||
+              chastityEvents.ends.length > 0;
+            const hasEvents = hasOrgasms || hasChastityEvents;
             const isToday =
               cell.date && dayjs(cell.date).isSame(dayjs(), "day");
 
@@ -267,7 +355,7 @@ export default function MonthCalendar({
                   ${cell.day === null ? "opacity-0" : "cursor-pointer"}
                   ${getColorClass(cell.date)}
                   ${isToday ? "ring-1 ring-pink-400 dark:ring-pink-500" : ""}
-                  ${hasOrgasms ? "hover:opacity-80 transition-opacity" : ""}
+                  ${hasEvents ? "hover:opacity-80 transition-opacity" : ""}
                   rounded
                 `}
                 onMouseEnter={(e) => handleCellHover(cell.date, e)}
@@ -291,7 +379,7 @@ export default function MonthCalendar({
       </div>
 
       {/* Hover tooltip */}
-      {hoveredDate && hoverPosition && orgasmsByDate[hoveredDate] && (
+      {hoveredDate && hoverPosition && (
         <div
           ref={tooltipRef}
           className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-3 shadow-lg pointer-events-none min-w-[200px] max-w-[300px]"
@@ -301,47 +389,182 @@ export default function MonthCalendar({
             <div className="font-semibold text-sm">
               {dayjs(hoveredDate).format("MMMM D, YYYY")}
             </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400">
-              {orgasmsByDate[hoveredDate].length}{" "}
-              {orgasmsByDate[hoveredDate].length === 1 ? "orgasm" : "orgasms"}
-            </div>
-            <div className="space-y-1 pt-1 border-t border-gray-200 dark:border-gray-700">
-              {orgasmsByDate[hoveredDate].map((orgasm) => (
-                <div key={orgasm.id} className="text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-500 dark:text-gray-400">
-                        {dayjs(orgasm.timestamp).format("h:mm A")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          orgasm.type === "FULL"
-                            ? "bg-pink-500"
-                            : orgasm.type === "RUINED"
-                            ? "bg-purple-500"
-                            : orgasm.type === "HANDSFREE"
-                            ? "bg-blue-500"
-                            : "bg-indigo-500"
-                        }`}
-                      />
-                      <span className="text-gray-600 dark:text-gray-400 capitalize">
-                        {orgasm.type.toLowerCase()}
-                      </span>
-                    </div>
-                    <div className="text-gray-600 dark:text-gray-400 capitalize">
-                      {orgasm.sex.toLowerCase()}
-                    </div>
-                  </div>
-                  {orgasm.note && (
-                    <div className="text-gray-500 dark:text-gray-400 italic mt-0.5">
-                      {orgasm.note}
+
+            {(() => {
+              const userTimezone =
+                Intl.DateTimeFormat().resolvedOptions().timeZone;
+              const chastityEvents = getChastityEventsForDate(hoveredDate);
+              const orgasmsOnDate = orgasmsByDate[hoveredDate] || [];
+
+              // Combine all events into a single timeline
+              type TimelineEvent =
+                | { type: "orgasm"; data: Orgasm; timestamp: Date }
+                | {
+                    type: "chastity_start";
+                    data: ChastitySession;
+                    timestamp: Date;
+                  }
+                | {
+                    type: "chastity_end";
+                    data: ChastitySession;
+                    timestamp: Date;
+                  };
+
+              const timelineEvents: TimelineEvent[] = [];
+
+              // Add orgasms
+              orgasmsOnDate.forEach((orgasm) => {
+                if (orgasm.timestamp) {
+                  timelineEvents.push({
+                    type: "orgasm",
+                    data: orgasm,
+                    timestamp: orgasm.timestamp,
+                  });
+                }
+              });
+
+              // Add chastity session starts
+              chastityEvents.starts.forEach((session) => {
+                timelineEvents.push({
+                  type: "chastity_start",
+                  data: session,
+                  timestamp: session.startTime,
+                });
+              });
+
+              // Add chastity session ends
+              chastityEvents.ends.forEach((session) => {
+                if (session.endTime) {
+                  timelineEvents.push({
+                    type: "chastity_end",
+                    data: session,
+                    timestamp: session.endTime,
+                  });
+                }
+              });
+
+              // Sort by timestamp
+              timelineEvents.sort(
+                (a, b) =>
+                  new Date(a.timestamp).getTime() -
+                  new Date(b.timestamp).getTime()
+              );
+
+              const totalOrgasms = orgasmsOnDate.length;
+
+              return (
+                <>
+                  {/* Event count */}
+                  {totalOrgasms > 0 && (
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      {totalOrgasms} {totalOrgasms === 1 ? "orgasm" : "orgasms"}
                     </div>
                   )}
-                </div>
-              ))}
-            </div>
+
+                  {/* Unified timeline */}
+                  {timelineEvents.length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-gray-200 dark:border-gray-700">
+                      {timelineEvents.map((event) => {
+                        const eventTime = dayjs(event.timestamp)
+                          .utc()
+                          .tz(userTimezone);
+
+                        if (event.type === "orgasm") {
+                          const orgasm = event.data;
+                          return (
+                            <div key={orgasm.id} className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-500 dark:text-gray-400">
+                                    {eventTime.format("h:mm A")}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span
+                                    className={`w-2 h-2 rounded-full ${
+                                      orgasm.type === "FULL"
+                                        ? "bg-pink-500"
+                                        : orgasm.type === "RUINED"
+                                        ? "bg-purple-500"
+                                        : orgasm.type === "HANDSFREE"
+                                        ? "bg-blue-500"
+                                        : "bg-indigo-500"
+                                    }`}
+                                  />
+                                  <span className="text-gray-600 dark:text-gray-400 capitalize">
+                                    {orgasm.type.toLowerCase()}
+                                  </span>
+                                </div>
+                                <div className="text-gray-600 dark:text-gray-400 capitalize">
+                                  {orgasm.sex.toLowerCase()}
+                                </div>
+                              </div>
+                              {orgasm.note && (
+                                <div className="text-gray-500 dark:text-gray-400 italic mt-0.5">
+                                  {orgasm.note}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else if (event.type === "chastity_start") {
+                          const session = event.data;
+                          return (
+                            <div
+                              key={`start-${session.id}`}
+                              className="text-xs"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-500 dark:text-gray-400">
+                                    {eventTime.format("h:mm A")}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                                  <span className="font-medium text-gray-600 dark:text-gray-400">
+                                    Locked up
+                                  </span>
+                                </div>
+                              </div>
+                              {session.note && (
+                                <div className="text-gray-500 dark:text-gray-400 italic mt-0.5">
+                                  {session.note}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else {
+                          // chastity_end
+                          const session = event.data;
+                          return (
+                            <div key={`end-${session.id}`} className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-500 dark:text-gray-400">
+                                    {eventTime.format("h:mm A")}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                                  <span className="font-medium text-gray-600 dark:text-gray-400">
+                                    Unlocked
+                                  </span>
+                                </div>
+                              </div>
+                              {session.note && (
+                                <div className="text-gray-500 dark:text-gray-400 italic mt-0.5">
+                                  {session.note}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                      })}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
