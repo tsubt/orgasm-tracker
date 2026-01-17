@@ -1,26 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-import duration from "dayjs/plugin/duration";
+import UserCard from "@/app/components/UserCard";
 import type { Orgasm, User, ChastitySession } from "@prisma/client";
-
-dayjs.extend(relativeTime);
-dayjs.extend(duration);
 
 const ITEMS_PER_PAGE = 15;
 
 type UserWithOrgasms = User & {
   orgasms: Orgasm[];
   chastitySessions?: ChastitySession[];
+  isFollowing?: boolean;
 };
 
 export default function UsersList() {
   const [users, setUsers] = useState<UserWithOrgasms[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     fetchUsers();
@@ -32,6 +28,7 @@ export default function UsersList() {
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
+        setCurrentUserId(data.currentUserId || undefined);
         setCurrentPage(1);
       }
     } catch (error) {
@@ -72,7 +69,12 @@ export default function UsersList() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4">
         {paginatedUsers.map((user) => (
-          <UserCard user={user} key={user.id} />
+          <UserCard
+            user={user}
+            key={user.id}
+            currentUserId={currentUserId}
+            isFollowing={user.isFollowing}
+          />
         ))}
       </div>
 
@@ -140,111 +142,5 @@ export default function UsersList() {
         </div>
       )}
     </div>
-  );
-}
-
-function UserCard({
-  user,
-}: {
-  user: User & {
-    orgasms: Orgasm[];
-    chastitySessions?: ChastitySession[];
-  };
-}) {
-  // Get the last orgasm - use timestamp (date/time fields are deprecated)
-  const orgasms = user.orgasms
-    .filter((o) => o.timestamp !== null)
-    .map((o) => ({
-      ...o,
-      datetime: dayjs(o.timestamp),
-    }))
-    .sort((x, y) => {
-      return x.datetime.isAfter(y.datetime) ? -1 : 1;
-    });
-
-  const lastOrgasm = orgasms[0];
-
-  // Check for active chastity session
-  const activeSession =
-    user.trackChastityStatus && user.chastitySessions
-      ? user.chastitySessions.find((s) => s.endTime === null)
-      : null;
-
-  const lockedDuration = activeSession
-    ? dayjs.duration(dayjs().diff(dayjs(activeSession.startTime)))
-    : null;
-
-  return (
-    <Link
-      href={"/u/" + user.username}
-      className="block rounded-lg bg-white dark:bg-gray-800 p-4 md:p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
-    >
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4">
-        {/* Main content */}
-        <div className="flex flex-col gap-2 flex-1 min-w-0">
-          <div className="text-lg md:text-xl font-semibold text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 transition-colors">
-            @{user.username}
-          </div>
-
-          {/* Orgasm stats */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-gray-700 dark:text-gray-300">
-            {orgasms.length ? (
-              <>
-                <div className="flex items-center gap-1">
-                  <span className="font-medium text-base">{orgasms.length}</span>
-                  <span>orgasm{orgasms.length > 1 ? "s" : ""} tracked</span>
-                </div>
-                {lastOrgasm && (
-                  <>
-                    <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Last orgasm {lastOrgasm.datetime.fromNow()}
-                    </span>
-                    {activeSession && lockedDuration && (
-                      <>
-                        <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
-                        <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                            />
-                          </svg>
-                          Locked for {lockedDuration.humanize()}
-                        </span>
-                      </>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
-              <span className="text-gray-500 dark:text-gray-400">No orgasms tracked</span>
-            )}
-          </div>
-        </div>
-
-        {/* Metadata - right side on desktop, below on mobile */}
-        <div className="flex flex-col md:items-end gap-1 text-xs text-gray-600 dark:text-gray-400 md:ml-4 md:flex-shrink-0">
-          <div className="flex md:flex-col gap-2 md:gap-1">
-            <div>
-              <span className="text-gray-500 dark:text-gray-500 md:hidden">Joined: </span>
-              {dayjs(user.joinedAt).format("DD MMM YYYY")}
-            </div>
-            <div className="md:border-t md:border-gray-200 md:dark:border-gray-700 md:pt-1 md:mt-1">
-              <span className="text-gray-500 dark:text-gray-500 md:hidden">Last seen: </span>
-              {dayjs(user.lastSeen).fromNow()}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
   );
 }

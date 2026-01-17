@@ -7,10 +7,13 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import duration from "dayjs/plugin/duration";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
-import BioEditor from "./BioEditor";
+import BioWithEdit from "./BioWithEdit";
+import EditBioButton from "./EditBioButton";
 import OrgasmFeed from "./OrgasmFeed";
 import ProfileChart from "@/app/components/ProfileChart";
 import ProfileChartEditor from "./ProfileChartEditor";
+import FollowButton from "./FollowButton";
+import Link from "next/link";
 import { Suspense } from "react";
 
 dayjs.extend(utc);
@@ -48,6 +51,26 @@ export default async function UserProfile({ username }: { username: string }) {
   }
 
   const isOwnProfile = currentUserId === user.id;
+
+  // Fetch follow counts and status
+  const [followerCount, followingCount] = await Promise.all([
+    prisma.follow.count({
+      where: { followingId: user.id },
+    }),
+    prisma.follow.count({
+      where: { followerId: user.id },
+    }),
+  ]);
+
+  // Check if current user is following this profile
+  const isFollowing = currentUserId
+    ? await prisma.follow.findFirst({
+        where: {
+          followerId: currentUserId,
+          followingId: user.id,
+        },
+      })
+    : null;
 
   // Fetch orgasms if publicOrgasms is enabled
   const orgasms = user.publicOrgasms
@@ -124,11 +147,26 @@ export default async function UserProfile({ username }: { username: string }) {
       {/* Profile Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
         <div className="flex flex-col gap-4">
-          {/* Username */}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              @{user.username}
-            </h1>
+          {/* Username and Action Buttons */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                @{user.username}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              {isOwnProfile && (
+                <Suspense fallback={null}>
+                  <EditBioButton initialBio={user.bio} isOwnProfile={isOwnProfile} />
+                </Suspense>
+              )}
+              {!isOwnProfile && currentUserId && (
+                <FollowButton
+                  username={user.username}
+                  isFollowing={!!isFollowing}
+                />
+              )}
+            </div>
           </div>
 
           {/* Join Date */}
@@ -137,10 +175,30 @@ export default async function UserProfile({ username }: { username: string }) {
           </div>
 
           {/* Bio */}
-          <div className="mt-2">
-            <Suspense fallback={<div className="h-12" />}>
-              <BioEditor initialBio={user.bio} isOwnProfile={isOwnProfile} />
-            </Suspense>
+          <Suspense fallback={<div className="h-12" />}>
+            <BioWithEdit initialBio={user.bio} isOwnProfile={isOwnProfile} />
+          </Suspense>
+
+          {/* Followers/Following Counts */}
+          <div className="flex items-center gap-4 text-sm">
+            <Link
+              href={`/u/${user.username}/followers`}
+              className="hover:underline text-gray-700 dark:text-gray-300"
+            >
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {followerCount}
+              </span>{" "}
+              follower{followerCount !== 1 ? "s" : ""}
+            </Link>
+            <Link
+              href={`/u/${user.username}/following`}
+              className="hover:underline text-gray-700 dark:text-gray-300"
+            >
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {followingCount}
+              </span>{" "}
+              following
+            </Link>
           </div>
         </div>
       </div>

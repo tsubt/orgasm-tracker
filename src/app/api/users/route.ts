@@ -1,9 +1,16 @@
 import { prisma } from "@/prisma";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import dayjs from "dayjs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId") || currentUserId;
+
     const users = await prisma.user.findMany({
       where: {
         publicProfile: true,
@@ -14,8 +21,24 @@ export async function GET() {
       },
     });
 
+    // Get follow status for current user if logged in
+    let followingIds: string[] = [];
+    if (userId) {
+      const follows = await prisma.follow.findMany({
+        where: { followerId: userId },
+        select: { followingId: true },
+      });
+      followingIds = follows.map((f) => f.followingId);
+    }
+
+    // Add follow status to each user
+    const usersWithFollowStatus = users.map((user) => ({
+      ...user,
+      isFollowing: followingIds.includes(user.id),
+    }));
+
     // Sort by most recent activity (orgasm or chastity session event)
-    const sortedUsers = users.sort((a, b) => {
+    const sortedUsers = usersWithFollowStatus.sort((a, b) => {
       // Find most recent event for user A
       const aEvents: number[] = [];
       if (a.orgasms && a.orgasms.length > 0) {
@@ -55,7 +78,7 @@ export async function GET() {
       return bMostRecent - aMostRecent; // Most recent first
     });
 
-    return NextResponse.json({ users: sortedUsers }, { status: 200 });
+    return NextResponse.json({ users: sortedUsers, currentUserId }, { status: 200 });
   } catch (error) {
     console.error("Error fetching users:", error);
     return NextResponse.json(

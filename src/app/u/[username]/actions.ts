@@ -30,3 +30,70 @@ export async function updateBio(bio: string) {
     revalidatePath(`/u/${user.username}`);
   }
 }
+
+export async function followUser(username: string) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Unauthorized");
+  }
+
+  // Get the user to follow
+  const userToFollow = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+
+  if (!userToFollow) {
+    throw new Error("User not found");
+  }
+
+  // Prevent self-following
+  if (userToFollow.id === session.user.id) {
+    throw new Error("Cannot follow yourself");
+  }
+
+  // Create follow relationship
+  await prisma.follow.create({
+    data: {
+      followerId: session.user.id,
+      followingId: userToFollow.id,
+    },
+  });
+
+  // Revalidate relevant paths
+  revalidatePath(`/u/${username}`);
+  revalidatePath(`/u/${username}/followers`);
+  revalidatePath(`/u/${username}/following`);
+  revalidatePath(`/users`);
+}
+
+export async function unfollowUser(username: string) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Unauthorized");
+  }
+
+  // Get the user to unfollow
+  const userToUnfollow = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+
+  if (!userToUnfollow) {
+    throw new Error("User not found");
+  }
+
+  // Delete follow relationship
+  await prisma.follow.deleteMany({
+    where: {
+      followerId: session.user.id,
+      followingId: userToUnfollow.id,
+    },
+  });
+
+  // Revalidate relevant paths
+  revalidatePath(`/u/${username}`);
+  revalidatePath(`/u/${username}/followers`);
+  revalidatePath(`/u/${username}/following`);
+  revalidatePath(`/users`);
+}
