@@ -40,7 +40,11 @@ export default function MonthCalendar({
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Get the first day of the month and the number of days
-  const firstDay = dayjs(`${year}-${month.toString().padStart(2, "0")}-01`);
+  // Use user timezone for consistency with locked dates calculation
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const firstDay = dayjs(`${year}-${month.toString().padStart(2, "0")}-01`).tz(
+    userTimezone
+  );
   const daysInMonth = firstDay.daysInMonth();
   const firstDayOfMonth = firstDay.day(); // 0 = Sunday, 6 = Saturday
 
@@ -65,32 +69,47 @@ export default function MonthCalendar({
   // Create a set of locked dates (days within chastity sessions)
   const lockedDates = useMemo(() => {
     const locked = new Set<string>();
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const today = dayjs().tz(userTimezone).startOf("day");
 
     chastitySessions.forEach((session) => {
       const startTime = dayjs(session.startTime).utc().tz(userTimezone);
-      const endTime = session.endTime
-        ? dayjs(session.endTime).utc().tz(userTimezone)
-        : dayjs(); // If no end time, consider it active until now
-
-      // Check if this session overlaps with the current month/year
       const sessionStart = startTime.startOf("day");
-      const sessionEnd = endTime.endOf("day");
+
+      // For active sessions (no endTime), use today as the end date
+      // For ended sessions, use the actual endTime
+      const isActive = !session.endTime;
+      const endTime = isActive
+        ? today // For active sessions, always use today
+        : dayjs(session.endTime).utc().tz(userTimezone).startOf("day");
+
+      const sessionEnd = endTime;
       const monthStart = firstDay.startOf("day");
-      const monthEnd = firstDay.endOf("month").endOf("day");
+      const monthEnd = firstDay.endOf("month").startOf("day");
 
       // Skip if session doesn't overlap with this month
       if (sessionEnd.isBefore(monthStart) || sessionStart.isAfter(monthEnd)) {
         return;
       }
 
-      // Add all days within the session that fall in this month
-      let current = sessionStart.isAfter(monthStart)
+      // Determine the range of dates to mark as locked within this month
+      // Start from sessionStart or monthStart, whichever is later
+      const rangeStart = sessionStart.isAfter(monthStart)
         ? sessionStart
         : monthStart;
-      const end = sessionEnd.isBefore(monthEnd) ? sessionEnd : monthEnd;
 
-      while (!current.isAfter(end, "day")) {
+      // End at sessionEnd, monthEnd, or today (for active sessions), whichever is earliest
+      let rangeEnd = sessionEnd;
+      if (rangeEnd.isAfter(monthEnd)) {
+        rangeEnd = monthEnd;
+      }
+      // For active sessions, never go beyond today
+      if (isActive && rangeEnd.isAfter(today)) {
+        rangeEnd = today;
+      }
+
+      // Add all days in the range that fall within this month
+      let current = rangeStart;
+      while (!current.isAfter(rangeEnd, "day")) {
         if (current.month() + 1 === month && current.year() === year) {
           locked.add(current.format("YYYY-MM-DD"));
         }
@@ -99,7 +118,7 @@ export default function MonthCalendar({
     });
 
     return locked;
-  }, [chastitySessions, month, year, firstDay]);
+  }, [chastitySessions, month, year, firstDay, userTimezone]);
 
   // Check if a date is locked
   const isDateLocked = (date: string | null): boolean => {

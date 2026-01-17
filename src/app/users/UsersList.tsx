@@ -4,14 +4,17 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import type { Orgasm, User } from "@prisma/client";
+import duration from "dayjs/plugin/duration";
+import type { Orgasm, User, ChastitySession } from "@prisma/client";
 
 dayjs.extend(relativeTime);
+dayjs.extend(duration);
 
 const ITEMS_PER_PAGE = 15;
 
 type UserWithOrgasms = User & {
   orgasms: Orgasm[];
+  chastitySessions?: ChastitySession[];
 };
 
 export default function UsersList() {
@@ -145,6 +148,7 @@ function UserCard({
 }: {
   user: User & {
     orgasms: Orgasm[];
+    chastitySessions?: ChastitySession[];
   };
 }) {
   // Get the last orgasm - use timestamp (date/time fields are deprecated)
@@ -159,6 +163,16 @@ function UserCard({
     });
 
   const lastOrgasm = orgasms[0];
+
+  // Check for active chastity session
+  const activeSession =
+    user.trackChastityStatus && user.chastitySessions
+      ? user.chastitySessions.find((s) => s.endTime === null)
+      : null;
+
+  const lockedDuration = activeSession
+    ? dayjs.duration(dayjs().diff(dayjs(activeSession.startTime)))
+    : null;
 
   return (
     <Link
@@ -186,6 +200,28 @@ function UserCard({
                     <span className="text-gray-600 dark:text-gray-400">
                       Last orgasm {lastOrgasm.datetime.fromNow()}
                     </span>
+                    {activeSession && lockedDuration && (
+                      <>
+                        <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
+                        <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                            />
+                          </svg>
+                          Locked for {lockedDuration.humanize()}
+                        </span>
+                      </>
+                    )}
                   </>
                 )}
               </>

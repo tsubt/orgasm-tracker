@@ -241,6 +241,7 @@ export default async function UserProfile({ username }: { username: string }) {
               tz="UTC"
               defaultChart={user.defaultProfileChart}
               firstDayOfWeek={user.firstDayOfWeek ?? 1}
+              chastitySessions={user.trackChastityStatus ? chastitySessions : []}
             />
           </Suspense>
         </div>
