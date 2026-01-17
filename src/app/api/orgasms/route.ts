@@ -72,6 +72,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate timestamp is in the past
+    if (timestampDate.getTime() > Date.now()) {
+      return NextResponse.json(
+        { error: "Timestamp must be in the past" },
+        { status: 400 }
+      );
+    }
+
     // Create the orgasm
     const orgasm = await prisma.orgasm.create({
       data: {
@@ -141,6 +149,14 @@ export async function PUT(request: Request) {
     if (isNaN(timestampDate.getTime())) {
       return NextResponse.json(
         { error: "Invalid timestamp format" },
+        { status: 400 }
+      );
+    }
+
+    // Validate timestamp is in the past
+    if (timestampDate.getTime() > Date.now()) {
+      return NextResponse.json(
+        { error: "Timestamp must be in the past" },
         { status: 400 }
       );
     }
