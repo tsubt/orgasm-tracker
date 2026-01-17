@@ -160,7 +160,7 @@ export default async function UserProfile({ username }: { username: string }) {
                   <EditBioButton initialBio={user.bio} isOwnProfile={isOwnProfile} />
                 </Suspense>
               )}
-              {!isOwnProfile && currentUserId && (
+              {!isOwnProfile && currentUserId && user.username && (
                 <FollowButton
                   username={user.username}
                   isFollowing={!!isFollowing}

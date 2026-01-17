@@ -6,16 +6,18 @@ import { revalidatePath } from "next/cache";
 
 export async function updateBio(bio: string) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
+
+  const currentUserId = session.user.id;
 
   // Limit bio to 160 characters
   const trimmedBio = bio.trim().slice(0, 160);
 
   const user = await prisma.user.update({
     where: {
-      id: session.user.id,
+      id: currentUserId,
     },
     data: {
       bio: trimmedBio || null,
@@ -33,9 +35,11 @@ export async function updateBio(bio: string) {
 
 export async function followUser(username: string) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
+
+  const currentUserId = session.user.id;
 
   // Get the user to follow
   const userToFollow = await prisma.user.findUnique({
@@ -48,14 +52,14 @@ export async function followUser(username: string) {
   }
 
   // Prevent self-following
-  if (userToFollow.id === session.user.id) {
+  if (userToFollow.id === currentUserId) {
     throw new Error("Cannot follow yourself");
   }
 
   // Create follow relationship
   await prisma.follow.create({
     data: {
-      followerId: session.user.id,
+      followerId: currentUserId,
       followingId: userToFollow.id,
     },
   });
@@ -69,9 +73,11 @@ export async function followUser(username: string) {
 
 export async function unfollowUser(username: string) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
+
+  const currentUserId = session.user.id;
 
   // Get the user to unfollow
   const userToUnfollow = await prisma.user.findUnique({
@@ -86,7 +92,7 @@ export async function unfollowUser(username: string) {
   // Delete follow relationship
   await prisma.follow.deleteMany({
     where: {
-      followerId: session.user.id,
+      followerId: currentUserId,
       followingId: userToUnfollow.id,
     },
   });
