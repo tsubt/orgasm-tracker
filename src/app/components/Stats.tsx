@@ -162,7 +162,9 @@ async function SummaryStats({
   const longestStreak = streaks.reduce((a, b) => (a > b ? a : b));
 
   // time between orgasms -> days *without* orgasm + 1
-  const longestGap = times.length ? Math.max(...times) - 1 : 0;
+  // Include current "days without" if it's longer than historical gaps
+  const historicalLongestGap = times.length ? Math.max(...times) - 1 : 0;
+  const longestGap = Math.max(historicalLongestGap, daysSinceLast);
 
   // wait 5 seconds
   //   await new Promise((resolve) => setTimeout(resolve, 200000));

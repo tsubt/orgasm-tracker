@@ -166,7 +166,9 @@ async function SummaryStats({
     .map((x) => x + 1);
   const longestStreak = streaks.reduce((a, b) => (a > b ? a : b));
 
-  const longestGap = times.length ? Math.max(...times) - 1 : 0;
+  // Include current "days without" if it's longer than historical gaps
+  const historicalLongestGap = times.length ? Math.max(...times) - 1 : 0;
+  const longestGap = Math.max(historicalLongestGap, daysSinceLast);
 
   // Get user's account creation date
   const user = await prisma.user.findUnique({
