@@ -3,6 +3,8 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import isoWeek from "dayjs/plugin/isoWeek";
+import relativeTime from "dayjs/plugin/relativeTime";
+import duration from "dayjs/plugin/duration";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import BioEditor from "./BioEditor";
@@ -14,6 +16,8 @@ import { Suspense } from "react";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isoWeek);
+dayjs.extend(relativeTime);
+dayjs.extend(duration);
 
 export default async function UserProfile({ username }: { username: string }) {
   const session = await auth();
@@ -32,6 +36,7 @@ export default async function UserProfile({ username }: { username: string }) {
       bio: true,
       publicProfile: true,
       publicOrgasms: true,
+      trackChastityStatus: true,
       defaultProfileChart: true,
       firstDayOfWeek: true,
       joinedAt: true,
@@ -57,6 +62,19 @@ export default async function UserProfile({ username }: { username: string }) {
 
   // Filter orgasms with timestamps
   const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
+
+  // Fetch chastity sessions if trackChastityStatus is enabled
+  const chastitySessions =
+    user.trackChastityStatus
+      ? await prisma.chastitySession.findMany({
+          where: { userId: user.id },
+          orderBy: { startTime: "desc" },
+        })
+      : [];
+
+  // Get current session (if active) and last session
+  const currentSession = chastitySessions.find((s) => s.endTime === null);
+  const lastSession = chastitySessions.find((s) => s.endTime !== null);
 
   // Calculate stats
   const now = dayjs();
@@ -164,6 +182,39 @@ export default async function UserProfile({ username }: { username: string }) {
         </div>
       </div>
 
+      {/* Chastity Sessions */}
+      {user.trackChastityStatus && chastitySessions.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {currentSession && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:bg-white dark:hover:bg-gray-700 transition-all">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Current Session
+              </div>
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                Started {dayjs(currentSession.startTime).fromNow()}
+              </div>
+            </div>
+          )}
+          {lastSession && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:bg-white dark:hover:bg-gray-700 transition-all">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Last Session
+              </div>
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                Lasted {dayjs
+                  .duration(
+                    dayjs(lastSession.endTime).diff(dayjs(lastSession.startTime))
+                  )
+                  .humanize()}
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Ended {dayjs(lastSession.endTime).fromNow()}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Charts */}
       {validOrgasms.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
@@ -202,6 +253,7 @@ export default async function UserProfile({ username }: { username: string }) {
         </h2>
         <OrgasmFeed
           orgasms={validOrgasms}
+          chastitySessions={user.trackChastityStatus ? chastitySessions : []}
           tz={Intl.DateTimeFormat().resolvedOptions().timeZone}
         />
       </div>
