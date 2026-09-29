@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import UserCard from "@/app/components/UserCard";
-import type { Orgasm, User, ChastitySession } from "@prisma/client";
+import type { PublicUserCard } from "@/lib/publicUserCard";
 
 const ITEMS_PER_PAGE = 15;
 
-type UserWithOrgasms = User & {
-  orgasms: Orgasm[];
-  chastitySessions?: ChastitySession[];
+type UserWithOrgasms = PublicUserCard & {
   isFollowing?: boolean;
 };
 

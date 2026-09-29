@@ -1,13 +1,8 @@
 "use client";
 
-import { useMemo, memo, Suspense } from "react";
+import { useMemo } from "react";
+import dynamic from "next/dynamic";
 import { Orgasm, ChastitySession } from "@prisma/client";
-import LineChartOnly from "./LineChartOnly";
-import MonthChart from "./MonthChart";
-import WeekChart from "./WeekChart";
-import DayChart from "./DayChart";
-import HeatMap from "./HeatMap";
-import EventDotChart from "./EventDotChart";
 import CalendarChartSkeleton from "./CalendarChartSkeleton";
 
 interface ChartsClientProps {
@@ -19,15 +14,6 @@ interface ChartsClientProps {
   firstDayOfWeek: number;
 }
 
-// Memoize chart components to prevent re-renders when props haven't changed
-const MemoizedLineChart = memo(LineChartOnly);
-const MemoizedMonthChart = memo(MonthChart);
-const MemoizedWeekChart = memo(WeekChart);
-const MemoizedDayChart = memo(DayChart);
-const MemoizedHeatMap = memo(HeatMap);
-const MemoizedEventDotChart = memo(EventDotChart);
-
-// Loading skeleton components
 function LoadingLineChart() {
   return (
     <div className="w-full" style={{ height: "300px" }}>
@@ -90,6 +76,25 @@ function LoadingTimelineChart() {
   );
 }
 
+const LineChartOnly = dynamic(() => import("./LineChartOnly"), {
+  loading: () => <LoadingLineChart />,
+});
+const HeatMap = dynamic(() => import("./HeatMap"), {
+  loading: () => <LoadingFrequencyChart />,
+});
+const MonthChart = dynamic(() => import("./MonthChart"), {
+  loading: () => <LoadingCalendarChart />,
+});
+const WeekChart = dynamic(() => import("./WeekChart"), {
+  loading: () => <LoadingWeekChart />,
+});
+const DayChart = dynamic(() => import("./DayChart"), {
+  loading: () => <LoadingRadialChart />,
+});
+const EventDotChart = dynamic(() => import("./EventDotChart"), {
+  loading: () => <LoadingTimelineChart />,
+});
+
 export default function ChartsClient({
   orgasms,
   period,
@@ -113,49 +118,26 @@ export default function ChartsClient({
 
   switch (period) {
     case "Line":
-      return (
-        <Suspense fallback={<LoadingLineChart />}>
-          <MemoizedLineChart orgasms={orgasms} selectedYear={selectedYear} />
-        </Suspense>
-      );
+      return <LineChartOnly orgasms={orgasms} selectedYear={selectedYear} />;
     case "Frequency":
-      return (
-        <Suspense fallback={<LoadingFrequencyChart />}>
-          <MemoizedHeatMap orgasms={orgasms} timeframe={selectedYear} />
-        </Suspense>
-      );
+      return <HeatMap orgasms={orgasms} timeframe={selectedYear} />;
     case "Calendar":
       return (
-        <Suspense fallback={<LoadingCalendarChart />}>
-          <MemoizedMonthChart
-            orgasms={yearOrgasms}
-            selectedYear={selectedYear}
-            chastitySessions={chastitySessions}
-            firstDayOfWeek={firstDayOfWeek}
-          />
-        </Suspense>
+        <MonthChart
+          orgasms={yearOrgasms}
+          selectedYear={selectedYear}
+          chastitySessions={chastitySessions}
+          firstDayOfWeek={firstDayOfWeek}
+        />
       );
     case "Week":
       return (
-        <Suspense fallback={<LoadingWeekChart />}>
-          <MemoizedWeekChart
-            orgasms={yearOrgasms}
-            selectedYear={selectedYear}
-          />
-        </Suspense>
+        <WeekChart orgasms={yearOrgasms} selectedYear={selectedYear} />
       );
     case "Radial":
-      return (
-        <Suspense fallback={<LoadingRadialChart />}>
-          <MemoizedDayChart orgasms={yearOrgasms} selectedYear={selectedYear} />
-        </Suspense>
-      );
+      return <DayChart orgasms={yearOrgasms} selectedYear={selectedYear} />;
     case "Timeline":
-      return (
-        <Suspense fallback={<LoadingTimelineChart />}>
-          <MemoizedEventDotChart orgasms={orgasms} tz={tz} />
-        </Suspense>
-      );
+      return <EventDotChart orgasms={orgasms} tz={tz} />;
   }
 
   return <div>Invalid chart selected</div>;

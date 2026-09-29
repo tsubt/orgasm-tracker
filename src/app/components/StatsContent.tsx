@@ -1,7 +1,9 @@
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import DashboardCharts from "./DashboardCharts";
 import DashboardClient from "./DashboardClient";
-import ChastityStatus from "./ChastityStatus";
+
+const ChastityStatus = dynamic(() => import("./ChastityStatus"));
 import FappedLink from "./FappedLink";
 import LastOrgasmDisplay from "./LastOrgasmDisplay";
 import LocktoberBoard from "./LocktoberBoard";

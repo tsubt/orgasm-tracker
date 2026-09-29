@@ -3,12 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import Link from "next/link";
 import UserCard from "@/app/components/UserCard";
-import type { Orgasm, User, ChastitySession } from "@prisma/client";
-
-type UserWithData = User & {
-  orgasms: Orgasm[];
-  chastitySessions?: ChastitySession[];
-};
+import { loadPublicUserCards } from "@/lib/publicUserCards";
 
 export default async function FollowingPage({
   params,
@@ -29,27 +24,18 @@ export default async function FollowingPage({
     notFound();
   }
 
-  // Fetch following
   const follows = await prisma.follow.findMany({
     where: { followerId: user.id },
-    include: {
-      following: {
-        include: {
-          orgasms: true,
-          chastitySessions: true,
-        },
-      },
-    },
+    select: { followingId: true },
     orderBy: { createdAt: "desc" },
   });
 
-  const following: UserWithData[] = follows
-    .map((follow) => ({
-      ...follow.following,
-      orgasms: follow.following.orgasms,
-      chastitySessions: follow.following.chastitySessions,
-    }))
-    .filter((followedUser) => followedUser.publicProfile);
+  const cards = await loadPublicUserCards(follows.map((follow) => follow.followingId));
+  const cardsById = new Map(cards.map((card) => [card.id, card]));
+  const following = follows.flatMap((follow) => {
+    const card = cardsById.get(follow.followingId);
+    return card ? [card] : [];
+  });
 
   // Get follow status for current user if logged in
   let followingIds: string[] = [];

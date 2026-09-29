@@ -9,8 +9,8 @@ import duration from "dayjs/plugin/duration";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { followUser, unfollowUser } from "@/app/u/[username]/actions";
-import type { Orgasm, User, ChastitySession } from "@prisma/client";
 import { useClientTimeZone } from "@/lib/useClientTimeZone";
+import type { PublicUserCard } from "@/lib/publicUserCard";
 
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
@@ -22,10 +22,7 @@ export default function UserCard({
   currentUserId,
   isFollowing: initialIsFollowing,
 }: {
-  user: User & {
-    orgasms: Orgasm[];
-    chastitySessions?: ChastitySession[];
-  };
+  user: PublicUserCard;
   currentUserId?: string;
   isFollowing?: boolean;
 }) {
@@ -36,29 +33,13 @@ export default function UserCard({
   const router = useRouter();
 
   const showFollowButton = currentUserId && currentUserId !== user.id;
-  const isOwnProfile = currentUserId === user.id;
-  // Get the last orgasm - use timestamp (date/time fields are deprecated)
-  const orgasms = user.orgasms
-    .filter((o) => o.timestamp !== null)
-    .map((o) => ({
-      ...o,
-      datetime: dayjs(o.timestamp),
-    }))
-    .sort((x, y) => {
-      return x.datetime.isAfter(y.datetime) ? -1 : 1;
-    });
-
-  const lastOrgasm = orgasms[0];
-
-  // Check for active chastity session
-  const activeSession =
-    user.trackChastityStatus && user.chastitySessions
-      ? user.chastitySessions.find((s) => s.endTime === null)
+  const orgasmCount = user.publicOrgasms ? user.orgasmCount : 0;
+  const lastOrgasm =
+    user.publicOrgasms && user.lastOrgasmAt ? dayjs(user.lastOrgasmAt) : null;
+  const lockedDuration =
+    user.trackChastityStatus && user.activeChastityStart
+      ? dayjs.duration(dayjs().diff(dayjs(user.activeChastityStart)))
       : null;
-
-  const lockedDuration = activeSession
-    ? dayjs.duration(dayjs().diff(dayjs(activeSession.startTime)))
-    : null;
 
   const handleFollowClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -98,51 +79,58 @@ export default function UserCard({
 
           {/* Orgasm stats */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-gray-700 dark:text-gray-300">
-            {orgasms.length ? (
-              <>
+            {user.publicOrgasms &&
+              (orgasmCount > 0 ? (
                 <div className="flex items-center gap-1">
-                  <span className="font-medium text-base">{orgasms.length}</span>
-                  <span>orgasm{orgasms.length > 1 ? "s" : ""} tracked</span>
+                  <span className="font-medium text-base">{orgasmCount}</span>
+                  <span>orgasm{orgasmCount > 1 ? "s" : ""} tracked</span>
                 </div>
-                {lastOrgasm && (
-                  <>
-                    <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
-                    <span
-                      className="text-gray-600 dark:text-gray-400"
-                      suppressHydrationWarning
-                    >
-                      Last orgasm {lastOrgasm.datetime.fromNow()}
-                    </span>
-                    {activeSession && lockedDuration && (
-                      <>
-                        <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
-                        <span
-                          className="flex items-center gap-1 text-gray-600 dark:text-gray-400"
-                          suppressHydrationWarning
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                            />
-                          </svg>
-                          Locked for {lockedDuration.humanize()}
-                        </span>
-                      </>
-                    )}
-                  </>
-                )}
+              ) : (
+                <span className="text-gray-500 dark:text-gray-400">
+                  No orgasms tracked
+                </span>
+              ))}
+            {user.publicOrgasms && lastOrgasm && (
+              <>
+                <span className="hidden sm:inline text-gray-400 dark:text-gray-500">
+                  •
+                </span>
+                <span
+                  className="text-gray-600 dark:text-gray-400"
+                  suppressHydrationWarning
+                >
+                  Last orgasm {lastOrgasm.fromNow()}
+                </span>
               </>
-            ) : (
-              <span className="text-gray-500 dark:text-gray-400">No orgasms tracked</span>
+            )}
+            {lockedDuration && (
+              <>
+                {user.publicOrgasms && (
+                  <span className="hidden sm:inline text-gray-400 dark:text-gray-500">
+                    •
+                  </span>
+                )}
+                <span
+                  className="flex items-center gap-1 text-gray-600 dark:text-gray-400"
+                  suppressHydrationWarning
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                  Locked for {lockedDuration.humanize()}
+                </span>
+              </>
             )}
           </div>
         </div>
