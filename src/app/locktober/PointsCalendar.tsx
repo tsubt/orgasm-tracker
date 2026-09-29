@@ -24,7 +24,10 @@ function lockStatus(minutes: number): { mark: string; hours: string | null; labe
   };
 }
 
-function heatStyle(points: number, peak: number): { className: string; style: { backgroundColor: string } } {
+function heatStyle(
+  points: number,
+  peak: number,
+): { className: string; style: { backgroundColor: string; borderColor: string } } {
   const mag = Math.min(1, Math.abs(points) / Math.max(20, peak));
   const alpha = 0.22 + mag * 0.68;
   const rgb = points > 0 ? "5, 150, 105" : "109, 40, 217";
