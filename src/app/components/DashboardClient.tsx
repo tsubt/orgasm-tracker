@@ -1,85 +1,38 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { ChastitySession, DashboardChart, Orgasm } from "@prisma/client";
+import { useMemo, useState } from "react";
+import { Orgasm } from "@prisma/client";
 import BreakdownStatsClient from "./BreakdownStatsClient";
-import ChastityStatus from "./ChastityStatus";
-import DashboardCharts from "./DashboardCharts";
-import FappedLink from "./FappedLink";
-import LastOrgasmDisplay from "./LastOrgasmDisplay";
 import PickTime from "./PickTime";
 import { summarizeOrgasms } from "@/lib/orgasmSummary";
 import { asPeriod, type Period } from "@/lib/periods";
 
 export default function DashboardClient({
   orgasms,
-  chastitySessions,
-  charts,
   joinedAt,
-  firstDayOfWeek,
-  trackChastityStatus,
   tz,
   initialTime,
-  userId,
-  locktober,
 }: {
   orgasms: Orgasm[];
-  chastitySessions: ChastitySession[];
-  charts: DashboardChart[];
   joinedAt: Date;
-  firstDayOfWeek: number;
-  trackChastityStatus: boolean;
   tz: string;
   initialTime: string;
-  userId: string;
-  locktober: ReactNode;
 }) {
   const [time, setTime] = useState<Period>(asPeriod(initialTime));
   const summary = useMemo(
     () => summarizeOrgasms(orgasms, time, tz, joinedAt),
     [orgasms, time, tz, joinedAt],
   );
-  const lastTimestamp = orgasms.reduce<Date | null>((latest, orgasm) => {
-    if (!orgasm.timestamp) return latest;
-    const timestamp = new Date(orgasm.timestamp);
-    if (Number.isNaN(timestamp.getTime())) return latest;
-    if (!latest || timestamp > latest) return timestamp;
-    return latest;
-  }, null);
 
   return (
-    <div className="flex flex-col gap-6 w-full">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <LastOrgasmDisplay timestamp={lastTimestamp} />
-        <FappedLink />
-      </div>
-
-      {trackChastityStatus && (
-        <ChastityStatus trackChastityStatus={trackChastityStatus} />
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
+      <PickTime value={time} onChange={setTime} />
+      {summary ? (
+        <SummaryView summary={summary} />
+      ) : (
+        <div className="text-gray-700 dark:text-gray-300">No orgasms yet</div>
       )}
-
-      {locktober}
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
-        <PickTime value={time} onChange={setTime} />
-        {summary ? (
-          <SummaryView summary={summary} />
-        ) : (
-          <div className="text-gray-700 dark:text-gray-300">No orgasms yet</div>
-        )}
-        <BreakdownStatsClient orgasms={orgasms} time={time} tz={tz} />
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
-        <DashboardCharts
-          orgasms={orgasms}
-          tz={tz}
-          userId={userId}
-          chastitySessions={chastitySessions}
-          firstDayOfWeek={firstDayOfWeek}
-          charts={charts}
-        />
-      </div>
+      <BreakdownStatsClient orgasms={orgasms} time={time} tz={tz} />
     </div>
   );
 }

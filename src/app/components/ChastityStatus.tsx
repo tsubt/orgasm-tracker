@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -17,21 +17,23 @@ dayjs.extend(relativeTime);
 
 type ChastitySession = {
   id: string;
-  startTime: Date;
-  endTime: Date | null;
+  startTime: Date | string;
+  endTime: Date | string | null;
   note: string | null;
 };
 
 export default function ChastityStatus({
   trackChastityStatus,
+  activeSession: initialActiveSession,
 }: {
   trackChastityStatus: boolean;
+  activeSession: ChastitySession | null;
 }) {
   const router = useRouter();
   const [activeSession, setActiveSession] = useState<ChastitySession | null>(
-    null
+    initialActiveSession
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -42,14 +44,6 @@ export default function ChastityStatus({
   const endDateRef = useRef<HTMLInputElement>(null);
   const endTimeRef = useRef<HTMLInputElement>(null);
   const endNoteRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (trackChastityStatus) {
-      fetchActiveSession();
-    } else {
-      setIsLoading(false);
-    }
-  }, [trackChastityStatus]);
 
   const fetchActiveSession = async () => {
     try {

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Orgasm, ChastitySession } from "@prisma/client";
 import MonthCalendar from "./MonthCalendar";
-import dayjs from "dayjs";
+import CalendarChartSkeleton from "./CalendarChartSkeleton";
 
 interface MonthChartWrapperProps {
   orgasms: Orgasm[];
@@ -24,6 +24,11 @@ export default function MonthChartWrapper({
   const [selectedMonth, setSelectedMonth] = useState<number>(
     new Date().getMonth() + 1
   );
+  const colorsReady = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const monthNames = [
     "January",
@@ -39,6 +44,8 @@ export default function MonthChartWrapper({
     "November",
     "December",
   ];
+
+  if (!colorsReady) return <CalendarChartSkeleton />;
 
   return (
     <div className="w-full">

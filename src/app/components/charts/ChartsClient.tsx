@@ -8,6 +8,7 @@ import WeekChart from "./WeekChart";
 import DayChart from "./DayChart";
 import HeatMap from "./HeatMap";
 import EventDotChart from "./EventDotChart";
+import CalendarChartSkeleton from "./CalendarChartSkeleton";
 
 interface ChartsClientProps {
   orgasms: Orgasm[];
@@ -47,18 +48,7 @@ function LoadingFrequencyChart() {
 }
 
 function LoadingCalendarChart() {
-  return (
-    <div className="w-full">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={i}
-            className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-48"
-          ></div>
-        ))}
-      </div>
-    </div>
-  );
+  return <CalendarChartSkeleton />;
 }
 
 function LoadingWeekChart() {
