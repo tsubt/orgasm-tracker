@@ -204,6 +204,7 @@ function SetupForm({
           min={1}
           max={31}
           value={allowed}
+          disabled={pending}
           onChange={(event) => {
             const next = Number(event.target.value);
             setAllowed(next);
@@ -230,6 +231,7 @@ function SetupForm({
               name="placement"
               value={value}
               checked={placement === value}
+              disabled={pending}
               onChange={() => setPlacement(value)}
             />
             {label}
@@ -277,6 +279,7 @@ function SetupForm({
             selected={chosen}
             disabledDates={past}
             maxSelected={count}
+            readOnly={pending}
             onToggle={(date) => {
               setChosen((current) =>
                 current.includes(date)
@@ -290,8 +293,16 @@ function SetupForm({
         </div>
       )}
 
-      <button type="submit" className={buttonClass} disabled={!canStart}>
-        Start Locktober
+      <button
+        type="submit"
+        className={`${buttonClass} inline-flex items-center justify-center gap-2 ${pending ? "!opacity-100" : ""}`}
+        disabled={!canStart}
+        aria-busy={pending}
+      >
+        {pending && (
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+        )}
+        {pending ? "Starting…" : "Start Locktober"}
       </button>
     </form>
   );
