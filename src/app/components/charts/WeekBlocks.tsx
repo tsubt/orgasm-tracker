@@ -4,18 +4,20 @@ import { useLayoutEffect, useRef } from "react";
 import { Orgasm, OrgasmType } from "@prisma/client";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
+import { at, onDate } from "@/lib/zonedTime";
 
 dayjs.extend(isoWeek);
 
 interface WeekBlocksProps {
   orgasms: Orgasm[];
   year: number;
+  timeZone?: string;
 }
 
-export default function WeekBlocks({ orgasms, year }: WeekBlocksProps) {
+export default function WeekBlocks({ orgasms, year, timeZone }: WeekBlocksProps) {
   // Get the first and last day of the year
-  const yearStart = dayjs(`${year}-01-01`);
-  const yearEnd = dayjs(`${year}-12-31`);
+  const yearStart = onDate(`${year}-01-01`, timeZone);
+  const yearEnd = onDate(`${year}-12-31`, timeZone);
 
   // Handle year boundary - we need to get all weeks that contain days from this year
   const weeks: number[] = [];
@@ -38,7 +40,7 @@ export default function WeekBlocks({ orgasms, year }: WeekBlocksProps) {
 
   orgasms.forEach((o) => {
     if (!o.timestamp) return;
-    const orgasmDate = dayjs(o.timestamp);
+    const orgasmDate = at(o.timestamp, timeZone);
     const orgasmYear = orgasmDate.year();
     const orgasmWeek = orgasmDate.isoWeek();
 
@@ -113,20 +115,20 @@ export default function WeekBlocks({ orgasms, year }: WeekBlocksProps) {
 
           // Get the date range for this week
           // Find a date in the selected year that falls in this week
-          let weekStart = dayjs(`${year}-01-01`);
+          let weekStart = onDate(`${year}-01-01`, timeZone);
           // Try to find the week - it might be from previous year
           if (weekNum >= 52) {
             // Week might be from end of previous year or start of next year
-            weekStart = dayjs(`${year}-12-31`)
+            weekStart = onDate(`${year}-12-31`, timeZone)
               .isoWeek(weekNum)
               .startOf("isoWeek");
             if (weekStart.year() !== year) {
-              weekStart = dayjs(`${year}-01-01`)
+              weekStart = onDate(`${year}-01-01`, timeZone)
                 .isoWeek(weekNum)
                 .startOf("isoWeek");
             }
           } else {
-            weekStart = dayjs(`${year}-01-01`)
+            weekStart = onDate(`${year}-01-01`, timeZone)
               .isoWeek(weekNum)
               .startOf("isoWeek");
           }
@@ -163,7 +165,7 @@ export default function WeekBlocks({ orgasms, year }: WeekBlocksProps) {
                         height: `${barHeight}px`,
                         backgroundColor: getTypeColor(orgasm.type),
                       }}
-                      title={`${dayjs(orgasm.timestamp).format(
+                      title={`${at(orgasm.timestamp, timeZone).format(
                         "MMM D, h:mm A"
                       )} - ${orgasm.type}`}
                     />

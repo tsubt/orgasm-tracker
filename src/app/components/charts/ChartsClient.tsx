@@ -4,12 +4,15 @@ import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Orgasm, ChastitySession } from "@prisma/client";
 import CalendarChartSkeleton from "./CalendarChartSkeleton";
+import { at } from "@/lib/zonedTime";
 
 interface ChartsClientProps {
   orgasms: Orgasm[];
   period: string;
   selectedYear: number;
   tz: string;
+  timeZone?: string;
+  now?: string;
   chastitySessions?: ChastitySession[];
   firstDayOfWeek: number;
 }
@@ -100,6 +103,8 @@ export default function ChartsClient({
   period,
   selectedYear,
   tz,
+  timeZone,
+  now,
   chastitySessions = [],
   firstDayOfWeek,
 }: ChartsClientProps) {
@@ -111,16 +116,32 @@ export default function ChartsClient({
     }
     return orgasms.filter((o) => {
       if (!o.timestamp) return false;
-      const year = new Date(o.timestamp).getFullYear();
+      const year = timeZone
+        ? at(o.timestamp, timeZone).year()
+        : new Date(o.timestamp).getFullYear();
       return year === selectedYear;
     });
-  }, [orgasms, selectedYear, period]);
+  }, [orgasms, selectedYear, period, timeZone]);
 
   switch (period) {
     case "Line":
-      return <LineChartOnly orgasms={orgasms} selectedYear={selectedYear} />;
+      return (
+        <LineChartOnly
+          orgasms={orgasms}
+          selectedYear={selectedYear}
+          timeZone={timeZone}
+          now={now}
+        />
+      );
     case "Frequency":
-      return <HeatMap orgasms={orgasms} timeframe={selectedYear} />;
+      return (
+        <HeatMap
+          orgasms={orgasms}
+          timeframe={selectedYear}
+          timeZone={timeZone}
+          now={now}
+        />
+      );
     case "Calendar":
       return (
         <MonthChart
@@ -128,16 +149,28 @@ export default function ChartsClient({
           selectedYear={selectedYear}
           chastitySessions={chastitySessions}
           firstDayOfWeek={firstDayOfWeek}
+          timeZone={timeZone}
+          now={now}
         />
       );
     case "Week":
       return (
-        <WeekChart orgasms={yearOrgasms} selectedYear={selectedYear} />
+        <WeekChart
+          orgasms={yearOrgasms}
+          selectedYear={selectedYear}
+          timeZone={timeZone}
+        />
       );
     case "Radial":
-      return <DayChart orgasms={yearOrgasms} selectedYear={selectedYear} />;
+      return (
+        <DayChart
+          orgasms={yearOrgasms}
+          selectedYear={selectedYear}
+          timeZone={timeZone}
+        />
+      );
     case "Timeline":
-      return <EventDotChart orgasms={orgasms} tz={tz} />;
+      return <EventDotChart orgasms={orgasms} tz={timeZone ?? tz} now={now} />;
   }
 
   return <div>Invalid chart selected</div>;

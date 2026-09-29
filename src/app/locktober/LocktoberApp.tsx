@@ -8,6 +8,7 @@ import {
   evenlySpacedDates,
   focusYear,
   octoberEnd,
+  publicLocktoberShareKey,
   octoberStart,
   setupYear,
   taskCapState,
@@ -90,10 +91,12 @@ function formatLocked(ms: number): string {
 
 export default function LocktoberApp({
   challenges,
+  username,
   firstDayOfWeek,
   activeChastity,
 }: {
   challenges: SerializedChallenge[];
+  username: string | null;
   firstDayOfWeek: number;
   activeChastity: { id: string; startTime: string } | null;
 }) {
@@ -129,6 +132,7 @@ export default function LocktoberApp({
       {challenge ? (
         <ChallengeView
           challenge={challenge}
+          username={username}
           firstDayOfWeek={firstDayOfWeek}
           activeChastity={activeChastity}
         />
@@ -310,10 +314,12 @@ function SetupForm({
 
 function ChallengeView({
   challenge,
+  username,
   firstDayOfWeek,
   activeChastity,
 }: {
   challenge: SerializedChallenge;
+  username: string | null;
   firstDayOfWeek: number;
   activeChastity: { id: string; startTime: string } | null;
 }) {
@@ -378,7 +384,12 @@ function ChallengeView({
           type="button"
           className={quietButtonClass}
           onClick={async () => {
-            const url = `${window.location.origin}/locktober/s/${challenge.shareSlug}`;
+            const key = publicLocktoberShareKey({
+              visibility: challenge.visibility,
+              shareSlug: challenge.shareSlug,
+              username,
+            });
+            const url = `${window.location.origin}/locktober/s/${key}`;
             if (challenge.visibility === "PRIVATE") {
               toast.error("Make it link-only or public before sharing.");
               return;

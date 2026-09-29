@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react";
 import { Orgasm, ChastitySession } from "@prisma/client";
 import ChartsClient from "./charts/ChartsClient";
-import dayjs from "dayjs";
+import { at, clock } from "@/lib/zonedTime";
 
 const CHART_OPTIONS = ["Line", "Frequency", "Calendar", "Week", "Radial", "Timeline"];
 
 interface ProfileChartProps {
   orgasms: Orgasm[];
   tz: string;
+  now: string;
   defaultChart?: string | null;
   chastitySessions?: ChastitySession[];
   firstDayOfWeek: number;
@@ -18,6 +19,7 @@ interface ProfileChartProps {
 export default function ProfileChart({
   orgasms,
   tz,
+  now,
   defaultChart,
   chastitySessions = [],
   firstDayOfWeek,
@@ -32,13 +34,13 @@ export default function ProfileChart({
     const years = new Set<number>();
     validOrgasms.forEach((o) => {
       if (o.timestamp) {
-        years.add(dayjs(o.timestamp).year());
+        years.add(at(o.timestamp, tz).year());
       }
     });
     return Array.from(years).sort((a, b) => b - a);
-  }, [orgasms]);
+  }, [orgasms, tz]);
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = clock(now, tz).year();
   const initialYear =
     availableYears.length > 0 && availableYears.includes(currentYear)
       ? currentYear
@@ -99,6 +101,8 @@ export default function ProfileChart({
         period={chartType}
         selectedYear={selectedYear}
         tz={tz}
+        timeZone={tz}
+        now={now}
         chastitySessions={chastitySessions}
         firstDayOfWeek={firstDayOfWeek}
       />

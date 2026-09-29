@@ -1,9 +1,6 @@
 import { prisma } from "@/prisma";
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 import isoWeek from "dayjs/plugin/isoWeek";
-import relativeTime from "dayjs/plugin/relativeTime";
 import duration from "dayjs/plugin/duration";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
@@ -15,11 +12,10 @@ import ProfileChartEditor from "./ProfileChartEditor";
 import FollowButton from "./FollowButton";
 import Link from "next/link";
 import { Suspense } from "react";
+import { TheirTime, RelativeTime } from "@/app/components/SubjectTime";
+import { at, clock, resolveTimeZone } from "@/lib/zonedTime";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
 dayjs.extend(isoWeek);
-dayjs.extend(relativeTime);
 dayjs.extend(duration);
 
 export default async function UserProfile({ username }: { username: string }) {
@@ -42,6 +38,7 @@ export default async function UserProfile({ username }: { username: string }) {
       trackChastityStatus: true,
       defaultProfileChart: true,
       firstDayOfWeek: true,
+      timezone: true,
       joinedAt: true,
     },
   });
@@ -99,28 +96,31 @@ export default async function UserProfile({ username }: { username: string }) {
   const currentSession = chastitySessions.find((s) => s.endTime === null);
   const lastSession = chastitySessions.find((s) => s.endTime !== null);
 
-  // Calculate stats
-  const now = dayjs();
+  // Calendar buckets follow this person's zone. Relative phrases share one server instant.
+  const timeZone = resolveTimeZone(user.timezone);
+  const serverNow = new Date().toISOString();
+  const now = clock(serverNow, timeZone);
   const totalCount = validOrgasms.length;
 
-  // Get current year, month, week counts
   const currentYear = now.year();
   const currentMonth = now.month();
   const currentWeek = now.isoWeek();
+  const currentWeekYear = now.isoWeekYear();
 
   const thisYearCount = validOrgasms.filter((o) => {
-    const date = dayjs(o.timestamp);
-    return date.year() === currentYear;
+    return at(o.timestamp, timeZone).year() === currentYear;
   }).length;
 
   const thisMonthCount = validOrgasms.filter((o) => {
-    const date = dayjs(o.timestamp);
+    const date = at(o.timestamp, timeZone);
     return date.year() === currentYear && date.month() === currentMonth;
   }).length;
 
   const thisWeekCount = validOrgasms.filter((o) => {
-    const date = dayjs(o.timestamp);
-    return date.year() === currentYear && date.isoWeek() === currentWeek;
+    const date = at(o.timestamp, timeZone);
+    return (
+      date.isoWeekYear() === currentWeekYear && date.isoWeek() === currentWeek
+    );
   }).length;
 
   // Format join date - use earliest orgasm if it's earlier than joinedAt
@@ -140,7 +140,9 @@ export default async function UserProfile({ username }: { username: string }) {
       : accountJoinDate
     : accountJoinDate;
 
-  const joinDateFormatted = effectiveJoinDate.format("MMMM YYYY");
+  const joinDateFormatted = at(effectiveJoinDate.toDate(), timeZone).format(
+    "MMMM YYYY",
+  );
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -169,9 +171,13 @@ export default async function UserProfile({ username }: { username: string }) {
             </div>
           </div>
 
-          {/* Join Date */}
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Joined {joinDateFormatted}
+          <div className="flex flex-col gap-1 text-sm text-gray-500 dark:text-gray-400">
+            <div>Joined {joinDateFormatted}</div>
+            <TheirTime
+              timeZone={timeZone}
+              serverNow={serverNow}
+              own={isOwnProfile}
+            />
           </div>
 
           {/* Bio */}
@@ -249,7 +255,11 @@ export default async function UserProfile({ username }: { username: string }) {
                 Current Session
               </div>
               <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                Started {dayjs(currentSession.startTime).fromNow()}
+                Started{" "}
+                <RelativeTime
+                  at={currentSession.startTime}
+                  serverNow={serverNow}
+                />
               </div>
             </div>
           )}
@@ -265,9 +275,15 @@ export default async function UserProfile({ username }: { username: string }) {
                   )
                   .humanize()}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Ended {dayjs(lastSession.endTime).fromNow()}
-              </div>
+              {lastSession.endTime && (
+                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Ended{" "}
+                  <RelativeTime
+                    at={lastSession.endTime}
+                    serverNow={serverNow}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -296,7 +312,8 @@ export default async function UserProfile({ username }: { username: string }) {
           >
             <ProfileChart
               orgasms={validOrgasms}
-              tz="UTC"
+              tz={timeZone}
+              now={serverNow}
               defaultChart={user.defaultProfileChart}
               firstDayOfWeek={user.firstDayOfWeek ?? 1}
               chastitySessions={user.trackChastityStatus ? chastitySessions : []}
@@ -313,7 +330,8 @@ export default async function UserProfile({ username }: { username: string }) {
         <OrgasmFeed
           orgasms={validOrgasms}
           chastitySessions={user.trackChastityStatus ? chastitySessions : []}
-          tz={Intl.DateTimeFormat().resolvedOptions().timeZone}
+          tz={timeZone}
+          now={serverNow}
         />
       </div>
     </div>

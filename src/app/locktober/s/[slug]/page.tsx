@@ -4,8 +4,10 @@ import {
   loadChastitySpans,
   serializeChallenge,
 } from "@/lib/locktober/load";
+import { focusYear } from "@/lib/locktober/scoring";
 import { prisma } from "@/prisma";
-import { notFound } from "next/navigation";
+import dayjs from "dayjs";
+import { notFound, redirect } from "next/navigation";
 import ShareView, { ShareComment } from "./ShareView";
 
 export default async function LocktoberSharePage({
@@ -22,7 +24,20 @@ export default async function LocktoberSharePage({
   const isOwner = viewerId === challenge.userId;
   if (challenge.visibility === "PRIVATE" && !isOwner) notFound();
 
-  const [comments, like, owner] = await Promise.all([
+  const owner = await prisma.user.findUnique({
+    where: { id: challenge.userId },
+    select: { username: true, name: true, image: true },
+  });
+  if (
+    challenge.visibility === "PUBLIC" &&
+    owner?.username &&
+    slug !== owner.username &&
+    challenge.year === focusYear(dayjs())
+  ) {
+    redirect(`/locktober/s/${owner.username}`);
+  }
+
+  const [comments, like] = await Promise.all([
     prisma.locktoberComment.findMany({
       where: { challengeId: challenge.id },
       orderBy: { createdAt: "asc" },
@@ -38,10 +53,6 @@ export default async function LocktoberSharePage({
           select: { id: true },
         })
       : null,
-    prisma.user.findUnique({
-      where: { id: challenge.userId },
-      select: { username: true, name: true, image: true },
-    }),
   ]);
 
   const sessions = await loadChastitySpans(challenge.userId, challenge.year);
@@ -77,6 +88,8 @@ export default async function LocktoberSharePage({
           comments={shareComments}
           viewerId={viewerId}
           isOwner={isOwner}
+          timeZone={serialized.timezone}
+          serverNow={new Date().toISOString()}
         />
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useClientTimeZone } from "@/lib/useClientTimeZone";
+import { clock, onDate } from "@/lib/zonedTime";
 import { Orgasm, ChastitySession } from "@prisma/client";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -19,6 +20,8 @@ interface MonthCalendarProps {
   selectedMonth?: number; // For mobile dropdown
   onMonthChange?: (month: number) => void; // For mobile dropdown
   monthNames?: string[]; // For mobile dropdown
+  timeZone?: string;
+  now?: string;
 }
 
 export default function MonthCalendar({
@@ -30,6 +33,8 @@ export default function MonthCalendar({
   selectedMonth,
   onMonthChange,
   monthNames,
+  timeZone,
+  now,
 }: MonthCalendarProps) {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{
@@ -39,9 +44,12 @@ export default function MonthCalendar({
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const [isTouchTooltip, setIsTouchTooltip] = useState<boolean>(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const userTimezone = useClientTimeZone();
-  const firstDay = dayjs(`${year}-${month.toString().padStart(2, "0")}-01`).tz(
-    userTimezone
+  const clientTimeZone = useClientTimeZone();
+  const userTimezone = timeZone ?? clientTimeZone;
+  const referenceNow = clock(now, userTimezone);
+  const firstDay = onDate(
+    `${year}-${month.toString().padStart(2, "0")}-01`,
+    userTimezone,
   );
   const daysInMonth = firstDay.daysInMonth();
   const firstDayOfMonth = firstDay.day(); // 0 = Sunday, 6 = Saturday
@@ -67,7 +75,7 @@ export default function MonthCalendar({
   // Create a set of locked dates (days within chastity sessions)
   const lockedDates = useMemo(() => {
     const locked = new Set<string>();
-    const today = dayjs().tz(userTimezone).startOf("day");
+    const today = clock(now, userTimezone).startOf("day");
 
     chastitySessions.forEach((session) => {
       const startTime = dayjs(session.startTime).utc().tz(userTimezone);
@@ -116,7 +124,7 @@ export default function MonthCalendar({
     });
 
     return locked;
-  }, [chastitySessions, month, year, firstDay, userTimezone]);
+  }, [chastitySessions, month, year, firstDay, userTimezone, now]);
 
   // Check if a date is locked
   const isDateLocked = (date: string | null): boolean => {
@@ -133,7 +141,7 @@ export default function MonthCalendar({
       const startTime = dayjs(session.startTime).utc().tz(userTimezone);
       const endTime = session.endTime
         ? dayjs(session.endTime).utc().tz(userTimezone)
-        : dayjs().tz(userTimezone);
+        : referenceNow;
 
       // Check if orgasm occurred during this session (inclusive boundaries)
       return (
@@ -173,7 +181,7 @@ export default function MonthCalendar({
   // Find sessions that start or end on a given date
   const getChastityEventsForDate = (date: string | null) => {
     if (!date) return { starts: [], ends: [] };
-    const targetDate = dayjs(date).tz(userTimezone);
+    const targetDate = onDate(date, userTimezone);
 
     const starts: ChastitySession[] = [];
     const ends: ChastitySession[] = [];
@@ -506,7 +514,7 @@ export default function MonthCalendar({
             const hasEvents = hasOrgasms || hasChastityEvents;
             const isToday =
               cell.date &&
-              dayjs.tz(cell.date, userTimezone).isSame(dayjs().tz(userTimezone), "day");
+              onDate(cell.date, userTimezone).isSame(referenceNow, "day");
 
             return (
               <div

@@ -6,11 +6,19 @@ import DayChartWrapper from "./DayChartWrapper";
 export default function DayChart({
   orgasms,
   selectedYear,
+  timeZone,
 }: {
   orgasms: Orgasm[];
   selectedYear: number;
+  timeZone?: string;
 }) {
-  return <DayChartWrapper orgasms={orgasms} selectedYear={selectedYear} />;
+  return (
+    <DayChartWrapper
+      orgasms={orgasms}
+      selectedYear={selectedYear}
+      timeZone={timeZone}
+    />
+  );
 }
 
 function groupBy<T, K extends keyof T>(arr: T[], key: K) {

@@ -3,14 +3,9 @@
 import { useState, useMemo } from "react";
 import { Orgasm, ChastitySession } from "@prisma/client";
 import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone";
-import utc from "dayjs/plugin/utc";
-import relativeTime from "dayjs/plugin/relativeTime";
 import duration from "dayjs/plugin/duration";
+import { at, clock } from "@/lib/zonedTime";
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(relativeTime);
 dayjs.extend(duration);
 
 // Color palette matching Fapped summary
@@ -32,6 +27,7 @@ interface OrgasmFeedProps {
   orgasms: Orgasm[];
   chastitySessions?: ChastitySession[];
   tz: string;
+  now: string;
 }
 
 type FeedItem =
@@ -42,6 +38,7 @@ export default function OrgasmFeed({
   orgasms,
   chastitySessions = [],
   tz,
+  now,
 }: OrgasmFeedProps) {
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
@@ -61,7 +58,7 @@ export default function OrgasmFeed({
     // Process each session
     sortedSessions.forEach((session) => {
       const sessionStart = dayjs(session.startTime);
-      const sessionEnd = session.endTime ? dayjs(session.endTime) : dayjs();
+      const sessionEnd = session.endTime ? dayjs(session.endTime) : dayjs(now);
 
       // Find orgasms within this session (inclusive on both ends)
       const sessionOrgasms = validOrgasms.filter((orgasm) => {
@@ -114,7 +111,7 @@ export default function OrgasmFeed({
     });
 
     return items;
-  }, [orgasms, chastitySessions]);
+  }, [orgasms, chastitySessions, now]);
 
   if (feedItems.length === 0) {
     return (
@@ -132,15 +129,15 @@ export default function OrgasmFeed({
   };
 
   const formatDate = (date: dayjs.Dayjs) => {
-    const now = dayjs().tz(tz);
-    const isToday = date.isSame(now, "day");
-    const isYesterday = date.isSame(now.subtract(1, "day"), "day");
+    const today = clock(now, tz);
+    const isToday = date.isSame(today, "day");
+    const isYesterday = date.isSame(today.subtract(1, "day"), "day");
 
     if (isToday) {
       return `Today at ${date.format("h:mm A")}`;
     } else if (isYesterday) {
       return `Yesterday at ${date.format("h:mm A")}`;
-    } else if (now.diff(date, "day") < 7) {
+    } else if (today.diff(date, "day") < 7) {
       return date.format("dddd [at] h:mm A");
     } else {
       return date.format("MMM D, YYYY [at] h:mm A");
@@ -150,7 +147,7 @@ export default function OrgasmFeed({
   const renderOrgasm = (orgasm: Orgasm, noBorder = false) => {
     if (!orgasm.timestamp) return null;
 
-    const date = dayjs(orgasm.timestamp).tz(tz);
+    const date = at(orgasm.timestamp, tz);
     const dateDisplay = formatDate(date);
 
     return (
@@ -201,7 +198,7 @@ export default function OrgasmFeed({
         } else if (item.type === "chastity_session") {
           const session = item.data;
           const sessionOrgasms = item.orgasms;
-          const startDate = dayjs(session.startTime).tz(tz);
+          const startDate = at(session.startTime, tz);
           const startDateDisplay = formatDate(startDate);
           const isActive = !session.endTime;
 
@@ -215,7 +212,7 @@ export default function OrgasmFeed({
                 <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDate(dayjs(session.endTime).tz(tz))}
+                      {formatDate(at(session.endTime, tz))}
                     </span>
                   </div>
 

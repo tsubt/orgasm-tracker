@@ -4,12 +4,15 @@ import { useState, useSyncExternalStore } from "react";
 import { Orgasm, ChastitySession } from "@prisma/client";
 import MonthCalendar from "./MonthCalendar";
 import CalendarChartSkeleton from "./CalendarChartSkeleton";
+import { clock } from "@/lib/zonedTime";
 
 interface MonthChartWrapperProps {
   orgasms: Orgasm[];
   selectedYear: number;
   chastitySessions: ChastitySession[];
   firstDayOfWeek: number;
+  timeZone?: string;
+  now?: string;
 }
 
 export default function MonthChartWrapper({
@@ -17,12 +20,14 @@ export default function MonthChartWrapper({
   selectedYear,
   chastitySessions,
   firstDayOfWeek,
+  timeZone,
+  now,
 }: MonthChartWrapperProps) {
   // Note: orgasms are already filtered by year in ChartsClient
   // No need to filter again here
 
   const [selectedMonth, setSelectedMonth] = useState<number>(
-    new Date().getMonth() + 1
+    clock(now, timeZone).month() + 1,
   );
   const colorsReady = useSyncExternalStore(
     () => () => {},
@@ -76,6 +81,8 @@ export default function MonthChartWrapper({
           selectedMonth={selectedMonth}
           onMonthChange={setSelectedMonth}
           monthNames={monthNames}
+          timeZone={timeZone}
+          now={now}
         />
       </div>
 
@@ -89,6 +96,8 @@ export default function MonthChartWrapper({
             orgasms={orgasms}
             chastitySessions={chastitySessions}
             firstDayOfWeek={firstDayOfWeek}
+            timeZone={timeZone}
+            now={now}
           />
         ))}
       </div>

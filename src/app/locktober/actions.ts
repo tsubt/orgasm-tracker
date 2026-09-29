@@ -12,6 +12,7 @@ import {
   describeBar,
   eligibleCumDates,
   evenlySpacedDates,
+  focusYear,
   randomCumDates,
   highestTier,
   isKnownTimezone,
@@ -59,6 +60,7 @@ function revalidateChallenge(slug: string) {
   revalidatePath("/locktober");
   revalidatePath("/");
   revalidatePath(`/locktober/s/${slug}`);
+  revalidatePath("/locktober/s/[slug]", "page");
 }
 
 function assertOpenForEdits(
@@ -881,10 +883,20 @@ export async function deleteComment(commentId: string): Promise<ActionResult> {
 }
 
 async function visibleChallenge(slug: string, userId: string) {
-  const challenge = await prisma.locktoberChallenge.findUnique({
+  const bySlug = await prisma.locktoberChallenge.findUnique({
     where: { shareSlug: slug },
     select: { id: true, userId: true, shareSlug: true, visibility: true },
   });
+  const challenge =
+    bySlug ??
+    (await prisma.locktoberChallenge.findFirst({
+      where: {
+        user: { username: slug },
+        visibility: "PUBLIC",
+        year: focusYear(dayjs()),
+      },
+      select: { id: true, userId: true, shareSlug: true, visibility: true },
+    }));
   if (!challenge) return null;
   if (challenge.userId === userId) return challenge;
   if (challenge.visibility === "PRIVATE") return null;

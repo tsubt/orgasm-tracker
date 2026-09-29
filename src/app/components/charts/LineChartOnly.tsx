@@ -4,13 +4,18 @@ import { useMemo } from "react";
 import { Orgasm } from "@prisma/client";
 import dayjs from "dayjs";
 import ChartLine from "./LineChart";
+import { at, clock, onDate } from "@/lib/zonedTime";
 
 export default function LineChartOnly({
   orgasms,
   selectedYear,
+  timeZone,
+  now,
 }: {
   orgasms: Orgasm[];
   selectedYear: number;
+  timeZone?: string;
+  now?: string;
 }) {
   // Memoize data processing to prevent recalculation on every render
   const lineChartData = useMemo(() => {
@@ -18,10 +23,10 @@ export default function LineChartOnly({
     const validOrgasms = orgasms.filter((o) => o.timestamp !== null);
 
     const years = validOrgasms
-      .map((o) => ({ ...o, year: dayjs(o.timestamp).year() }))
+      .map((o) => ({ ...o, year: at(o.timestamp, timeZone).year() }))
       .groupBy("year");
 
-    const currentYear = new Date().getFullYear();
+    const currentYear = clock(now, timeZone).year();
 
     // cumulative orgasms per year
     const cumYear = Object.keys(years).map((year) => {
@@ -31,20 +36,20 @@ export default function LineChartOnly({
 
       // Group by date string (YYYY-MM-DD)
       const yrGrp = yr.reduce((acc, o) => {
-        const dateStr = dayjs(o.timestamp).format("YYYY-MM-DD");
+        const dateStr = at(o.timestamp, timeZone).format("YYYY-MM-DD");
         if (!acc[dateStr]) acc[dateStr] = [];
         acc[dateStr].push(o);
         return acc;
       }, {} as { [date: string]: typeof yr });
 
-      const yrStart = dayjs(yr[0].timestamp).startOf("year");
-      const yrEnd = dayjs(yr[0].timestamp).endOf("year");
+      const yrStart = onDate(`${year}-01-01`, timeZone).startOf("day");
+      const yrEnd = onDate(`${year}-12-31`, timeZone).endOf("day");
       const yrLength = yrEnd.diff(yrStart, "day");
 
       // for each date, calculate year progress and number of orgasms
       const yrDays = Object.keys(yrGrp).map((date) => {
         const orgasms = yrGrp[date];
-        const progress = dayjs(date).diff(yrStart, "day") / yrLength;
+        const progress = onDate(date, timeZone).diff(yrStart, "day") / yrLength;
         return {
           date: date,
           progress: progress,
@@ -74,7 +79,7 @@ export default function LineChartOnly({
     cumYear.sort((a, b) => parseInt(b.name) - parseInt(a.name));
 
     return cumYear;
-  }, [orgasms]);
+  }, [orgasms, timeZone, now]);
 
   // Convert selectedYear number to string for ChartLine
   const selectedYearString = selectedYear.toString();

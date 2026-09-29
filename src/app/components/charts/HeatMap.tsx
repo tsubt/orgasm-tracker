@@ -4,16 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { Orgasm } from "@prisma/client";
+import { at, clock, onDate } from "@/lib/zonedTime";
 
 dayjs.extend(isoWeek);
 
 interface HeatMapProps {
   orgasms: Orgasm[];
   timeframe?: "last12months" | number;
+  timeZone?: string;
+  now?: string;
 }
 
-export default function HeatMap({ orgasms, timeframe }: HeatMapProps) {
-  const today = dayjs();
+export default function HeatMap({
+  orgasms,
+  timeframe,
+  timeZone,
+  now,
+}: HeatMapProps) {
+  const today = clock(now, timeZone);
 
   // Calculate start and end dates based on timeframe
   let periodStart: dayjs.Dayjs;
@@ -28,13 +36,12 @@ export default function HeatMap({ orgasms, timeframe }: HeatMapProps) {
   } else if (typeof timeframe === "number") {
     // Specific year: Jan 1 to Dec 31 of the given year
     displayYear = timeframe;
-    periodStart = dayjs(`${displayYear}-01-01`);
-    periodEnd = dayjs(`${displayYear}-12-31`);
+    periodStart = onDate(`${displayYear}-01-01`, timeZone);
+    periodEnd = onDate(`${displayYear}-12-31`, timeZone);
   } else {
-    // Default: current year
-    displayYear = new Date().getFullYear();
-    periodStart = dayjs(`${displayYear}-01-01`);
-    periodEnd = dayjs(`${displayYear}-12-31`);
+    displayYear = clock(now, timeZone).year();
+    periodStart = onDate(`${displayYear}-01-01`, timeZone);
+    periodEnd = onDate(`${displayYear}-12-31`, timeZone);
   }
 
   // Group orgasms by date for the period
@@ -46,7 +53,7 @@ export default function HeatMap({ orgasms, timeframe }: HeatMapProps) {
       return;
     }
 
-    const orgasmDate = dayjs(o.timestamp);
+    const orgasmDate = at(o.timestamp, timeZone);
     const dateStr = orgasmDate.format("YYYY-MM-DD");
 
     // Only include orgasms within the period

@@ -8,11 +8,15 @@ export default function MonthChart({
   selectedYear,
   chastitySessions,
   firstDayOfWeek,
+  timeZone,
+  now,
 }: {
   orgasms: Orgasm[];
   selectedYear: number;
   chastitySessions: ChastitySession[];
   firstDayOfWeek: number;
+  timeZone?: string;
+  now?: string;
 }) {
   return (
     <MonthChartWrapper
@@ -20,6 +24,8 @@ export default function MonthChart({
       selectedYear={selectedYear}
       chastitySessions={chastitySessions}
       firstDayOfWeek={firstDayOfWeek}
+      timeZone={timeZone}
+      now={now}
     />
   );
 }

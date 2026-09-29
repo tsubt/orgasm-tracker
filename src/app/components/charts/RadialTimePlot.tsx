@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Orgasm, OrgasmType } from "@prisma/client";
-import dayjs from "dayjs";
+import { at } from "@/lib/zonedTime";
 
 interface RadialTimePlotProps {
   orgasms: Orgasm[];
+  timeZone?: string;
 }
 
 // Colors matching "By type" elsewhere in the app
@@ -16,7 +17,10 @@ const typeColors: { [key in OrgasmType]: string } = {
   ANAL: "#22C55E", // Green
 };
 
-export default function RadialTimePlot({ orgasms }: RadialTimePlotProps) {
+export default function RadialTimePlot({
+  orgasms,
+  timeZone,
+}: RadialTimePlotProps) {
   const [hoveredOrgasm, setHoveredOrgasm] = useState<Orgasm | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{
     x: number;
@@ -61,7 +65,7 @@ export default function RadialTimePlot({ orgasms }: RadialTimePlotProps) {
   orgasms
     .filter((o) => o.timestamp)
     .forEach((orgasm) => {
-      const date = dayjs(orgasm.timestamp);
+      const date = at(orgasm.timestamp, timeZone);
       const hours = date.hour();
       const minutes = date.minute();
       const interval = getInterval(minutes);
@@ -106,7 +110,7 @@ export default function RadialTimePlot({ orgasms }: RadialTimePlotProps) {
       orgasmPoints.push({
         orgasm,
         hours,
-        minutes: dayjs(orgasm.timestamp).minute(),
+        minutes: at(orgasm.timestamp, timeZone).minute(),
         angle,
         x: coords.x,
         y: coords.y,
@@ -299,7 +303,7 @@ export default function RadialTimePlot({ orgasms }: RadialTimePlotProps) {
                   className="hover:opacity-80 transition-opacity"
                 />
                 <title>
-                  {`${dayjs(point.orgasm.timestamp).format(
+                  {`${at(point.orgasm.timestamp, timeZone).format(
                     "MMM D, YYYY h:mm A"
                   )} - ${point.orgasm.type}${
                     point.totalInInterval > 1
@@ -326,10 +330,10 @@ export default function RadialTimePlot({ orgasms }: RadialTimePlotProps) {
           >
             <div className="text-gray-900 dark:text-gray-100 space-y-1">
               <div className="font-semibold text-sm">
-                {dayjs(hoveredOrgasm.timestamp).format("MMMM D, YYYY")}
+                {at(hoveredOrgasm.timestamp, timeZone).format("MMMM D, YYYY")}
               </div>
               <div className="text-xs text-gray-600 dark:text-gray-400">
-                {dayjs(hoveredOrgasm.timestamp).format("h:mm A")}
+                {at(hoveredOrgasm.timestamp, timeZone).format("h:mm A")}
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div

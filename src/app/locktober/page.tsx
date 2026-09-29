@@ -19,6 +19,7 @@ export default async function LocktoberPage() {
       <div className="mx-auto max-w-4xl">
         <LocktoberApp
           challenges={data.challenges}
+          username={data.user.username}
           firstDayOfWeek={data.user.firstDayOfWeek}
           activeChastity={data.activeChastity}
         />

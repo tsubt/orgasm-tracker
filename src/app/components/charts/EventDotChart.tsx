@@ -4,6 +4,7 @@ import { Orgasm } from "@prisma/client";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
+import { clock, onDate } from "@/lib/zonedTime";
 import { useState } from "react";
 import { PencilSquareIcon } from "@heroicons/react/24/solid";
 import { useRouter } from "next/navigation";
@@ -22,9 +23,10 @@ const TYPE_COLORS: { [key: string]: string } = {
 interface EventDotChartProps {
   orgasms: Orgasm[];
   tz: string;
+  now?: string;
 }
 
-export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
+export default function EventDotChart({ orgasms, tz, now }: EventDotChartProps) {
   const [hoveredOrgasm, setHoveredOrgasm] = useState<Orgasm | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number; alignLeft?: boolean } | null>(null);
   const router = useRouter();
@@ -39,7 +41,7 @@ export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
     return null;
   }
 
-  const now = dayjs().tz(tz);
+  const referenceNow = clock(now, tz).startOf("day");
 
   // Dot size is 8px (w-2 h-2)
   const DOT_SIZE = 8;
@@ -64,8 +66,8 @@ export default function EventDotChart({ orgasms, tz }: EventDotChartProps) {
   }> = [];
 
   Object.entries(orgasmsByDay).forEach(([dayKey, dayOrgasms]) => {
-    const dayDate = dayjs(dayKey).tz(tz);
-    const daysAgo = now.diff(dayDate, "day");
+    const dayDate = onDate(dayKey, tz).startOf("day");
+    const daysAgo = referenceNow.diff(dayDate, "day");
     // Position from right edge: 0 = now (rightmost), increasing as we go left
     // Each day gets a column of COLUMN_WIDTH pixels
     const x = daysAgo * COLUMN_WIDTH;

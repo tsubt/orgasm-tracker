@@ -1,4 +1,5 @@
 import { prisma } from "@/prisma";
+import dayjs from "dayjs";
 import {
   LocktoberCadence,
   LocktoberCumDayStatus,
@@ -14,6 +15,7 @@ import {
   TierSnapshot,
   dateOnlyString,
   describeBar,
+  focusYear,
   LockedSpan,
   parseTierSnapshot,
   snapshotTitle,
@@ -261,8 +263,24 @@ export async function loadOwnerLocktober(
 }
 
 export async function loadChallengeBySlug(slug: string) {
-  return prisma.locktoberChallenge.findUnique({
+  const bySlug = await prisma.locktoberChallenge.findUnique({
     where: { shareSlug: slug },
+    include: challengeInclude,
+  });
+  if (bySlug) return bySlug;
+
+  const user = await prisma.user.findUnique({
+    where: { username: slug },
+    select: { id: true },
+  });
+  if (!user) return null;
+
+  return prisma.locktoberChallenge.findFirst({
+    where: {
+      userId: user.id,
+      visibility: "PUBLIC",
+      year: focusYear(dayjs()),
+    },
     include: challengeInclude,
   });
 }

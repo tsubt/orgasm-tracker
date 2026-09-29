@@ -2,15 +2,13 @@
 
 import PowerBar from "../../PowerBar";
 import { BarView } from "@/lib/locktober/scoring";
+import { onDate } from "@/lib/zonedTime";
+import { RelativeTime, TheirTime } from "@/app/components/SubjectTime";
 import { LocktoberCumDayStatus } from "@prisma/client";
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { addComment, deleteComment, toggleLike } from "../../actions";
-
-dayjs.extend(relativeTime);
 
 export type ShareComment = {
   id: string;
@@ -40,6 +38,8 @@ export default function ShareView({
   comments,
   viewerId,
   isOwner,
+  timeZone,
+  serverNow,
 }: {
   slug: string;
   year: number;
@@ -58,6 +58,8 @@ export default function ShareView({
   comments: ShareComment[];
   viewerId: string | null;
   isOwner: boolean;
+  timeZone: string;
+  serverNow: string;
 }) {
   const router = useRouter();
   const [body, setBody] = useState("");
@@ -94,6 +96,7 @@ export default function ShareView({
             {bar.locked ? "Reward day" : "In progress"}
             {bar.reached ? ` · ${bar.reached.label}` : ""}
           </p>
+          <TheirTime timeZone={timeZone} serverNow={serverNow} own={isOwner} />
         </div>
       </div>
 
@@ -110,7 +113,7 @@ export default function ShareView({
             key={day.date}
             className="rounded-full border border-gray-300 px-3 py-1 dark:border-gray-600"
           >
-            {dayjs(day.date).format("MMM D")} · {day.status.toLowerCase()}
+            {onDate(day.date, timeZone).format("MMM D")} · {day.status.toLowerCase()}
             {day.claimedTierLabel ? ` · ${day.claimedTierLabel}` : ""}
           </li>
         ))}
@@ -142,10 +145,10 @@ export default function ShareView({
               className="rounded-lg border border-gray-200 p-3 dark:border-gray-700"
             >
               <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
-                <span suppressHydrationWarning>
+                <span>
                   {comment.username ? `@${comment.username}` : comment.name || "Someone"}
                   {" · "}
-                  {dayjs(comment.createdAt).fromNow()}
+                  <RelativeTime at={comment.createdAt} serverNow={serverNow} />
                 </span>
                 {viewerId && (comment.userId === viewerId || isOwner) && (
                   <button

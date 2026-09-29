@@ -6,14 +6,18 @@ import RadialTimePlot from "./RadialTimePlot";
 interface DayChartWrapperProps {
   orgasms: Orgasm[];
   selectedYear: number;
+  timeZone?: string;
 }
 
-export default function DayChartWrapper({ orgasms }: DayChartWrapperProps) {
+export default function DayChartWrapper({
+  orgasms,
+  timeZone,
+}: DayChartWrapperProps) {
   // Note: orgasms are already filtered by year in ChartsClient
   return (
     <div className="w-full">
       {/* Radial time plot */}
-      <RadialTimePlot orgasms={orgasms} />
+      <RadialTimePlot orgasms={orgasms} timeZone={timeZone} />
     </div>
   );
 }

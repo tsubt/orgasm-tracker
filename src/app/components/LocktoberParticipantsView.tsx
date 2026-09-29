@@ -40,7 +40,7 @@ export default function LocktoberParticipantsView({
             return (
               <li key={participant.id}>
                 <Link
-                  href={`/locktober/s/${participant.shareSlug}`}
+                  href={`/locktober/s/${participant.username ?? participant.shareSlug}`}
                   className="flex flex-col gap-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-900"
                 >
                   <span className="text-sm font-medium text-gray-900 dark:text-white">

@@ -184,6 +184,15 @@ export function focusYear(now: Dayjs): number {
   return now.month() >= 8 ? now.year() : now.year() - 1;
 }
 
+export function publicLocktoberShareKey(input: {
+  visibility: "PRIVATE" | "LINK" | "PUBLIC";
+  shareSlug: string;
+  username: string | null | undefined;
+}): string {
+  if (input.visibility === "PUBLIC" && input.username) return input.username;
+  return input.shareSlug;
+}
+
 export function setupYear(now: Dayjs): number | null {
   return now.month() === 8 || now.month() === 9 ? now.year() : null;
 }
