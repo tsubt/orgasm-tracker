@@ -21,6 +21,7 @@ interface DashboardChartsProps {
   userId: string;
   chastitySessions?: ChastitySession[];
   firstDayOfWeek: number;
+  charts: DashboardChart[];
 }
 
 export default function DashboardCharts({
@@ -29,9 +30,9 @@ export default function DashboardCharts({
   userId,
   chastitySessions = [],
   firstDayOfWeek,
+  charts: initialCharts,
 }: DashboardChartsProps) {
-  const [charts, setCharts] = useState<DashboardChart[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [charts, setCharts] = useState<DashboardChart[]>(initialCharts);
   const [editingChartId, setEditingChartId] = useState<string | null>(null);
 
   // Calculate available years from orgasms
@@ -57,26 +58,8 @@ export default function DashboardCharts({
   const [selectedYear, setSelectedYear] = useState<number>(initialYear);
 
   useEffect(() => {
-    fetchCharts();
-  }, []);
-
-  useEffect(() => {
     setSelectedYear(initialYear);
   }, [initialYear]);
-
-  const fetchCharts = async () => {
-    try {
-      const response = await fetch("/api/dashboard-charts");
-      if (response.ok) {
-        const data = await response.json();
-        setCharts(data.charts || []);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard charts:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleChartUpdate = async (chartId: string, newChartName: string) => {
     try {
@@ -129,10 +112,6 @@ export default function DashboardCharts({
       console.error("Error adding chart:", error);
     }
   };
-
-  if (isLoading) {
-    return <div>Loading charts...</div>;
-  }
 
   return (
     <div className="flex flex-col gap-6 w-full">

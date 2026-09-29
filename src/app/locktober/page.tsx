@@ -11,7 +11,7 @@ export default async function LocktoberPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
 
-  const data = await loadOwnerLocktober(session.user.id);
+  const data = await loadOwnerLocktober(session.user.id, { lockDays: true });
   if (!data) redirect("/");
 
   return (

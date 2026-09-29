@@ -4,7 +4,6 @@ import "./globals.css";
 import SidebarWrapper from "./components/SidebarWrapper";
 import { Toaster } from "react-hot-toast";
 import { auth } from "@/auth";
-import { prisma } from "@/prisma";
 import { OrgasmModalProvider } from "./contexts/OrgasmModalContext";
 import Orgasm from "./components/Orgasm";
 import { Analytics } from "@vercel/analytics/next";
@@ -30,16 +29,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
-
-  // Fetch username if user is logged in
-  let username: string | null = null;
-  if (session?.user?.id) {
-    const userInfo = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { username: true },
-    });
-    username = userInfo?.username ?? null;
-  }
+  const username = session?.user?.username ?? null;
 
   return (
     <html lang="en" className="h-full">

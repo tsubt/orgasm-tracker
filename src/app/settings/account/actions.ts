@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { auth, unstable_update } from "@/auth";
 import { isKnownTimezone } from "@/lib/locktober/scoring";
 import { prisma } from "@/prisma";
 import { revalidatePath } from "next/cache";
@@ -99,6 +99,10 @@ export async function updateSettings(data: {
       data: { timezone },
     });
   }
+
+  await unstable_update({
+    user: { username: isValid ? username : (session.user.username ?? null) },
+  });
 
   revalidatePath("/settings");
   revalidatePath("/locktober");

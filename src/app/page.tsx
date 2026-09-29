@@ -3,6 +3,7 @@ import Guest from "./components/Guest";
 import StatsContent from "./components/StatsContent";
 import FollowingSidebar from "./components/FollowingSidebar";
 import LocktoberParticipants from "./components/LocktoberParticipants";
+import { asPeriod } from "@/lib/periods";
 import { Suspense } from "react";
 
 export default async function Home({
@@ -11,7 +12,7 @@ export default async function Home({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const session = await auth();
-  const time = (await searchParams).time ?? "All";
+  const time = (await searchParams).time;
 
   if (session && session.user && session.user.id) {
     return (
@@ -22,7 +23,7 @@ export default async function Home({
             <div className="w-full max-w-4xl">
               <StatsContent
                 userId={session.user.id}
-                time={typeof time === "string" ? time : "All"}
+                initialTime={asPeriod(typeof time === "string" ? time : undefined)}
                 tz="UTC"
               />
             </div>

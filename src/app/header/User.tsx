@@ -1,6 +1,5 @@
 import { auth } from "@/auth";
 import SignIn from "@/components/signIn";
-import { prisma } from "@/prisma";
 import type { Session } from "next-auth";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,13 +24,10 @@ export default async function User() {
   );
 }
 
-async function UserMenu({ session }: { session: Session }) {
+function UserMenu({ session }: { session: Session }) {
   if (!session || !session.user) return <></>;
 
-  const userInfo = await prisma.user.findUnique({
-    where: { id: session.user.id },
-  });
-  const userId = userInfo ? userInfo.username : "";
+  const userId = session.user.username ?? "";
 
   const items: { name: string; href: string; show?: boolean }[] = [
     { name: "Your profile", href: "/u/" + userId, show: userId !== "" },

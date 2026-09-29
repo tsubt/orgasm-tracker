@@ -200,14 +200,10 @@ export function serializeChallenge(
   };
 }
 
-async function refetch(id: string) {
-  return prisma.locktoberChallenge.findUnique({
-    where: { id },
-    include: challengeInclude,
-  });
-}
-
-export async function loadOwnerLocktober(userId: string) {
+export async function loadOwnerLocktober(
+  userId: string,
+  options?: { lockDays?: boolean },
+) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -217,38 +213,43 @@ export async function loadOwnerLocktober(userId: string) {
       image: true,
       firstDayOfWeek: true,
       hideLocktoberBoard: true,
+      trackChastityStatus: true,
     },
   });
   if (!user) return null;
 
   const year = new Date().getUTCFullYear();
-  const found = await prisma.locktoberChallenge.findMany({
-    where: { userId, year: { in: [year - 1, year, year + 1] } },
-    select: { id: true },
-  });
-  for (const challenge of found) {
-    await ensureCumDayLocks(challenge.id);
+  if (options?.lockDays) {
+    const found = await prisma.locktoberChallenge.findMany({
+      where: { userId, year: { in: [year - 1, year, year + 1] } },
+      select: { id: true },
+    });
+    for (const challenge of found) {
+      await ensureCumDayLocks(challenge.id);
+    }
   }
   const challenges = await prisma.locktoberChallenge.findMany({
     where: { userId, year: { in: [year - 1, year, year + 1] } },
     include: challengeInclude,
     orderBy: { year: "desc" },
   });
-  const sessions = await prisma.chastitySession.findMany({
-    where: {
-      userId,
-      startTime: { lt: new Date(`${year + 2}-01-01T00:00:00.000Z`) },
-      OR: [
-        { endTime: null },
-        { endTime: { gt: new Date(`${year - 1}-08-01T00:00:00.000Z`) } },
-      ],
-    },
-    select: { startTime: true, endTime: true },
-  });
-  const active = await prisma.chastitySession.findFirst({
-    where: { userId, endTime: null },
-    select: { id: true, startTime: true },
-  });
+  const [sessions, active] = await Promise.all([
+    prisma.chastitySession.findMany({
+      where: {
+        userId,
+        startTime: { lt: new Date(`${year + 2}-01-01T00:00:00.000Z`) },
+        OR: [
+          { endTime: null },
+          { endTime: { gt: new Date(`${year - 1}-08-01T00:00:00.000Z`) } },
+        ],
+      },
+      select: { startTime: true, endTime: true },
+    }),
+    prisma.chastitySession.findFirst({
+      where: { userId, endTime: null },
+      select: { id: true, startTime: true },
+    }),
+  ]);
 
   return {
     user,
@@ -260,24 +261,13 @@ export async function loadOwnerLocktober(userId: string) {
 }
 
 export async function loadChallengeBySlug(slug: string) {
-  const found = await prisma.locktoberChallenge.findUnique({
+  return prisma.locktoberChallenge.findUnique({
     where: { shareSlug: slug },
-    select: { id: true },
+    include: challengeInclude,
   });
-  if (!found) return null;
-  await ensureCumDayLocks(found.id);
-  return refetch(found.id);
 }
 
 export async function loadPublicBoard(year: number): Promise<PublicChallengeCard[]> {
-  const ids = await prisma.locktoberChallenge.findMany({
-    where: { visibility: "PUBLIC", year },
-    select: { id: true },
-    take: 100,
-  });
-  for (const challenge of ids) {
-    await ensureCumDayLocks(challenge.id);
-  }
   const challenges = await prisma.locktoberChallenge.findMany({
     where: { visibility: "PUBLIC", year },
     include: {

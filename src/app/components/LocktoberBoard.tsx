@@ -2,23 +2,17 @@ import { loadOwnerLocktober } from "@/lib/locktober/load";
 import { inDashboardWindowUtc, type TierSnapshot } from "@/lib/locktober/scoring";
 import LocktoberBoardView from "./LocktoberBoardView";
 
-export default async function LocktoberBoard({
-  userId,
-  trackChastity,
-}: {
-  userId: string;
-  trackChastity: boolean;
-}) {
+export default async function LocktoberBoard({ userId }: { userId: string }) {
   if (!inDashboardWindowUtc()) return null;
 
   const view = await loadBoard(userId);
   if (!view) return null;
-  if (!view.mine && !trackChastity) return null;
+  if (!view.mine && !view.trackChastity) return null;
 
   return (
     <LocktoberBoardView
       year={view.year}
-      trackChastity={trackChastity}
+      trackChastity={view.trackChastity}
       mine={view.mine}
     />
   );
@@ -26,6 +20,7 @@ export default async function LocktoberBoard({
 
 async function loadBoard(userId: string): Promise<{
   year: number;
+  trackChastity: boolean;
   mine: {
     points: number;
     locked: boolean;
@@ -44,6 +39,7 @@ async function loadBoard(userId: string): Promise<{
 
     return {
       year,
+      trackChastity: owner.user.trackChastityStatus,
       mine: mine
         ? {
             points: mine.bar.points,

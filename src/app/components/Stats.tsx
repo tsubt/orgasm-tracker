@@ -3,6 +3,7 @@ import { prisma } from "@/prisma";
 import { Session } from "next-auth";
 import { Suspense } from "react";
 import PickTime from "./PickTime";
+import { asPeriod } from "@/lib/periods";
 
 import Charts from "./charts";
 
@@ -42,7 +43,7 @@ export default async function Stats({
 
       <div className="bg-black/5 rounded flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={null}>
-          <PickTime />
+          <PickTime value={asPeriod(time)} onChange={() => {}} />
         </Suspense>
         <Suspense fallback={<LoadingSummaryStats />}>
           <SummaryStats userId={session.user.id} time={time} tz={tz} />

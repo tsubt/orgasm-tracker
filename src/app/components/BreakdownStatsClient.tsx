@@ -1,51 +1,30 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Orgasm } from "@prisma/client";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import isoWeek from "dayjs/plugin/isoWeek";
+import type { Period } from "@/lib/periods";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
 dayjs.extend(isoWeek);
 
 interface BreakdownStatsClientProps {
-  userId: string;
+  orgasms: Orgasm[];
+  time: Period;
   tz: string;
 }
 
 export default function BreakdownStatsClient({
-  userId,
+  orgasms,
+  time,
   tz,
 }: BreakdownStatsClientProps) {
-  const searchParams = useSearchParams();
-  const time = searchParams.get("time") ?? "All";
-  const [orgasms, setOrgasms] = useState<Orgasm[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchOrgasms() {
-      setIsLoading(true);
-      try {
-        const response = await fetch("/api/orgasms");
-        if (!response.ok) throw new Error("Failed to fetch orgasms");
-        const data = await response.json();
-        setOrgasms(data.orgasms || []);
-      } catch (error) {
-        console.error("Error fetching orgasms:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchOrgasms();
-  }, []);
-
-  // Filter orgasms based on time
-  const d = dayjs().tz(tz);
   const filteredOrgasms = useMemo(() => {
+    const d = dayjs().tz(tz);
     return orgasms.filter((o) => {
       if (!o.timestamp) return false;
       const orgasmDate = dayjs(o.timestamp);
@@ -67,11 +46,7 @@ export default function BreakdownStatsClient({
           return true;
       }
     });
-  }, [orgasms, time, d, tz]);
-
-  if (isLoading) {
-    return <LoadingBreakdownStats />;
-  }
+  }, [orgasms, time, tz]);
 
   const total = filteredOrgasms.length;
   if (total === 0) {
@@ -192,40 +167,6 @@ export default function BreakdownStatsClient({
               </div>
             );
           })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LoadingBreakdownStats() {
-  return (
-    <div className="flex flex-col gap-6 animate-pulse">
-      {/* Type Breakdown Loading */}
-      <div>
-        <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-20 mb-2"></div>
-        <div className="w-full h-8 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
-        <div className="flex flex-wrap gap-4 mt-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-700 rounded"></div>
-              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Partner Breakdown Loading */}
-      <div>
-        <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-24 mb-2"></div>
-        <div className="w-full h-8 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
-        <div className="flex flex-wrap gap-4 mt-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-700 rounded"></div>
-              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
