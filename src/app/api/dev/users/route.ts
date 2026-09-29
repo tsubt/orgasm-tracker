@@ -5,6 +5,7 @@ export async function GET() {
   try {
     // Fetch ALL users (not just public ones) for dev purposes
     const users = await prisma.user.findMany({
+      omit: { image: true },
       include: {
         orgasms: true,
         _count: {

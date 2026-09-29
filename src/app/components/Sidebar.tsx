@@ -1,7 +1,6 @@
 import SignIn from "@/components/signIn";
 import Orgasm from "./Orgasm";
 import Footer from "./Footer";
-import Image from "next/image";
 import NavLink from "./NavLink";
 import { Session } from "next-auth";
 
@@ -30,21 +29,9 @@ export default function Sidebar({
         <>
           {/* User Info Section */}
           <div className="p-5 border-b-2 border-gray-300 dark:border-gray-800 flex-shrink-0">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="relative h-10 w-10 flex-shrink-0">
-                <Image
-                  src={session.user.image ?? "/avatar-placeholder.jpg"}
-                  alt="User image"
-                  fill={true}
-                  className="rounded object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wide truncate">
-                  {session.user.name}
-                </h1>
-              </div>
-            </div>
+            <h1 className="mb-1 truncate text-lg font-bold uppercase tracking-wide text-gray-900 dark:text-white">
+              {session.user.name}
+            </h1>
             <p className="text-gray-600 dark:text-gray-500 text-xs uppercase tracking-widest mt-1">
               Track your journey
             </p>

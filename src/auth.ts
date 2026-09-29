@@ -33,6 +33,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         });
         token.username = row?.username ?? null;
       }
+      delete token.picture;
       if (
         trigger === "update" &&
         session &&
@@ -56,6 +57,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
           typeof token.username === "string" || token.username === null
             ? token.username
             : null;
+        session.user.image = null;
       }
       return session;
     },

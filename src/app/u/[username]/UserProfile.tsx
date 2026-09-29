@@ -31,7 +31,6 @@ export default async function UserProfile({ username }: { username: string }) {
       id: true,
       username: true,
       name: true,
-      image: true,
       bio: true,
       publicProfile: true,
       publicOrgasms: true,

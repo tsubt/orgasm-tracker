@@ -1,12 +1,7 @@
 import { auth } from "@/auth";
 import SignIn from "@/components/signIn";
 import type { Session } from "next-auth";
-import Image from "next/image";
 import Link from "next/link";
-// import { signIn, useSession } from "next-auth/react";
-// import Image from "next/image";
-// import Link from "next/link";
-// import { trpc } from "../../utils/trpc";
 
 export default async function User() {
   const session = await auth();
@@ -37,15 +32,7 @@ function UserMenu({ session }: { session: Session }) {
   ];
 
   return (
-    <div className="group relative flex flex-col items-center justify-center  gap-4 md:flex-row-reverse md:px-8">
-      <div className="relative h-6 w-6 md:h-10 md:w-10 md:cursor-pointer">
-        <Image
-          src={session.user?.image ?? "/avatar-placeholder.jpg"}
-          alt="User image"
-          fill={true}
-          className="rounded object-cover"
-        />
-      </div>
+    <div className="group relative flex flex-col items-center justify-center gap-4 md:flex-row-reverse md:px-8">
       <div className="ml-2 text-sm font-medium text-gray-900 dark:text-white md:text-base">
         {session.user?.name}
       </div>

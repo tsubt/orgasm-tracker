@@ -99,7 +99,6 @@ export type PublicChallengeCard = {
   shareSlug: string;
   username: string | null;
   name: string | null;
-  image: string | null;
   likeCount: number;
   bar: BarView;
   cumDays: { date: string; status: LocktoberCumDayStatus }[];
@@ -233,7 +232,6 @@ export async function loadOwnerLocktober(
       id: true,
       username: true,
       name: true,
-      image: true,
       firstDayOfWeek: true,
       hideLocktoberBoard: true,
       trackChastityStatus: true,
@@ -310,7 +308,7 @@ export async function loadPublicBoard(year: number): Promise<PublicChallengeCard
   const challenges = await prisma.locktoberChallenge.findMany({
     where: { visibility: "PUBLIC", year },
     include: {
-      user: { select: { username: true, name: true, image: true } },
+      user: { select: { username: true, name: true } },
       tiers: { orderBy: { sortOrder: "asc" } },
       cumDays: { orderBy: { date: "asc" } },
       completions: { select: { completedAt: true, pointsAwarded: true } },
@@ -363,7 +361,6 @@ export async function loadPublicBoard(year: number): Promise<PublicChallengeCard
         shareSlug: challenge.shareSlug,
         username: challenge.user.username,
         name: challenge.user.name,
-        image: challenge.user.image,
         likeCount: challenge._count.likes,
         bar: describeBar(
           challenge.year,

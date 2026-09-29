@@ -28,7 +28,6 @@ export type ShareComment = {
   userId: string;
   username: string | null;
   name: string | null;
-  image: string | null;
 };
 
 const inputClass =
@@ -41,7 +40,6 @@ export default function ShareView({
   year,
   username,
   name,
-  image,
   bar,
   tasks,
   calendar,
@@ -60,7 +58,6 @@ export default function ShareView({
   year: number;
   username: string | null;
   name: string | null;
-  image: string | null;
   bar: BarView;
   tasks: SerializedTask[];
   calendar: LocktoberCalendarDay[];
@@ -103,21 +100,15 @@ export default function ShareView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        {image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt="" className="h-12 w-12 rounded object-cover" />
-        )}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {display}&apos;s Locktober {year}
-          </h1>
-          <p className="text-sm text-gray-500">
-            {bar.locked ? "Reward day" : "In progress"}
-            {bar.reached ? ` · ${bar.reached.label}` : ""}
-          </p>
-          <TheirTime timeZone={timeZone} serverNow={serverNow} own={isOwner} />
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {display}&apos;s Locktober {year}
+        </h1>
+        <p className="text-sm text-gray-500">
+          {bar.locked ? "Reward day" : "In progress"}
+          {bar.reached ? ` · ${bar.reached.label}` : ""}
+        </p>
+        <TheirTime timeZone={timeZone} serverNow={serverNow} own={isOwner} />
       </div>
 
       <PowerBar

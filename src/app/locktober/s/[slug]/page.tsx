@@ -23,7 +23,7 @@ const loadShare = cache(async (slug: string) => {
   const [owner, sessions] = await Promise.all([
     prisma.user.findUnique({
       where: { id: challenge.userId },
-      select: { username: true, name: true, image: true, firstDayOfWeek: true },
+      select: { username: true, name: true, firstDayOfWeek: true },
     }),
     loadChastitySpans(challenge.userId, challenge.year),
   ]);
@@ -115,7 +115,7 @@ export default async function LocktoberSharePage({
       where: { challengeId: challenge.id },
       orderBy: { createdAt: "asc" },
       include: {
-        user: { select: { id: true, username: true, name: true, image: true } },
+        user: { select: { id: true, username: true, name: true } },
       },
     }),
     viewerId
@@ -135,7 +135,6 @@ export default async function LocktoberSharePage({
     userId: comment.user.id,
     username: comment.user.username,
     name: comment.user.name,
-    image: comment.user.image,
   }));
 
   return (
@@ -146,7 +145,6 @@ export default async function LocktoberSharePage({
           year={serialized.year}
           username={owner?.username ?? null}
           name={owner?.name ?? null}
-          image={owner?.image ?? null}
           bar={serialized.bar}
           tasks={serialized.tasks}
           calendar={serialized.calendar}
