@@ -64,11 +64,18 @@ model User {
 
   firstDayOfWeek Int @default(1) // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
+  timezone String?
+
+  hideLocktoberBoard Boolean @default(false)
+
   accounts         Account[]
   sessions         Session[]
   orgasms          Orgasm[]
   dashboardCharts  DashboardChart[]
   chastitySessions ChastitySession[]
+  locktoberChallenges LocktoberChallenge[]
+  locktoberLikes      LocktoberLike[]
+  locktoberComments   LocktoberComment[]
 
   // Follow relationships
   followers        Follow[] @relation("UserFollowers")
@@ -106,6 +113,8 @@ model Orgasm {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  locktoberClaim LocktoberCumDay?
 
   @@index([userId])
 }
@@ -146,4 +155,162 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+enum LocktoberVisibility {
+  PRIVATE
+  LINK
+  PUBLIC
+}
+
+enum LocktoberCumDayStatus {
+  SCHEDULED
+  LOCKED
+  CLAIMED
+  SKIPPED
+}
+
+enum LocktoberTaskKind {
+  REWARD
+  PENALTY
+}
+
+enum LocktoberTaskMode {
+  FIXED
+  PER_MINUTE
+  ENTER_AMOUNT
+  TIME_LOCKED
+}
+
+enum LocktoberRateUnit {
+  HOUR
+  DAY
+}
+
+enum LocktoberCadence {
+  DAILY
+  WEEKLY
+}
+
+model LocktoberChallenge {
+  id             String               @id @default(cuid())
+  userId         String
+  year           Int
+  timezone       String
+  allowedOrgasms Int
+  visibility     LocktoberVisibility  @default(PRIVATE)
+  shareSlug      String               @unique @default(cuid())
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tiers       LocktoberRewardTier[]
+  cumDays     LocktoberCumDay[]
+  tasks       LocktoberTask[]
+  completions LocktoberCompletion[]
+  likes       LocktoberLike[]
+  comments    LocktoberComment[]
+
+  @@unique([userId, year])
+  @@index([userId])
+  @@index([visibility, year])
+}
+
+model LocktoberRewardTier {
+  id            String      @id @default(cuid())
+  challengeId   String
+  label         String
+  points        Int
+  orgasmType    OrgasmType?
+  expectsLocked Boolean     @default(false)
+  sortOrder     Int
+
+  challenge LocktoberChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId])
+}
+
+model LocktoberCumDay {
+  id                String                @id @default(cuid())
+  challengeId       String
+  date              DateTime              @db.Date
+  status            LocktoberCumDayStatus @default(SCHEDULED)
+  pointsAtLock      Int?
+  tierSnapshot      Json?
+  claimedTierLabel  String?
+  orgasmId          String?               @unique
+  claimedAt         DateTime?
+
+  challenge LocktoberChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  orgasm    Orgasm?            @relation(fields: [orgasmId], references: [id], onDelete: SetNull)
+
+  @@unique([challengeId, date])
+  @@index([challengeId])
+}
+
+model LocktoberTask {
+  id             String             @id @default(cuid())
+  challengeId    String
+  title          String
+  kind           LocktoberTaskKind
+  points         Int?
+  mode           LocktoberTaskMode
+  cadence        LocktoberCadence
+  maxCompletions Int?
+  maxPoints      Int?
+  noteRequired   Boolean            @default(false)
+  rateEvery      Int?
+  rateUnit       LocktoberRateUnit?
+  sortOrder      Int                @default(0)
+  createdAt      DateTime           @default(now())
+
+  challenge   LocktoberChallenge    @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  completions LocktoberCompletion[]
+
+  @@index([challengeId])
+}
+
+model LocktoberCompletion {
+  id            String   @id @default(cuid())
+  challengeId   String
+  taskId        String?
+  completedAt   DateTime @default(now())
+  minutes       Int?
+  note          String?  @db.Text
+  pointsAwarded Int
+  snapshot      Json
+
+  challenge LocktoberChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  task      LocktoberTask?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([challengeId, completedAt])
+  @@index([taskId])
+}
+
+model LocktoberLike {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  createdAt   DateTime @default(now())
+
+  challenge LocktoberChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@index([challengeId])
+  @@index([userId])
+}
+
+model LocktoberComment {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  body        String   @db.VarChar(500)
+  createdAt   DateTime @default(now())
+
+  challenge LocktoberChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId, createdAt])
+  @@index([userId])
 }

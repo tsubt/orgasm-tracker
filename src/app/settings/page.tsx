@@ -21,6 +21,8 @@ export default async function SettingsPage() {
       publicOrgasms: true,
       trackChastityStatus: true,
       firstDayOfWeek: true,
+      timezone: true,
+      hideLocktoberBoard: true,
     },
   });
 
@@ -36,6 +38,8 @@ export default async function SettingsPage() {
           initialPublicOrgasms={userSettings?.publicOrgasms || false}
           initialTrackChastityStatus={userSettings?.trackChastityStatus || false}
           initialFirstDayOfWeek={userSettings?.firstDayOfWeek ?? 1}
+          initialTimezone={userSettings?.timezone ?? null}
+          initialHideLocktoberBoard={userSettings?.hideLocktoberBoard ?? false}
         />
 
         {/* Danger Zone */}

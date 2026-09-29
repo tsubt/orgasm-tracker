@@ -7,8 +7,9 @@ import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import relativeTime from "dayjs/plugin/relativeTime";
 import isoWeek from "dayjs/plugin/isoWeek";
-import Link from "next/link";
 import LastOrgasmDisplay from "./LastOrgasmDisplay";
+import FappedLink from "./FappedLink";
+import LocktoberBoard from "./LocktoberBoard";
 import BreakdownStatsClient from "./BreakdownStatsClient";
 import ChastityStatus from "./ChastityStatus";
 
@@ -37,12 +38,7 @@ export default async function StatsContent({
         <Suspense fallback={<LoadingLastOrgasm />}>
           <LastOrgasm userId={userId} tz={tz} />
         </Suspense>
-        <Link
-          href="/fapped/2025"
-          className="bg-pink-500 dark:bg-pink-600 text-white px-6 py-3 rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide w-full md:w-auto text-center"
-        >
-          Your 2025 Fapped
-        </Link>
+        <FappedLink />
       </div>
 
       {user?.trackChastityStatus && (
@@ -50,6 +46,13 @@ export default async function StatsContent({
           <ChastityStatus trackChastityStatus={user.trackChastityStatus} />
         </Suspense>
       )}
+
+      <Suspense fallback={null}>
+        <LocktoberBoard
+          userId={userId}
+          trackChastity={Boolean(user?.trackChastityStatus)}
+        />
+      </Suspense>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-4 p-4 w-full">
         <Suspense fallback={null}>

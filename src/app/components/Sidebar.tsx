@@ -9,6 +9,7 @@ const navItems = [
   { name: "Dashboard", href: "/", icon: "📊" },
   { name: "Orgasms", href: "/orgasms", icon: "📝" },
   { name: "Chastity", href: "/chastity", icon: "🔒" },
+  { name: "Locktober", href: "/locktober", icon: "🩷" },
   { name: "Users", href: "/users", icon: "👥" },
   { name: "Settings", href: "/settings", icon: "⚙️" },
   { name: "Docs", href: "/docs", icon: "📚" },

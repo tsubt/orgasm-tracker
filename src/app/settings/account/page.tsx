@@ -20,6 +20,8 @@ export default async function AccountSettingsPage() {
       publicOrgasms: true,
       trackChastityStatus: true,
       firstDayOfWeek: true,
+      timezone: true,
+      hideLocktoberBoard: true,
     },
   });
 
@@ -31,6 +33,8 @@ export default async function AccountSettingsPage() {
         initialPublicOrgasms={userSettings?.publicOrgasms || false}
         initialTrackChastityStatus={userSettings?.trackChastityStatus || false}
         initialFirstDayOfWeek={userSettings?.firstDayOfWeek ?? 1}
+        initialTimezone={userSettings?.timezone ?? null}
+        initialHideLocktoberBoard={userSettings?.hideLocktoberBoard ?? false}
       />
     </div>
   );

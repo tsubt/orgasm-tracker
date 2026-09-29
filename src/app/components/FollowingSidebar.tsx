@@ -96,7 +96,7 @@ export default async function FollowingSidebar({
       : [];
 
   return (
-    <div className="w-full xl:w-80 space-y-6">
+    <div className="w-full space-y-6">
       {/* Recent Orgasms Section */}
       {recentOrgasms.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">

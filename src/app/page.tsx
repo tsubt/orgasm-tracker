@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import Guest from "./components/Guest";
 import StatsContent from "./components/StatsContent";
 import FollowingSidebar from "./components/FollowingSidebar";
+import LocktoberParticipants from "./components/LocktoberParticipants";
 import { Suspense } from "react";
 
 export default async function Home({
@@ -26,7 +27,10 @@ export default async function Home({
               />
             </div>
             {/* Sidebar - appears below on lg and below, on right on xl+ */}
-            <div className="xl:flex-shrink-0">
+            <div className="w-full xl:w-80 xl:flex-shrink-0 space-y-6">
+              <Suspense fallback={null}>
+                <LocktoberParticipants userId={session.user.id} />
+              </Suspense>
               <Suspense fallback={null}>
                 <FollowingSidebar userId={session.user.id} />
               </Suspense>

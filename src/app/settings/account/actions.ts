@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { isKnownTimezone } from "@/lib/locktober/scoring";
 import { prisma } from "@/prisma";
 import { revalidatePath } from "next/cache";
 
@@ -32,13 +33,27 @@ export async function updateSettings(data: {
   publicOrgasms: boolean;
   trackChastityStatus?: boolean;
   firstDayOfWeek?: number;
+  timezone?: string;
+  hideLocktoberBoard?: boolean;
 }) {
   const session = await auth();
   if (!session?.user) {
     throw new Error("Unauthorized");
   }
 
-  const { username, publicProfile, publicOrgasms, trackChastityStatus, firstDayOfWeek } = data;
+  const {
+    username,
+    publicProfile,
+    publicOrgasms,
+    trackChastityStatus,
+    firstDayOfWeek,
+    timezone,
+    hideLocktoberBoard,
+  } = data;
+
+  if (timezone !== undefined && !isKnownTimezone(timezone)) {
+    throw new Error("That timezone isn't recognized.");
+  }
 
   // Validate username format before saving
   const isValid =
@@ -72,10 +87,21 @@ export async function updateSettings(data: {
         trackChastityStatus !== undefined ? trackChastityStatus : undefined,
       firstDayOfWeek:
         firstDayOfWeek !== undefined ? firstDayOfWeek : undefined,
+      timezone: timezone !== undefined ? timezone : undefined,
+      hideLocktoberBoard:
+        hideLocktoberBoard !== undefined ? hideLocktoberBoard : undefined,
     },
   });
 
+  if (timezone) {
+    await prisma.locktoberChallenge.updateMany({
+      where: { userId: session.user.id },
+      data: { timezone },
+    });
+  }
+
   revalidatePath("/settings");
+  revalidatePath("/locktober");
   revalidatePath("/users");
   revalidatePath(`/u/${username}`);
   revalidatePath("/");

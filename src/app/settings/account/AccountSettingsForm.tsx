@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useRef } from "react";
+import { useState, useEffect, useMemo, useTransition, useRef, useSyncExternalStore } from "react";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,12 +13,16 @@ export default function AccountSettingsForm({
   initialPublicOrgasms,
   initialTrackChastityStatus,
   initialFirstDayOfWeek,
+  initialTimezone,
+  initialHideLocktoberBoard,
 }: {
   initialUsername: string;
   initialPublicProfile: boolean;
   initialPublicOrgasms: boolean;
   initialTrackChastityStatus: boolean;
   initialFirstDayOfWeek: number;
+  initialTimezone: string | null;
+  initialHideLocktoberBoard: boolean;
 }) {
   const router = useRouter();
   const [newUsername, setNewUsername] = useState(initialUsername);
@@ -35,6 +39,25 @@ export default function AccountSettingsForm({
     initialTrackChastityStatus
   );
   const [firstDayOfWeek, setFirstDayOfWeek] = useState(initialFirstDayOfWeek);
+  const [timezone, setTimezone] = useState(initialTimezone ?? "");
+  const [hideLocktoberBoard, setHideLocktoberBoard] = useState(
+    initialHideLocktoberBoard,
+  );
+  const localTimezone = useSyncExternalStore(
+    () => () => {},
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    () => "UTC",
+  );
+  const selectedTimezone = timezone || localTimezone;
+  const timezones = useMemo(() => {
+    const zones =
+      typeof Intl.supportedValuesOf === "function"
+        ? Intl.supportedValuesOf("timeZone")
+        : [selectedTimezone];
+    return zones.includes(selectedTimezone)
+      ? zones
+      : [selectedTimezone, ...zones];
+  }, [selectedTimezone]);
   const [hasActiveSession, setHasActiveSession] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -189,6 +212,8 @@ export default function AccountSettingsForm({
           publicOrgasms: newOVisibility === "public",
           trackChastityStatus,
           firstDayOfWeek,
+          timezone: selectedTimezone,
+          hideLocktoberBoard,
         });
         toast.success("Settings saved!", { id: toastId });
         router.refresh();
@@ -382,6 +407,30 @@ export default function AccountSettingsForm({
               Choose which day the calendar view should start on.
             </p>
           </div>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="timezone"
+              className="text-sm font-medium text-gray-900 dark:text-white"
+            >
+              Timezone
+            </label>
+            <select
+              id="timezone"
+              value={selectedTimezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500 dark:focus:ring-pink-400"
+            >
+              {timezones.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Locktober uses this for cum days and days left. Starting a
+              challenge sets it from this device.
+            </p>
+          </div>
         </div>
 
         {/* Chastity Tracking Section */}
@@ -428,6 +477,33 @@ export default function AccountSettingsForm({
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            Locktober
+          </h3>
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="hideLocktoberBoard"
+              checked={hideLocktoberBoard}
+              onChange={(event) => setHideLocktoberBoard(event.target.checked)}
+              className="mt-1 h-4 w-4 text-pink-600 dark:text-pink-400 border-gray-300 dark:border-gray-600 rounded focus:ring-pink-500 dark:focus:ring-pink-400"
+            />
+            <div className="flex-1">
+              <label
+                htmlFor="hideLocktoberBoard"
+                className="text-gray-900 dark:text-white cursor-pointer"
+              >
+                Hide public participants
+              </label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Removes other public Locktober challenges from the dashboard
+                sidebar.
+              </p>
             </div>
           </div>
         </div>
