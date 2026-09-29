@@ -6,11 +6,16 @@ import Link from "next/link";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import duration from "dayjs/plugin/duration";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { followUser, unfollowUser } from "@/app/u/[username]/actions";
 import type { Orgasm, User, ChastitySession } from "@prisma/client";
+import { useClientTimeZone } from "@/lib/useClientTimeZone";
 
 dayjs.extend(relativeTime);
 dayjs.extend(duration);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export default function UserCard({
   user,
@@ -24,6 +29,7 @@ export default function UserCard({
   currentUserId?: string;
   isFollowing?: boolean;
 }) {
+  const timeZone = useClientTimeZone();
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
   const [isPending, startTransition] = useTransition();
   const [isHovered, setIsHovered] = useState(false);
@@ -101,13 +107,19 @@ export default function UserCard({
                 {lastOrgasm && (
                   <>
                     <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span
+                      className="text-gray-600 dark:text-gray-400"
+                      suppressHydrationWarning
+                    >
                       Last orgasm {lastOrgasm.datetime.fromNow()}
                     </span>
                     {activeSession && lockedDuration && (
                       <>
                         <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
-                        <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                        <span
+                          className="flex items-center gap-1 text-gray-600 dark:text-gray-400"
+                          suppressHydrationWarning
+                        >
                           <svg
                             className="w-4 h-4"
                             fill="none"
@@ -161,11 +173,11 @@ export default function UserCard({
             <div className="flex md:flex-col gap-2 md:gap-1">
               <div>
                 <span className="text-gray-500 dark:text-gray-500 md:hidden">Joined: </span>
-                {dayjs(user.joinedAt).format("DD MMM YYYY")}
+                {dayjs(user.joinedAt).utc().tz(timeZone).format("DD MMM YYYY")}
               </div>
               <div className="md:border-t md:border-gray-200 md:dark:border-gray-700 md:pt-1 md:mt-1">
                 <span className="text-gray-500 dark:text-gray-500 md:hidden">Last seen: </span>
-                {dayjs(user.lastSeen).fromNow()}
+                <span suppressHydrationWarning>{dayjs(user.lastSeen).fromNow()}</span>
               </div>
             </div>
           </div>

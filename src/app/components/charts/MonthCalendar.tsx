@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useClientTimeZone } from "@/lib/useClientTimeZone";
 import { Orgasm, ChastitySession } from "@prisma/client";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -38,10 +39,7 @@ export default function MonthCalendar({
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const [isTouchTooltip, setIsTouchTooltip] = useState<boolean>(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
-
-  // Get the first day of the month and the number of days
-  // Use user timezone for consistency with locked dates calculation
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const userTimezone = useClientTimeZone();
   const firstDay = dayjs(`${year}-${month.toString().padStart(2, "0")}-01`).tz(
     userTimezone
   );
@@ -56,7 +54,7 @@ export default function MonthCalendar({
   const orgasmsByDate: { [date: string]: Orgasm[] } = {};
   orgasms.forEach((o) => {
     if (!o.timestamp) return;
-    const orgasmDate = dayjs(o.timestamp);
+    const orgasmDate = dayjs(o.timestamp).utc().tz(userTimezone);
     if (orgasmDate.month() + 1 === month && orgasmDate.year() === year) {
       const dateStr = orgasmDate.format("YYYY-MM-DD");
       if (!orgasmsByDate[dateStr]) {
@@ -129,14 +127,13 @@ export default function MonthCalendar({
   // Check if an orgasm occurred during a chastity session
   const isOrgasmDuringChastity = (orgasm: Orgasm): boolean => {
     if (!orgasm.timestamp) return false;
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const orgasmTime = dayjs(orgasm.timestamp).utc().tz(userTimezone);
 
     return chastitySessions.some((session) => {
       const startTime = dayjs(session.startTime).utc().tz(userTimezone);
       const endTime = session.endTime
         ? dayjs(session.endTime).utc().tz(userTimezone)
-        : dayjs(); // If no end time, consider it active until now
+        : dayjs().tz(userTimezone);
 
       // Check if orgasm occurred during this session (inclusive boundaries)
       return (
@@ -176,7 +173,6 @@ export default function MonthCalendar({
   // Find sessions that start or end on a given date
   const getChastityEventsForDate = (date: string | null) => {
     if (!date) return { starts: [], ends: [] };
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const targetDate = dayjs(date).tz(userTimezone);
 
     const starts: ChastitySession[] = [];
@@ -509,7 +505,8 @@ export default function MonthCalendar({
               chastityEvents.ends.length > 0;
             const hasEvents = hasOrgasms || hasChastityEvents;
             const isToday =
-              cell.date && dayjs(cell.date).isSame(dayjs(), "day");
+              cell.date &&
+              dayjs.tz(cell.date, userTimezone).isSame(dayjs().tz(userTimezone), "day");
 
             return (
               <div
@@ -558,8 +555,6 @@ export default function MonthCalendar({
             </div>
 
             {(() => {
-              const userTimezone =
-                Intl.DateTimeFormat().resolvedOptions().timeZone;
               const chastityEvents = getChastityEventsForDate(hoveredDate);
               const orgasmsOnDate = orgasmsByDate[hoveredDate] || [];
 

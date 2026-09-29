@@ -142,7 +142,7 @@ export default function ShareView({
               className="rounded-lg border border-gray-200 p-3 dark:border-gray-700"
             >
               <div className="flex items-center justify-between gap-2 text-xs text-gray-500">
-                <span>
+                <span suppressHydrationWarning>
                   {comment.username ? `@${comment.username}` : comment.name || "Someone"}
                   {" · "}
                   {dayjs(comment.createdAt).fromNow()}
