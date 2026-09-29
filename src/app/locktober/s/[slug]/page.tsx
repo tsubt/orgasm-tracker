@@ -4,11 +4,88 @@ import {
   loadChastitySpans,
   serializeChallenge,
 } from "@/lib/locktober/load";
-import { focusYear } from "@/lib/locktober/scoring";
+import { BarView, focusYear } from "@/lib/locktober/scoring";
 import { prisma } from "@/prisma";
 import dayjs from "dayjs";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
 import ShareView, { ShareComment } from "./ShareView";
+
+const GENERIC_CARD: Metadata = {
+  title: "Locktober · OrgasmTracker",
+  description: "A Locktober challenge on OrgasmTracker.",
+};
+
+const loadShare = cache(async (slug: string) => {
+  const challenge = await loadChallengeBySlug(slug);
+  if (!challenge) return null;
+  const [owner, sessions] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: challenge.userId },
+      select: { username: true, name: true, image: true, firstDayOfWeek: true },
+    }),
+    loadChastitySpans(challenge.userId, challenge.year),
+  ]);
+  return {
+    challenge,
+    owner,
+    serialized: serializeChallenge(challenge, sessions),
+  };
+});
+
+function shareCard(args: {
+  username: string | null;
+  name: string | null;
+  year: number;
+  bar: BarView;
+}): Metadata {
+  const display = args.username ? `@${args.username}` : args.name || "Someone";
+  const title = `${display}'s Locktober ${args.year}`;
+  const status = args.bar.locked ? "Reward day" : "In progress";
+  const reached = args.bar.reached ? ` · ${args.bar.reached.label}` : "";
+  const days =
+    args.bar.daysLeft != null && args.bar.daysLeft > 0
+      ? ` · ${args.bar.daysLeft} ${args.bar.daysLeft === 1 ? "day" : "days"} left`
+      : "";
+  const description = `${args.bar.points} points · ${status}${reached}${days}`;
+  return {
+    title: `${title} · OrgasmTracker`,
+    description,
+    openGraph: {
+      title,
+      description,
+      siteName: "OrgasmTracker",
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+  };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const loaded = await loadShare(slug);
+  if (!loaded) return GENERIC_CARD;
+
+  const session = await auth();
+  const isOwner = session?.user?.id === loaded.challenge.userId;
+  if (loaded.challenge.visibility === "PRIVATE" && !isOwner) return GENERIC_CARD;
+
+  return shareCard({
+    username: loaded.owner?.username ?? null,
+    name: loaded.owner?.name ?? null,
+    year: loaded.serialized.year,
+    bar: loaded.serialized.bar,
+  });
+}
 
 export default async function LocktoberSharePage({
   params,
@@ -16,18 +93,14 @@ export default async function LocktoberSharePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const challenge = await loadChallengeBySlug(slug);
-  if (!challenge) notFound();
+  const loaded = await loadShare(slug);
+  if (!loaded) notFound();
+  const { challenge, owner, serialized } = loaded;
 
   const session = await auth();
   const viewerId = session?.user?.id ?? null;
   const isOwner = viewerId === challenge.userId;
   if (challenge.visibility === "PRIVATE" && !isOwner) notFound();
-
-  const owner = await prisma.user.findUnique({
-    where: { id: challenge.userId },
-    select: { username: true, name: true, image: true, firstDayOfWeek: true },
-  });
   if (
     challenge.visibility === "PUBLIC" &&
     owner?.username &&
@@ -55,8 +128,6 @@ export default async function LocktoberSharePage({
       : null,
   ]);
 
-  const sessions = await loadChastitySpans(challenge.userId, challenge.year);
-  const serialized = serializeChallenge(challenge, sessions);
   const shareComments: ShareComment[] = comments.map((comment) => ({
     id: comment.id,
     body: comment.body,
