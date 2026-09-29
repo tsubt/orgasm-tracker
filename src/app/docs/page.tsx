@@ -92,6 +92,84 @@ export default function DocsPage() {
 
           <section className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Locktober
+            </h2>
+            <p>
+              Locktober is a once-a-year challenge for October. You get one
+              challenge per year. Setup is open in September and October. Open
+              it from the sidebar.
+            </p>
+            <p>
+              When you start, choose how many orgasms you are allowed (1–31),
+              then place that many cum days. You can spread them evenly (the
+              last one lands on 31 October), draw them once at random, or pick
+              the days yourself. The draw happens once, when you start. Days
+              that have already begun cannot be moved later.
+            </p>
+            <p>
+              Your timezone is taken from this device when you start, and you
+              can change it in Settings. Cum-day midnight and &quot;days
+              left&quot; use that timezone.
+            </p>
+            <p>
+              A power bar fills as you earn points. Default rewards are tapping
+              release (10, ruined), ruined while locked (50), full while locked
+              (100), and full while unlocked (200). You can edit tiers; saving
+              sorts them by points, lowest first. A locked cum day keeps the
+              tiers it froze with.
+            </p>
+            <p>Default tasks:</p>
+            <ul className="list-disc list-inside space-y-2 ml-4">
+              <li>
+                <strong>Cage check:</strong> 1 point, once a day
+              </li>
+              <li>
+                <strong>Dildo play:</strong> 1 point per minute, up to 15 a day
+              </li>
+              <li>
+                <strong>Locked and plugged supermarket shop:</strong> 10 points,
+                once a week
+              </li>
+              <li>
+                <strong>Broke a rule:</strong> a penalty. You choose how many
+                points to remove, once a day, and a note is required
+              </li>
+              <li>
+                <strong>Time locked:</strong> 1 point per hour you are locked,
+                added automatically. Only whole hours count, so 59 minutes is 0
+                points. This uses your chastity sessions
+              </li>
+            </ul>
+            <p>
+              Tasks and penalties are separate cards. Click a card to confirm
+              it. Time locked is not clicked; it updates from time already
+              locked in the current cycle. Past completions keep the points they
+              earned. Changing a task only affects what you log after that.
+            </p>
+            <p>
+              On a cum day the bar locks at local midnight and shows the reward
+              you reached. Claim it, or skip the day with no reward. Either way
+              the bar resets. Days left is 0 until you claim or skip, then it
+              counts toward the next cum day. Claiming a ruined reward logs a
+              ruined orgasm. A full unlocked reward can end an active chastity
+              session.
+            </p>
+            <p>
+              A challenge can be private, visible to anyone with the link, or
+              public. The share page shows the power bar, reward labels,
+              scheduled dates, likes, and comments. It does not show task notes.
+            </p>
+            <p>
+              From 15 September through 7 November the dashboard shows your
+              power bar. The prompt to start a challenge only appears if chastity
+              tracking is turned on in Settings. Other public challenges appear
+              at the top of the dashboard sidebar. Hide that list under Locktober
+              in Settings.
+            </p>
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Dashboard
             </h2>
             <p>
