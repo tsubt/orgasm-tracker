@@ -26,7 +26,7 @@ export default async function LocktoberSharePage({
 
   const owner = await prisma.user.findUnique({
     where: { id: challenge.userId },
-    select: { username: true, name: true, image: true },
+    select: { username: true, name: true, image: true, firstDayOfWeek: true },
   });
   if (
     challenge.visibility === "PUBLIC" &&
@@ -77,6 +77,10 @@ export default async function LocktoberSharePage({
           name={owner?.name ?? null}
           image={owner?.image ?? null}
           bar={serialized.bar}
+          tasks={serialized.tasks}
+          calendar={serialized.calendar}
+          tiers={serialized.tiers}
+          firstDayOfWeek={owner?.firstDayOfWeek ?? 1}
           cumDays={serialized.cumDays.map((day) => ({
             date: day.date,
             status: day.status,

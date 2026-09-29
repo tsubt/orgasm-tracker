@@ -14,6 +14,9 @@ import {
   taskCapState,
 } from "@/lib/locktober/scoring";
 import OctoberCalendar from "./OctoberCalendar";
+import PointsCalendar from "./PointsCalendar";
+import TaskTile, { TaskGrid } from "./TaskTile";
+import { compareTasksByValue, taskCardDetail, taskSummary } from "@/lib/locktober/taskLabel";
 import {
   LocktoberCadence,
   LocktoberRateUnit,
@@ -450,91 +453,64 @@ function ChallengeView({
       )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <PointsCalendar
+          year={challenge.year}
+          firstDayOfWeek={firstDayOfWeek}
+          today={now.format("YYYY-MM-DD")}
+          days={challenge.calendar}
+          tiers={challenge.tiers}
+        />
+      </section>
+
+      <section className="@container rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
         <h2 className="mb-3 font-semibold text-gray-900 dark:text-white">Tasks</h2>
         {tasksClosedReason && (
           <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
             {tasksClosedReason}
           </p>
         )}
-        {(
-          [
-            ["REWARD", "Tasks"],
-            ["PENALTY", "Penalties"],
-          ] as const
-        ).map(([kind, label]) => {
-          const items = taskStates.filter((item) => item.task.kind === kind);
-          if (items.length === 0) return null;
-          return (
-            <div key={kind} className={kind === "PENALTY" ? "mt-5" : ""}>
-              {kind === "PENALTY" && (
-                <h3 className="mb-3 font-semibold text-gray-900 dark:text-white">{label}</h3>
-              )}
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {items.map(({ task, cap }) => {
+        <TaskGrid>
+          {[...taskStates]
+            .sort((a, b) => compareTasksByValue(a.task, b.task))
+            .map(({ task, cap }) => {
                   if (task.mode === "TIME_LOCKED") {
                     const progress = challenge.timeLocked.find(
                       (item) => item.taskId === task.id,
                     );
-                    const detail = locked
-                      ? "Paused until this cum day is claimed"
+                    const status = locked
+                      ? "paused"
                       : !scoringOpen
                         ? now.isBefore(octoberStart(challenge.year, challenge.timezone))
-                          ? "Starts October 1"
-                          : "October is over"
-                        : `${formatLocked(progress?.lockedMs ?? 0)} locked · ${progress?.points ?? 0} pts`;
+                          ? "Oct 1"
+                          : "ended"
+                        : formatLocked(progress?.lockedMs ?? 0);
                     return (
-                      <li
-                        key={task.id}
-                        className={`flex h-full flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900 ${
-                          locked || !scoringOpen ? "opacity-70" : ""
-                        }`}
-                      >
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {task.title}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {taskSummary(task)}
-                        </span>
-                        <span className="mt-auto pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Auto · {detail}
-                        </span>
+                      <li key={task.id} className="h-full">
+                        <TaskTile
+                          task={task}
+                          detail={`${taskCardDetail(task)} · ${status}`}
+                        />
                       </li>
                     );
                   }
                   const disabled = Boolean(tasksClosedReason) || cap.maxed;
+                  const detail = cap.maxed
+                    ? `${taskCardDetail(task)} · logged`
+                    : cap.remainingPoints != null
+                      ? `${taskCardDetail(task)} · ${cap.remainingPoints}pt left`
+                      : undefined;
                   return (
                     <li key={task.id} className="h-full">
-                      <button
-                        type="button"
+                      <TaskTile
+                        task={task}
+                        detail={detail}
                         disabled={disabled}
                         onClick={() => setCompleting(task)}
-                        className={`flex h-full w-full flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                          kind === "PENALTY"
-                            ? "border-rose-200 hover:bg-rose-50 disabled:hover:bg-transparent dark:border-rose-900 dark:hover:bg-rose-950/40"
-                            : "border-gray-200 hover:border-pink-400 hover:bg-pink-50 disabled:hover:border-gray-200 disabled:hover:bg-transparent dark:border-gray-700 dark:hover:border-pink-400 dark:hover:bg-gray-900"
-                        }`}
-                      >
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {task.title}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {taskSummary(task)}
-                          {cap.maxed
-                            ? task.cadence === "WEEKLY"
-                              ? " · already logged this week"
-                              : " · already logged today"
-                            : cap.remainingPoints != null
-                              ? ` · ${cap.remainingPoints} pts left`
-                              : ""}
-                        </span>
-                      </button>
+                      />
                     </li>
                   );
-                })}
-              </ul>
-            </div>
-          );
-        })}
+            })}
+        </TaskGrid>
       </section>
 
       <ScheduleEditor
@@ -850,32 +826,6 @@ function TierEditor({
       </form>
     </details>
   );
-}
-
-function taskSummary(task: SerializedChallenge["tasks"][number]): string {
-  const period = task.cadence === "WEEKLY" ? "week" : "day";
-  const times = task.maxCompletions ?? 1;
-  const allowance = times === 1 ? `once a ${period}` : `${times} times a ${period}`;
-  const note = task.noteRequired ? ", note required" : "";
-
-  if (task.mode === "TIME_LOCKED") {
-    const every = task.rateEvery ?? 1;
-    const unit = task.rateUnit === "DAY" ? "day" : "hour";
-    const span = every === 1 ? unit : `${every} ${unit}s`;
-    const amount = Math.abs(task.points ?? 0);
-    return `${amount} ${amount === 1 ? "point" : "points"} per ${span}, automatic`;
-  }
-  if (task.mode === "ENTER_AMOUNT") {
-    return `Amount chosen when logged, ${allowance}${note}`;
-  }
-  if (task.mode === "PER_MINUTE") {
-    const amount = Math.abs(task.points ?? 0);
-    const cap =
-      task.maxPoints != null ? `, up to ${task.maxPoints} points a ${period}` : "";
-    return `${amount} ${amount === 1 ? "point" : "points"} per minute${cap}${note}`;
-  }
-  const amount = Math.abs(task.points ?? 0);
-  return `${amount} ${amount === 1 ? "point" : "points"}, ${allowance}${note}`;
 }
 
 function TaskEditor({

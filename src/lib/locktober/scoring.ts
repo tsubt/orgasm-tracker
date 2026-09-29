@@ -319,11 +319,15 @@ export type TimeLockedTaskInput = {
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
-/** Merged chastity time that falls inside [start, end). */
-export function lockedOverlapMs(spans: LockedSpan[], start: Dayjs, end: Dayjs): number {
+/** Merged chastity intervals inside [start, end). */
+export function lockedIntervals(
+  spans: LockedSpan[],
+  start: Dayjs,
+  end: Dayjs,
+): { from: number; to: number }[] {
   const startMs = start.valueOf();
   const endMs = end.valueOf();
-  if (!(endMs > startMs)) return 0;
+  if (!(endMs > startMs)) return [];
 
   const merged: { from: number; to: number }[] = [];
   const intervals = spans
@@ -341,7 +345,15 @@ export function lockedOverlapMs(spans: LockedSpan[], start: Dayjs, end: Dayjs): 
     if (!last || interval.from > last.to) merged.push({ ...interval });
     else last.to = Math.max(last.to, interval.to);
   }
-  return merged.reduce((sum, interval) => sum + (interval.to - interval.from), 0);
+  return merged;
+}
+
+/** Merged chastity time that falls inside [start, end). */
+export function lockedOverlapMs(spans: LockedSpan[], start: Dayjs, end: Dayjs): number {
+  return lockedIntervals(spans, start, end).reduce(
+    (sum, interval) => sum + (interval.to - interval.from),
+    0,
+  );
 }
 
 /** Whole periods only. 59 minutes at 1 per hour is 0. */
@@ -518,7 +530,8 @@ export function taskCapState(args: {
 export function barFillPercent(points: number, tiers: TierSnapshot[]): number {
   const max = tiers.reduce((highest, tier) => Math.max(highest, tier.points), 0);
   if (max <= 0) return 0;
-  return Math.max(0, Math.min(100, (points / max) * 100));
+  const scale = max * 1.2;
+  return Math.max(0, Math.min(100, (points / scale) * 100));
 }
 
 export function tierMarkerPercent(points: number, tiers: TierSnapshot[]): number {

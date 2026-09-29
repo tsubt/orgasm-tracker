@@ -9,6 +9,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { ensureCumDayLocks } from "./locks";
+import { octoberCalendar, type LocktoberCalendarDay } from "./calendar";
 import {
   BarView,
   CumDayInput,
@@ -48,6 +49,7 @@ export type SerializedTask = {
   rateEvery: number | null;
   rateUnit: "HOUR" | "DAY" | null;
   sortOrder: number;
+  useCount: number;
 };
 
 export type SerializedCompletion = {
@@ -87,6 +89,7 @@ export type SerializedChallenge = {
   cumDays: SerializedCumDay[];
   completions: SerializedCompletion[];
   timeLocked: { taskId: string; lockedMs: number; points: number }[];
+  calendar: LocktoberCalendarDay[];
   bar: BarView;
 };
 
@@ -145,6 +148,14 @@ export function serializeChallenge(
     tasks: challenge.tasks,
     sessions,
   });
+  const useCountByTask = new Map<string, number>();
+  for (const completion of challenge.completions) {
+    if (!completion.taskId) continue;
+    useCountByTask.set(
+      completion.taskId,
+      (useCountByTask.get(completion.taskId) ?? 0) + 1,
+    );
+  }
   return {
     id: challenge.id,
     year: challenge.year,
@@ -176,6 +187,7 @@ export function serializeChallenge(
       rateEvery: task.rateEvery,
       rateUnit: task.rateUnit,
       sortOrder: task.sortOrder,
+      useCount: useCountByTask.get(task.id) ?? 0,
     })),
     cumDays: cumDays.map((day) => ({
       ...day,
@@ -191,6 +203,15 @@ export function serializeChallenge(
       title: snapshotTitle(completion.snapshot),
     })),
     timeLocked: timeLocked.byTask,
+    calendar: octoberCalendar({
+      year: challenge.year,
+      tz: challenge.timezone,
+      cumDays,
+      tiers,
+      tasks: challenge.tasks,
+      sessions,
+      completions: challenge.completions,
+    }),
     bar: describeBar(
       challenge.year,
       challenge.timezone,

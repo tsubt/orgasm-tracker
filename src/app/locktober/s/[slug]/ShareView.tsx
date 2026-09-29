@@ -1,14 +1,25 @@
 "use client";
 
 import PowerBar from "../../PowerBar";
-import { BarView } from "@/lib/locktober/scoring";
+import PointsCalendar from "../../PointsCalendar";
+import TaskTile, { TaskGrid } from "../../TaskTile";
+import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
+import type { SerializedTask } from "@/lib/locktober/load";
+import { compareTasksByValue } from "@/lib/locktober/taskLabel";
+import { BarView, TierSnapshot } from "@/lib/locktober/scoring";
 import { onDate } from "@/lib/zonedTime";
 import { RelativeTime, TheirTime } from "@/app/components/SubjectTime";
 import { LocktoberCumDayStatus } from "@prisma/client";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { addComment, deleteComment, toggleLike } from "../../actions";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export type ShareComment = {
   id: string;
@@ -32,6 +43,10 @@ export default function ShareView({
   name,
   image,
   bar,
+  tasks,
+  calendar,
+  tiers,
+  firstDayOfWeek,
   cumDays,
   likeCount,
   liked,
@@ -47,6 +62,10 @@ export default function ShareView({
   name: string | null;
   image: string | null;
   bar: BarView;
+  tasks: SerializedTask[];
+  calendar: LocktoberCalendarDay[];
+  tiers: TierSnapshot[];
+  firstDayOfWeek: number;
   cumDays: {
     date: string;
     status: LocktoberCumDayStatus;
@@ -65,6 +84,7 @@ export default function ShareView({
   const [body, setBody] = useState("");
   const [pending, setPending] = useState(false);
   const display = username ? `@${username}` : name || "Someone";
+  const today = dayjs(serverNow).tz(timeZone).format("YYYY-MM-DD");
 
   async function run(action: () => Promise<{ ok: true } | { ok: false; error: string }>) {
     setPending(true);
@@ -106,6 +126,15 @@ export default function ShareView({
         locked={bar.locked}
         daysLeft={bar.daysLeft}
       />
+
+      <PointsCalendar
+        year={year}
+        firstDayOfWeek={firstDayOfWeek}
+        today={today}
+        days={calendar}
+        tiers={tiers}
+      />
+      <TaskList tasks={tasks} />
 
       <ul className="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-gray-300">
         {cumDays.map((day) => (
@@ -190,5 +219,23 @@ export default function ShareView({
         )}
       </section>
     </div>
+  );
+}
+
+function TaskList({ tasks }: { tasks: SerializedTask[] }) {
+  if (tasks.length === 0) return null;
+  const ordered = [...tasks].sort(compareTasksByValue);
+
+  return (
+    <section className="@container">
+      <h2 className="mb-3 font-semibold text-gray-900 dark:text-white">Tasks</h2>
+      <TaskGrid>
+        {ordered.map((task) => (
+          <li key={task.id} className="h-full">
+            <TaskTile task={task} />
+          </li>
+        ))}
+      </TaskGrid>
+    </section>
   );
 }
