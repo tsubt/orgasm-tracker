@@ -135,10 +135,13 @@ export async function generateMetadata({
 
 export default async function LocktoberSharePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ v?: string }>;
 }) {
   const { slug } = await params;
+  const { v } = await searchParams;
   const loaded = await loadShare(slug);
   if (!loaded) notFound();
   const { challenge, owner, serialized } = loaded;
@@ -153,7 +156,8 @@ export default async function LocktoberSharePage({
     slug !== owner.username &&
     challenge.year === focusYear(dayjs())
   ) {
-    redirect(`/locktober/s/${owner.username}`);
+    const version = v && /^\d+$/.test(v) ? `?v=${v}` : "";
+    redirect(`/locktober/s/${owner.username}${version}`);
   }
 
   const [comments, like] = await Promise.all([

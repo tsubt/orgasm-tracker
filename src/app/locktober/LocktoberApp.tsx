@@ -9,6 +9,7 @@ import {
   focusYear,
   octoberEnd,
   publicLocktoberShareKey,
+  hoursSinceChallengeStart,
   octoberStart,
   setupYear,
   taskCapState,
@@ -392,7 +393,8 @@ function ChallengeView({
               shareSlug: challenge.shareSlug,
               username,
             });
-            const url = `${window.location.origin}/locktober/s/${key}`;
+            const hours = hoursSinceChallengeStart(challenge.year, challenge.timezone);
+            const url = `${window.location.origin}/locktober/s/${key}?v=${hours}`;
             if (challenge.visibility === "PRIVATE") {
               toast.error("Make it link-only or public before sharing.");
               return;

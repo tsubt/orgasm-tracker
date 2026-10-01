@@ -77,6 +77,11 @@ export function octoberStart(year: number, tz: string): Dayjs {
   return dayjs.tz(`${year}-10-01 00:00`, tz);
 }
 
+/** Whole hours since 1 October in the challenge timezone. Used to version share links. */
+export function hoursSinceChallengeStart(year: number, tz: string, now: Dayjs = dayjs()): number {
+  return Math.max(0, now.diff(octoberStart(year, tz), "hour"));
+}
+
 export function octoberEnd(year: number, tz: string): Dayjs {
   return dayjs.tz(`${year}-11-01 00:00`, tz);
 }
