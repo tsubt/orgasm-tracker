@@ -281,6 +281,13 @@ export async function loadOwnerLocktober(
   };
 }
 
+export async function loadChallengeById(id: string) {
+  return prisma.locktoberChallenge.findUnique({
+    where: { id },
+    include: challengeInclude,
+  });
+}
+
 export async function loadChallengeBySlug(slug: string) {
   const bySlug = await prisma.locktoberChallenge.findUnique({
     where: { shareSlug: slug },

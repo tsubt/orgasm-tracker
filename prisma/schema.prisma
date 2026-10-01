@@ -209,10 +209,32 @@ model LocktoberChallenge {
   completions LocktoberCompletion[]
   likes       LocktoberLike[]
   comments    LocktoberComment[]
+  card        LocktoberCard?
 
   @@unique([userId, year])
   @@index([userId])
   @@index([visibility, year])
+}
+
+/** Precomputed public-card stats. The social image reads this row and does not rescore. */
+model LocktoberCard {
+  challengeId   String
+  year          Int
+  display       String
+  username      String?
+  shareSlug     String              @unique
+  visibility    LocktoberVisibility
+  lockedMinutes Int
+  points        Int
+  daysLeft      Int?
+  /** Reward targets on the minimal bar: `{ label, points }[]`, lowest first. */
+  targets       Json                @default("[]")
+  refreshedAt   DateTime            @default(now())
+
+  challenge LocktoberChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@id([challengeId])
+  @@index([username, year])
 }
 
 model LocktoberRewardTier {

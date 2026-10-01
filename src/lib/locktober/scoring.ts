@@ -527,14 +527,14 @@ export function taskCapState(args: {
   };
 }
 
-export function barFillPercent(points: number, tiers: TierSnapshot[]): number {
+export function barFillPercent(points: number, tiers: { points: number }[]): number {
   const max = tiers.reduce((highest, tier) => Math.max(highest, tier.points), 0);
   if (max <= 0) return 0;
   const scale = max * 1.2;
   return Math.max(0, Math.min(100, (points / scale) * 100));
 }
 
-export function tierMarkerPercent(points: number, tiers: TierSnapshot[]): number {
+export function tierMarkerPercent(points: number, tiers: { points: number }[]): number {
   return barFillPercent(points, tiers);
 }
 

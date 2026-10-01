@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { refreshLocktoberCardsForUser } from "@/lib/locktober/cardSnapshot";
 import { prisma } from "@/prisma";
 import { NextResponse } from "next/server";
 import dayjs from "dayjs";
@@ -104,6 +105,10 @@ export async function POST(request: Request) {
       },
     });
 
+    await refreshLocktoberCardsForUser(session.user.id).catch((error) => {
+      console.error("Locktober card refresh failed", error);
+    });
+
     return NextResponse.json(
       { success: true, session: chastitySession },
       { status: 201 }
@@ -203,6 +208,10 @@ export async function PUT(request: Request) {
       },
     });
 
+    await refreshLocktoberCardsForUser(session.user.id).catch((error) => {
+      console.error("Locktober card refresh failed", error);
+    });
+
     return NextResponse.json(
       { success: true, session: updatedSession },
       { status: 200 }
@@ -249,6 +258,10 @@ export async function DELETE(request: Request) {
     // Delete the session
     await prisma.chastitySession.delete({
       where: { id },
+    });
+
+    await refreshLocktoberCardsForUser(session.user.id).catch((error) => {
+      console.error("Locktober card refresh failed", error);
     });
 
     return NextResponse.json({ success: true }, { status: 200 });

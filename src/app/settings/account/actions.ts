@@ -1,6 +1,7 @@
 "use server";
 
 import { auth, unstable_update } from "@/auth";
+import { refreshLocktoberCardsForUser } from "@/lib/locktober/cardSnapshot";
 import { isKnownTimezone } from "@/lib/locktober/scoring";
 import { prisma } from "@/prisma";
 import { revalidatePath } from "next/cache";
@@ -99,6 +100,10 @@ export async function updateSettings(data: {
       data: { timezone },
     });
   }
+
+  await refreshLocktoberCardsForUser(session.user.id).catch((error) => {
+    console.error("Locktober card refresh failed", error);
+  });
 
   await unstable_update({
     user: { username: isValid ? username : (session.user.username ?? null) },

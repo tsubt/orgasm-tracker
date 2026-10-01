@@ -5,11 +5,13 @@ import {
   serializeChallenge,
 } from "@/lib/locktober/load";
 import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
+import { locktoberDisplayName, saveLocktoberCard } from "@/lib/locktober/cardSnapshot";
 import { locktoberShareDescription } from "@/lib/locktober/shareLine";
 import { BarView, focusYear } from "@/lib/locktober/scoring";
 import { prisma } from "@/prisma";
 import dayjs from "dayjs";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import ShareView, { ShareComment } from "./ShareView";
@@ -36,16 +38,36 @@ const loadShare = cache(async (slug: string) => {
   };
 });
 
+function requestOrigin(headerList: Headers) {
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
+  if (!host) return "";
+  const proto =
+    headerList.get("x-forwarded-proto") ??
+    (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
 function shareCard(args: {
+  slug: string;
   username: string | null;
   name: string | null;
   year: number;
   bar: BarView;
   calendar: LocktoberCalendarDay[];
+  imageVersion: number | null;
+  origin: string;
 }): Metadata {
   const display = args.username ? `@${args.username}` : args.name || "Someone";
   const title = `${display}'s Locktober ${args.year}`;
-  const description = locktoberShareDescription(args.calendar, args.bar);
+  const description = locktoberShareDescription(args.calendar, {
+    points: args.bar.points,
+    daysLeft: args.bar.daysLeft,
+    tiers: args.bar.tiers,
+  });
+  const image =
+    args.imageVersion == null
+      ? undefined
+      : `${args.origin}/locktober/s/${args.slug}/card?v=${args.imageVersion}`;
   return {
     title: `${title} · OrgasmTracker`,
     description,
@@ -54,11 +76,13 @@ function shareCard(args: {
       description,
       siteName: "OrgasmTracker",
       type: "website",
+      images: image ? [{ url: image, width: 1200, height: 630, alt: title }] : undefined,
     },
     twitter: {
-      card: "summary",
+      card: image ? "summary_large_image" : "summary",
       title,
       description,
+      images: image ? [image] : undefined,
     },
   };
 }
@@ -76,12 +100,36 @@ export async function generateMetadata({
   const isOwner = session?.user?.id === loaded.challenge.userId;
   if (loaded.challenge.visibility === "PRIVATE" && !isOwner) return GENERIC_CARD;
 
+  const lockedMinutes = loaded.serialized.calendar.reduce(
+    (sum, day) => sum + (day.lockedMinutes ?? 0),
+    0,
+  );
+  const refreshedAt = await saveLocktoberCard({
+    challengeId: loaded.challenge.id,
+    year: loaded.serialized.year,
+    display: locktoberDisplayName(loaded.owner?.username, loaded.owner?.name),
+    username: loaded.owner?.username ?? null,
+    shareSlug: loaded.serialized.shareSlug,
+    visibility: loaded.serialized.visibility,
+    lockedMinutes,
+    points: loaded.serialized.bar.points,
+    daysLeft: loaded.serialized.bar.daysLeft,
+    targets: loaded.serialized.bar.tiers.map((tier) => ({
+      label: tier.label,
+      points: tier.points,
+    })),
+  });
+  const headerList = await headers();
+
   return shareCard({
+    slug,
     username: loaded.owner?.username ?? null,
     name: loaded.owner?.name ?? null,
     year: loaded.serialized.year,
     bar: loaded.serialized.bar,
     calendar: loaded.serialized.calendar,
+    imageVersion: refreshedAt.getTime(),
+    origin: requestOrigin(headerList),
   });
 }
 

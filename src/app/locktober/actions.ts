@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/prisma";
 import { DEFAULT_TASKS, DEFAULT_TIERS } from "@/lib/locktober/defaults";
+import { refreshLocktoberCard } from "@/lib/locktober/cardSnapshot";
 import { ensureCumDayLocks } from "@/lib/locktober/locks";
 import {
   cumDayInstant,
@@ -56,11 +57,17 @@ async function requireUserId() {
   return session.user.id;
 }
 
-function revalidateChallenge(slug: string) {
+async function revalidateChallenge(slug: string, challengeId?: string) {
   revalidatePath("/locktober");
   revalidatePath("/");
   revalidatePath(`/locktober/s/${slug}`);
   revalidatePath("/locktober/s/[slug]", "page");
+  if (!challengeId) return;
+  try {
+    await refreshLocktoberCard(challengeId);
+  } catch (error) {
+    console.error("Locktober card refresh failed", error);
+  }
 }
 
 function assertOpenForEdits(
@@ -129,10 +136,10 @@ export async function createChallenge(input: {
         create: schedule.dates.map((date) => ({ date: dateOnlyToDb(date) })),
       },
     },
-    select: { shareSlug: true },
+    select: { id: true, shareSlug: true },
   });
 
-  revalidateChallenge(challenge.shareSlug);
+  await revalidateChallenge(challenge.shareSlug, challenge.id);
   return { ok: true };
 }
 
@@ -215,7 +222,7 @@ export async function saveSchedule(input: {
     });
   });
 
-  revalidateChallenge(owned.challenge.shareSlug);
+  await revalidateChallenge(owned.challenge.shareSlug, owned.challenge.id);
   return { ok: true };
 }
 
@@ -345,7 +352,7 @@ export async function saveTiers(input: {
     }
   });
 
-  revalidateChallenge(owned.challenge.shareSlug);
+  await revalidateChallenge(owned.challenge.shareSlug, owned.challenge.id);
   return { ok: true };
 }
 
@@ -395,7 +402,7 @@ export async function saveTask(input: {
     });
   }
 
-  revalidateChallenge(owned.challenge.shareSlug);
+  await revalidateChallenge(owned.challenge.shareSlug, owned.challenge.id);
   return { ok: true };
 }
 
@@ -552,7 +559,7 @@ export async function deleteTask(taskId: string): Promise<ActionResult> {
     }),
     prisma.locktoberTask.delete({ where: { id: taskId } }),
   ]);
-  revalidateChallenge(task.challenge.shareSlug);
+  await revalidateChallenge(task.challenge.shareSlug, task.challenge.id);
   return { ok: true };
 }
 
@@ -678,7 +685,7 @@ export async function completeTask(input: {
     },
   });
 
-  revalidateChallenge(challenge.shareSlug);
+  await revalidateChallenge(challenge.shareSlug, challenge.id);
   return { ok: true };
 }
 
@@ -787,7 +794,7 @@ export async function claimReward(input: {
   }
 
   await ensureCumDayLocks(fresh.challengeId);
-  revalidateChallenge(fresh.challenge.shareSlug);
+  await revalidateChallenge(fresh.challenge.shareSlug, fresh.challenge.id);
   revalidatePath("/orgasms");
   revalidatePath("/chastity");
   return { ok: true };
@@ -812,7 +819,7 @@ export async function skipCumDay(cumDayId: string): Promise<ActionResult> {
   });
   if (skipped.count !== 1) return fail("This cum day was already resolved.");
   await ensureCumDayLocks(fresh.challengeId);
-  revalidateChallenge(cumDay.challenge.shareSlug);
+  await revalidateChallenge(cumDay.challenge.shareSlug, cumDay.challenge.id);
   return { ok: true };
 }
 
@@ -829,7 +836,7 @@ export async function setVisibility(input: {
     where: { id: owned.challenge.id },
     data: { visibility: input.visibility },
   });
-  revalidateChallenge(owned.challenge.shareSlug);
+  await revalidateChallenge(owned.challenge.shareSlug, owned.challenge.id);
   return { ok: true };
 }
 
@@ -848,7 +855,7 @@ export async function toggleLike(slug: string): Promise<ActionResult> {
       data: { challengeId: challenge.id, userId },
     });
   }
-  revalidateChallenge(challenge.shareSlug);
+  await revalidateChallenge(challenge.shareSlug);
   return { ok: true };
 }
 
@@ -863,7 +870,7 @@ export async function addComment(slug: string, body: string): Promise<ActionResu
   await prisma.locktoberComment.create({
     data: { challengeId: challenge.id, userId, body: text },
   });
-  revalidateChallenge(challenge.shareSlug);
+  await revalidateChallenge(challenge.shareSlug);
   return { ok: true };
 }
 
@@ -878,7 +885,7 @@ export async function deleteComment(commentId: string): Promise<ActionResult> {
   const isOwner = comment.challenge.userId === userId;
   if (comment.userId !== userId && !isOwner) return fail("You can't delete that comment.");
   await prisma.locktoberComment.delete({ where: { id: commentId } });
-  revalidateChallenge(comment.challenge.shareSlug);
+  await revalidateChallenge(comment.challenge.shareSlug);
   return { ok: true };
 }
 
