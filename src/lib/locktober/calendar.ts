@@ -10,6 +10,8 @@ import {
   cumDayInstant,
   lockedIntervals,
   lockedOverlapMs,
+  lockedRateUnit,
+  ratePeriodMs,
   TierSnapshot,
   TimeLockedTaskInput,
 } from "./scoring";
@@ -17,9 +19,6 @@ import { tierToneName, type TierToneName } from "./tierTone";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
 
 export type LocktoberCalendarDay = {
   date: string;
@@ -71,13 +70,13 @@ function creditLockedDays(
   intervals: { from: number; to: number }[],
   points: number,
   every: number,
-  unit: "HOUR" | "DAY",
+  unit: "SECOND" | "MINUTE" | "HOUR" | "DAY",
   tz: string,
   into: Map<string, number>,
 ) {
   if (!Number.isInteger(points) || points < 1) return;
   if (!Number.isInteger(every) || every < 1) return;
-  const periodMs = (unit === "DAY" ? DAY_MS : HOUR_MS) * every;
+  const periodMs = ratePeriodMs(every, unit);
   let bank = 0;
   for (const interval of intervals) {
     let cursor = interval.from;
@@ -129,7 +128,7 @@ export function octoberCalendar(args: {
         intervals,
         task.points ?? 0,
         task.rateEvery ?? 1,
-        task.rateUnit === "DAY" ? "DAY" : "HOUR",
+        lockedRateUnit(task.rateUnit),
         args.tz,
         points,
       );

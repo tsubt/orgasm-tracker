@@ -17,7 +17,15 @@ import {
 import OctoberCalendar from "./OctoberCalendar";
 import PointsCalendar from "./PointsCalendar";
 import TaskTile, { TaskGrid } from "./TaskTile";
-import { compareTasksByValue, taskCardDetail, taskSummary } from "@/lib/locktober/taskLabel";
+import {
+  cadencePeriod,
+  compareTasksByValue,
+  manualQuantityLimit,
+  manualRateUnit,
+  rateUnitWord,
+  taskCardDetail,
+  taskSummary,
+} from "@/lib/locktober/taskLabel";
 import {
   LocktoberCadence,
   LocktoberRateUnit,
@@ -31,7 +39,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -64,25 +72,6 @@ const sexTypes = Object.values(SexType);
 
 function labelEnum(value: string) {
   return value.charAt(0) + value.slice(1).toLowerCase();
-}
-
-function pointsLabel(task: SerializedChallenge["tasks"][number]) {
-  if (task.mode === "ENTER_AMOUNT") {
-    return task.kind === "PENALTY" ? "penalty, you choose" : "you choose";
-  }
-  const amount = Math.abs(task.points ?? 0);
-  const sign = task.kind === "PENALTY" ? "−" : "+";
-  if (task.mode === "PER_MINUTE") {
-    const cap = task.maxPoints != null ? ` (max ${task.maxPoints})` : "";
-    return `${sign}${amount}/min${cap}`;
-  }
-  if (task.mode === "TIME_LOCKED") {
-    const every = task.rateEvery ?? 1;
-    const unit = task.rateUnit === "DAY" ? "day" : "hour";
-    const span = every === 1 ? unit : `${every} ${unit}s`;
-    return `+${amount} per ${span}`;
-  }
-  return `${sign}${amount}`;
 }
 
 function formatLocked(ms: number): string {
@@ -337,6 +326,7 @@ function ChallengeView({
   const [completing, setCompleting] = useState<SerializedChallenge["tasks"][number] | null>(
     null,
   );
+  const [reading, setReading] = useState<SerializedChallenge["tasks"][number] | null>(null);
   const [claimOpen, setClaimOpen] = useState(false);
 
   const taskStates = challenge.tasks.map((task) => ({
@@ -429,7 +419,7 @@ function ChallengeView({
           <p className="mt-1 text-sm text-rose-800 dark:text-rose-100">
             {challenge.bar.reached
               ? `You only get ${challenge.bar.reached.label}. The other rewards are locked. Claim it on the bar to log it and reset your points.`
-              : "You didn't reach a reward. Skip this day to reset the bar."}
+              : "This cum day is Denial. Skip it to reset the bar."}
           </p>
           <div className="mt-3">
             <button
@@ -485,6 +475,7 @@ function ChallengeView({
                         <TaskTile
                           task={task}
                           detail={`${taskCardDetail(task)} · ${status}`}
+                          onClick={() => setReading(task)}
                         />
                       </li>
                     );
@@ -546,6 +537,14 @@ function ChallengeView({
         )}
       </section>
 
+      {reading && (
+        <Modal title={reading.title} onClose={() => setReading(null)}>
+          <p className="text-sm text-gray-600">{taskSummary(reading)}</p>
+          {reading.description ? (
+            <p className="mt-3 whitespace-pre-wrap text-sm text-gray-800">{reading.description}</p>
+          ) : null}
+        </Modal>
+      )}
       {completing && (
         <CompleteModal
           task={completing}
@@ -872,6 +871,11 @@ function TaskEditor({
               <div>
                 <div className="font-medium text-gray-900 dark:text-white">{task.title}</div>
                 <div className="text-sm text-gray-500">{taskSummary(task)}</div>
+                {task.description ? (
+                  <div className="line-clamp-2 text-sm text-gray-600 dark:text-gray-300">
+                    {task.description}
+                  </div>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -908,22 +912,31 @@ function TaskEditor({
   );
 }
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-gray-900 dark:text-white">{label}</span>
-      {children}
-      {hint ? <span className="text-xs text-gray-500">{hint}</span> : null}
-    </label>
-  );
+function startingRateUnit(
+  task: SerializedChallenge["tasks"][number] | undefined,
+): LocktoberRateUnit {
+  if (!task) return "HOUR";
+  if (task.mode === "PER_MINUTE") {
+    if (task.rateUnit === "SECOND" || task.rateUnit === "MINUTE" || task.rateUnit === "HOUR") {
+      return task.rateUnit;
+    }
+    return "MINUTE";
+  }
+  if (
+    task.rateUnit === "SECOND" ||
+    task.rateUnit === "MINUTE" ||
+    task.rateUnit === "HOUR" ||
+    task.rateUnit === "DAY"
+  ) {
+    return task.rateUnit;
+  }
+  return "HOUR";
+}
+
+function blankNumber(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return Number(trimmed);
 }
 
 function TaskForm({
@@ -942,57 +955,70 @@ function TaskForm({
   const { pending, run } = useRunner();
   const noun = kind === "REWARD" ? "task" : "penalty";
   const [title, setTitle] = useState(task?.title ?? "");
+  const [description, setDescription] = useState(task?.description ?? "");
   const [mode, setMode] = useState<LocktoberTaskMode>(
     task?.mode ?? (kind === "PENALTY" ? "ENTER_AMOUNT" : "FIXED"),
   );
   const [cadence, setCadence] = useState<LocktoberCadence>(task?.cadence ?? "DAILY");
   const [points, setPoints] = useState(Math.abs(task?.points ?? 1));
-  const [maxCompletions, setMaxCompletions] = useState(task?.maxCompletions ?? 1);
+  const [attemptLimit, setAttemptLimit] = useState(
+    task ? (task.maxCompletions == null ? "" : String(task.maxCompletions)) : "1",
+  );
   const [maxPoints, setMaxPoints] = useState(
     task?.maxPoints == null ? "" : String(task.maxPoints),
   );
   const [noteRequired, setNoteRequired] = useState(task?.noteRequired ?? false);
   const [rateEvery, setRateEvery] = useState(task?.rateEvery ?? 1);
-  const [rateUnit, setRateUnit] = useState<LocktoberRateUnit>(task?.rateUnit ?? "HOUR");
+  const [rateUnit, setRateUnit] = useState<LocktoberRateUnit>(startingRateUnit(task));
   const auto = mode === "TIME_LOCKED";
-  const period = cadence === "WEEKLY" ? "week" : "day";
-  const noteLocked = kind === "PENALTY" && mode === "ENTER_AMOUNT";
+  const rated = mode === "PER_MINUTE";
+  const chosen = mode === "ENTER_AMOUNT";
+  const period = cadencePeriod(cadence);
+  const noteLocked = kind === "PENALTY" && chosen;
+  const perUnit: LocktoberRateUnit = rated && rateUnit === "DAY" ? "HOUR" : rateUnit;
   const modes: { value: LocktoberTaskMode; label: string }[] = [
     { value: "FIXED", label: "Fixed points" },
-    { value: "PER_MINUTE", label: "Points per minute" },
+    { value: "PER_MINUTE", label: "Points per time" },
     { value: "ENTER_AMOUNT", label: "Amount entered when done" },
     ...(kind === "REWARD"
       ? [{ value: "TIME_LOCKED" as const, label: "Time locked (automatic)" }]
       : []),
   ];
+  const unitOptions = auto
+    ? (["SECOND", "MINUTE", "HOUR", "DAY"] as const)
+    : (["SECOND", "MINUTE", "HOUR"] as const);
+  const caption = "text-xs font-medium text-gray-900 dark:text-white";
 
   return (
     <form
       className="flex flex-col gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-900"
       onSubmit={(event) => {
         event.preventDefault();
-        const parsedMax = maxPoints.trim() === "" ? null : Number(maxPoints);
+        const parsedPoints = blankNumber(maxPoints);
+        const parsedAttempts = blankNumber(attemptLimit);
         void run(async () => {
           const result = await saveTask({
             challengeId,
             taskId: task?.id,
             title,
+            description,
             kind,
             mode,
             cadence,
-            points: mode === "ENTER_AMOUNT" ? null : points,
-            maxCompletions: mode === "PER_MINUTE" || auto ? null : maxCompletions,
-            maxPoints: mode === "PER_MINUTE" ? parsedMax : null,
+            points: chosen ? null : points,
+            maxCompletions: auto ? null : parsedAttempts,
+            maxPoints: rated || chosen ? parsedPoints : null,
             noteRequired: noteLocked ? true : noteRequired,
             rateEvery: auto ? rateEvery : null,
-            rateUnit: auto ? rateUnit : null,
+            rateUnit: auto || rated ? perUnit : null,
           });
           if (result.ok) onClose();
           return result;
         });
       }}
     >
-      <Field label="Title">
+      <label className="flex flex-col gap-1">
+        <span className={caption}>Title</span>
         <input
           value={title}
           disabled={disabled}
@@ -1001,27 +1027,31 @@ function TaskForm({
           className={inputClass}
           required
         />
-      </Field>
-      <Field label="How points work">
-        <select
-          value={mode}
-          disabled={disabled}
-          onChange={(event) => setMode(event.target.value as LocktoberTaskMode)}
-          className={inputClass}
-        >
-          {modes.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </Field>
-      {auto ? (
-        <>
-          <Field
-            label="Points"
-            hint="Counts chastity time in this cycle and rounds down. 59 minutes at 1 per hour is 0 points."
+      </label>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex min-w-44 flex-1 flex-col gap-1">
+          <span className={caption}>How points work</span>
+          <select
+            value={mode}
+            disabled={disabled}
+            onChange={(event) => {
+              const next = event.target.value as LocktoberTaskMode;
+              setMode(next);
+              if (next === "PER_MINUTE" && rateUnit === "DAY") setRateUnit("HOUR");
+            }}
+            className={inputClass}
           >
+            {modes.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {!chosen && (
+          <label className="flex w-24 flex-col gap-1">
+            <span className={caption}>Points</span>
             <input
               type="number"
               min={1}
@@ -1031,80 +1061,128 @@ function TaskForm({
               className={inputClass}
               required
             />
-          </Field>
-          <Field label="Awarded every">
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min={1}
-                value={rateEvery}
-                disabled={disabled}
-                onChange={(event) => setRateEvery(Number(event.target.value))}
-                className={inputClass}
-                required
-              />
+          </label>
+        )}
+        {(rated || auto) && (
+          <>
+            {auto && (
+              <label className="flex w-20 flex-col gap-1">
+                <span className={caption}>Every</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={rateEvery}
+                  disabled={disabled}
+                  onChange={(event) => setRateEvery(Number(event.target.value))}
+                  className={inputClass}
+                  required
+                />
+              </label>
+            )}
+            <label className="flex w-32 flex-col gap-1">
+              <span className={caption}>Per</span>
               <select
-                value={rateUnit}
+                value={perUnit}
                 disabled={disabled}
                 onChange={(event) => setRateUnit(event.target.value as LocktoberRateUnit)}
                 className={inputClass}
               >
-                <option value="HOUR">{rateEvery === 1 ? "hour" : "hours"}</option>
-                <option value="DAY">{rateEvery === 1 ? "day" : "days"}</option>
+                {unitOptions.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {rateUnitWord(unit, auto ? rateEvery : 1)}
+                  </option>
+                ))}
               </select>
-            </div>
-          </Field>
-        </>
-      ) : (
-        <>
-          {mode !== "ENTER_AMOUNT" && (
-            <Field label={mode === "PER_MINUTE" ? "Points per minute" : "Points"}>
+            </label>
+          </>
+        )}
+      </div>
+      {auto && (
+        <p className="text-xs text-gray-500">
+          Counts locked time in this cycle and only awards whole periods. 59 minutes at 1 per hour
+          is 0 points.
+        </p>
+      )}
+
+      {!auto && (
+        <div className="flex flex-wrap items-end gap-2">
+          {rated || chosen ? (
+            <label className="flex w-28 flex-col gap-1">
+              <span className={caption}>Max points</span>
               <input
                 type="number"
                 min={1}
-                value={points}
+                value={maxPoints}
                 disabled={disabled}
-                onChange={(event) => setPoints(Number(event.target.value))}
+                placeholder="No cap"
+                onChange={(event) => setMaxPoints(event.target.value)}
+                className={inputClass}
+              />
+            </label>
+          ) : (
+            <label className="flex w-28 flex-col gap-1">
+              <span className={caption}>Max times</span>
+              <input
+                type="number"
+                min={1}
+                value={attemptLimit}
+                disabled={disabled}
+                onChange={(event) => setAttemptLimit(event.target.value)}
                 className={inputClass}
                 required
               />
-            </Field>
+            </label>
           )}
-          <Field label="How often">
+          {(rated || chosen) && (
+            <label className="flex w-32 flex-col gap-1">
+              <span className={caption}>Max attempts</span>
+              <input
+                type="number"
+                min={1}
+                value={attemptLimit}
+                disabled={disabled}
+                placeholder="No limit"
+                onChange={(event) => setAttemptLimit(event.target.value)}
+                className={inputClass}
+              />
+            </label>
+          )}
+          <label className="flex w-36 flex-col gap-1">
+            <span className={caption}>Per</span>
             <select
               value={cadence}
               disabled={disabled}
               onChange={(event) => setCadence(event.target.value as LocktoberCadence)}
               className={inputClass}
             >
-              <option value="DAILY">Every day</option>
-              <option value="WEEKLY">Every week</option>
+              <option value="DAILY">Day</option>
+              <option value="WEEKLY">Week</option>
+              <option value="MONTHLY">Month</option>
             </select>
-          </Field>
-          {mode === "PER_MINUTE" ? (
-            <Field label="Maximum points" hint={`Leave blank for no cap. Counted each ${period}.`}>
-              <input
-                type="number"
-                min={1}
-                value={maxPoints}
-                disabled={disabled}
-                onChange={(event) => setMaxPoints(event.target.value)}
-                className={inputClass}
-              />
-            </Field>
-          ) : (
-            <Field label="Times allowed" hint={`How many times this can be logged each ${period}.`}>
-              <input
-                type="number"
-                min={1}
-                value={maxCompletions}
-                disabled={disabled}
-                onChange={(event) => setMaxCompletions(Number(event.target.value))}
-                className={inputClass}
-                required
-              />
-            </Field>
-          )}
+          </label>
+        </div>
+      )}
+      {(rated || chosen) && (
+        <p className="text-xs text-gray-500">
+          Leave either blank for no limit. A point cap can be split across attempts, like 10 then 5.
+        </p>
+      )}
+
+      <label className="flex flex-col gap-1">
+        <span className={caption}>Description</span>
+        <textarea
+          value={description}
+          disabled={disabled}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Longer explanation, shown on the task and when logging it"
+          className={inputClass}
+          rows={3}
+          maxLength={2000}
+        />
+      </label>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {!auto ? (
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -1117,38 +1195,40 @@ function TaskForm({
               {noteLocked ? " — penalties with a chosen amount always need one" : ""}
             </span>
           </label>
-        </>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <button type="submit" className={buttonClass} disabled={disabled || pending}>
-          Save
-        </button>
-        {task && (
+        ) : (
+          <span />
+        )}
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" className={buttonClass} disabled={disabled || pending}>
+            Save
+          </button>
+          {task && (
+            <button
+              type="button"
+              className={quietButtonClass}
+              disabled={disabled || pending}
+              onClick={() => {
+                if (confirm(`Delete “${task.title}”? Past logs stay.`)) {
+                  void run(async () => {
+                    const result = await deleteTask(task.id);
+                    if (result.ok) onClose();
+                    return result;
+                  });
+                }
+              }}
+            >
+              Delete
+            </button>
+          )}
           <button
             type="button"
             className={quietButtonClass}
-            disabled={disabled || pending}
-            onClick={() => {
-              if (confirm(`Delete “${task.title}”? Past logs stay.`)) {
-                void run(async () => {
-                  const result = await deleteTask(task.id);
-                  if (result.ok) onClose();
-                  return result;
-                });
-              }
-            }}
+            disabled={pending}
+            onClick={onClose}
           >
-            Delete
+            Cancel
           </button>
-        )}
-        <button
-          type="button"
-          className={quietButtonClass}
-          disabled={pending}
-          onClick={onClose}
-        >
-          Cancel
-        </button>
+        </div>
       </div>
     </form>
   );
@@ -1165,13 +1245,17 @@ function CompleteModal({
 }) {
   const { pending, run } = useRunner();
   const rate = Math.abs(task.points ?? 1);
-  const maxMinutes =
-    task.mode === "PER_MINUTE" && remainingPoints != null
-      ? Math.max(1, Math.floor(remainingPoints / rate))
-      : 1440;
-  const [minutes, setMinutes] = useState(1);
+  const unit = manualRateUnit(task.rateUnit);
+  const unitLimit = manualQuantityLimit(unit);
+  const unitName = rateUnitWord(unit, 2);
+  const pointLimited = task.mode === "PER_MINUTE" && remainingPoints != null;
+  const maxQuantity = pointLimited
+    ? Math.min(unitLimit, Math.floor(remainingPoints / rate))
+    : unitLimit;
+  const [quantity, setQuantity] = useState(1);
   const [amount, setAmount] = useState(1);
   const [note, setNote] = useState("");
+  const amountMax = remainingPoints == null ? 500 : Math.min(500, remainingPoints);
 
   return (
     <Modal title={task.title} onClose={onClose}>
@@ -1182,7 +1266,7 @@ function CompleteModal({
           void run(async () => {
             const result = await completeTask({
               taskId: task.id,
-              minutes: task.mode === "PER_MINUTE" ? minutes : undefined,
+              quantity: task.mode === "PER_MINUTE" ? quantity : undefined,
               amount: task.mode === "ENTER_AMOUNT" ? amount : undefined,
               note,
             });
@@ -1191,16 +1275,22 @@ function CompleteModal({
           });
         }}
       >
-        <p className="text-sm text-gray-600">{pointsLabel(task)}</p>
-        {task.mode === "PER_MINUTE" && (
+        {task.description ? (
+          <p className="whitespace-pre-wrap text-sm text-gray-800">{task.description}</p>
+        ) : null}
+        <p className="text-sm text-gray-600">{taskSummary(task)}</p>
+        {task.mode === "PER_MINUTE" && maxQuantity < 1 && (
+          <p className="text-sm text-gray-600">Not enough points left for another one.</p>
+        )}
+        {task.mode === "PER_MINUTE" && maxQuantity >= 1 && (
           <label className="flex flex-col gap-1 text-sm">
-            Minutes
+            {unitName.charAt(0).toUpperCase() + unitName.slice(1)}
             <input
               type="number"
               min={1}
-              max={maxMinutes}
-              value={minutes}
-              onChange={(event) => setMinutes(Number(event.target.value))}
+              max={maxQuantity}
+              value={quantity}
+              onChange={(event) => setQuantity(Number(event.target.value))}
               className={inputClass}
               required
             />
@@ -1212,7 +1302,7 @@ function CompleteModal({
             <input
               type="number"
               min={1}
-              max={500}
+              max={Math.max(1, amountMax)}
               value={amount}
               onChange={(event) => setAmount(Number(event.target.value))}
               className={inputClass}
@@ -1230,7 +1320,11 @@ function CompleteModal({
             required={task.noteRequired}
           />
         </label>
-        <button type="submit" className={buttonClass} disabled={pending}>
+        <button
+          type="submit"
+          className={buttonClass}
+          disabled={pending || (task.mode === "PER_MINUTE" && maxQuantity < 1)}
+        >
           Confirm
         </button>
       </form>

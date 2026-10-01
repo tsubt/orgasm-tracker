@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import {
   LocktoberCadence,
   LocktoberCumDayStatus,
+  LocktoberRateUnit,
   LocktoberTaskKind,
   LocktoberTaskMode,
   LocktoberVisibility,
@@ -39,6 +40,7 @@ type ChallengeRecord = Prisma.LocktoberChallengeGetPayload<{
 export type SerializedTask = {
   id: string;
   title: string;
+  description: string | null;
   kind: LocktoberTaskKind;
   points: number | null;
   mode: LocktoberTaskMode;
@@ -47,7 +49,7 @@ export type SerializedTask = {
   maxPoints: number | null;
   noteRequired: boolean;
   rateEvery: number | null;
-  rateUnit: "HOUR" | "DAY" | null;
+  rateUnit: LocktoberRateUnit | null;
   sortOrder: number;
   useCount: number;
 };
@@ -176,6 +178,7 @@ export function serializeChallenge(
     tasks: challenge.tasks.map((task) => ({
       id: task.id,
       title: task.title,
+      description: task.description,
       kind: task.kind,
       points: task.points,
       mode: task.mode,

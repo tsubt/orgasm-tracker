@@ -2,6 +2,7 @@
 
 import { LockClosedIcon } from "@heroicons/react/24/solid";
 import { barFillPercent, TierSnapshot } from "@/lib/locktober/scoring";
+import { countdownReward, daysLeftPhrase, DENIAL_LABEL } from "@/lib/locktober/shareLine";
 import {
   useLayoutEffect,
   useRef,
@@ -379,8 +380,9 @@ export default function PowerBar({
   const earned = highestEarned(points, sorted);
   const rewardReady = locked;
   const here = scaleColor(fill / 100);
-  const daysLabel =
-    daysLeft == null || locked ? null : `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`;
+  const outcome = countdownReward(points, sorted);
+  const daysPhrase =
+    daysLeft == null || locked ? null : daysLeftPhrase(daysLeft, outcome);
 
   const names = sorted.map((tier) => {
     const at = barFillPercent(tier.points, sorted);
@@ -461,9 +463,9 @@ export default function PowerBar({
                     {points}
                     <span className="ml-1 text-xs font-semibold">pts</span>
                   </div>
-                  {daysLabel && (
-                    <div className="text-xs text-gray-500 dark:text-slate-400">{daysLabel}</div>
-                  )}
+                  <div className="text-xs text-gray-500 dark:text-slate-400">
+                    {daysPhrase ?? outcome}
+                  </div>
                 </div>
               )}
             </div>
@@ -472,7 +474,7 @@ export default function PowerBar({
                 {earned ? (
                   <ClaimControl earned={earned} points={points} onClaim={onClaim} align="left" />
                 ) : (
-                  <div className="text-sm font-semibold text-gray-500">No reward this cum day</div>
+                  <div className="text-sm font-semibold text-gray-500">{DENIAL_LABEL}</div>
                 )}
               </div>
             )}
@@ -502,22 +504,14 @@ export default function PowerBar({
         {rewardReady && earned ? (
           <ClaimControl earned={earned} points={points} onClaim={onClaim} align="left" />
         ) : rewardReady ? (
-          <div className="text-sm font-semibold text-gray-500">No reward this cum day</div>
+          <div className="text-sm font-semibold text-gray-500">{DENIAL_LABEL}</div>
         ) : (
           <div className="flex justify-center">
             <div
               className="rounded-full border px-4 py-1 text-center text-sm font-semibold"
               style={{ borderColor: here, color: here }}
             >
-              Current power: {points} pts
-            {compact && earned ? (
-              <>
-                {" · "}
-                {earned.label}
-                {earned.expectsLocked && <TierLockIcon />}
-              </>
-            ) : null}
-            {daysLabel ? ` · ${daysLabel}` : ""}
+              Current power: {points} pts · {daysPhrase ?? outcome}
             </div>
           </div>
         )}

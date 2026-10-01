@@ -6,8 +6,8 @@ import PointsCalendar from "../../PointsCalendar";
 import TaskTile, { TaskGrid } from "../../TaskTile";
 import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
 import type { SerializedTask } from "@/lib/locktober/load";
-import { countLabel, lockedHoursLabel } from "@/lib/locktober/shareLine";
-import { compareTasksByValue } from "@/lib/locktober/taskLabel";
+import { countdownReward, countLabel, daysLeftPhrase, lockedHoursLabel } from "@/lib/locktober/shareLine";
+import { compareTasksByValue, taskSummary } from "@/lib/locktober/taskLabel";
 import { BarView, TierSnapshot } from "@/lib/locktober/scoring";
 import type { LocktoberTimelineDay } from "@/lib/locktober/timeline";
 import { RelativeTime, TheirTime } from "@/app/components/SubjectTime";
@@ -117,7 +117,7 @@ export default function ShareView({
           {bar.daysLeft != null && (
             <span className="inline-flex items-center gap-1">
               <span aria-hidden>💦</span>
-              {countLabel(bar.daysLeft, "day", "days")} left
+              {daysLeftPhrase(bar.daysLeft, countdownReward(bar.points, bar.tiers))}
             </span>
           )}
         </p>
@@ -216,6 +216,7 @@ export default function ShareView({
 }
 
 function TaskList({ tasks }: { tasks: SerializedTask[] }) {
+  const [open, setOpen] = useState<SerializedTask | null>(null);
   if (tasks.length === 0) return null;
   const ordered = [...tasks].sort(compareTasksByValue);
 
@@ -225,10 +226,33 @@ function TaskList({ tasks }: { tasks: SerializedTask[] }) {
       <TaskGrid>
         {ordered.map((task) => (
           <li key={task.id} className="h-full">
-            <TaskTile task={task} />
+            <TaskTile task={task} onClick={() => setOpen(task)} />
           </li>
         ))}
       </TaskGrid>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setOpen(null);
+          }}
+        >
+          <div className="w-full max-w-md rounded-lg bg-white p-5 text-gray-900 shadow-xl dark:bg-gray-900 dark:text-gray-100">
+            <h3 className="text-lg font-semibold">{open.title}</h3>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{taskSummary(open)}</p>
+            {open.description ? (
+              <p className="mt-3 whitespace-pre-wrap text-sm">{open.description}</p>
+            ) : null}
+            <button
+              type="button"
+              className={`${buttonClass} mt-4`}
+              onClick={() => setOpen(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -43,6 +43,7 @@ export default function TaskTile({
   onClick?: () => void;
 }) {
   const points = taskPointsText(task);
+  const tip = task.description?.trim().replace(/\s+/g, " ") || undefined;
   const className = `flex h-full min-h-[7.5rem] w-full flex-col items-center rounded-lg border-2 px-1.5 py-1.5 text-center shadow-sm ${
     onClick ? "transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100" : ""
   }`;
@@ -71,7 +72,7 @@ export default function TaskTile({
 
   if (!onClick) {
     return (
-      <div className={className} style={tileStyle(task)}>
+      <div className={className} style={tileStyle(task)} title={tip}>
         {body}
       </div>
     );
@@ -84,6 +85,7 @@ export default function TaskTile({
       onClick={onClick}
       className={className}
       style={tileStyle(task)}
+      title={tip}
     >
       {body}
     </button>

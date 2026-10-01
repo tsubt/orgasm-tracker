@@ -6,7 +6,7 @@ import type {
   LocktoberTimelineKind,
   LocktoberTimelineSegment,
 } from "@/lib/locktober/timeline";
-import { LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/solid";
+import { LockClosedIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 
 const PAGE_SIZE = 3;
@@ -20,27 +20,50 @@ const kindClass: Record<LocktoberTimelineKind, string> = {
 };
 
 function chipName(event: LocktoberTimelineEvent) {
+  if (event.live) return event.note ?? "Currently locked";
   if (event.kind === "lock") return event.label ? `Locked ${event.label}` : "Locked";
-  if (event.kind === "unlock") return `Unlocked ${event.label}`;
   return event.note ?? undefined;
+}
+
+function StopwatchIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5 shrink-0"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="14" r="7" />
+      <path d="M12 14V10.5" />
+      <path d="M9.5 2.5h5" />
+      <path d="M12 2.5V5" />
+      <path d="M17.5 7.5 19 6" />
+    </svg>
+  );
 }
 
 function Chip({ event }: { event: LocktoberTimelineEvent }) {
   const named = event.kind === "lock" || event.kind === "unlock";
   const bare = named;
+  const name = chipName(event);
   return (
     <span
       className={`inline-flex max-w-56 items-center gap-1 truncate text-xs ${
         bare ? "px-0.5" : "rounded-full px-2 py-0.5"
       } ${kindClass[event.kind]}`}
-      title={event.note ?? chipName(event)}
-      aria-label={named ? chipName(event) : undefined}
+      title={event.note ?? name}
+      aria-label={named ? name : undefined}
     >
       {event.kind === "lock" ? (
-        <LockClosedIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      ) : null}
-      {event.kind === "unlock" ? (
-        <LockOpenIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        event.live ? (
+          <StopwatchIcon />
+        ) : (
+          <LockClosedIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        )
       ) : null}
       {event.label ? <span className="truncate">{event.label}</span> : null}
     </span>

@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/prisma";
 import { DEFAULT_TASKS, DEFAULT_TIERS } from "@/lib/locktober/defaults";
+import { manualQuantityLimit, manualRateUnit } from "@/lib/locktober/taskLabel";
 import { refreshLocktoberCard } from "@/lib/locktober/cardSnapshot";
 import { ensureCumDayLocks } from "@/lib/locktober/locks";
 import {
@@ -360,6 +361,7 @@ export async function saveTask(input: {
   challengeId: string;
   taskId?: string;
   title: string;
+  description?: string | null;
   kind: LocktoberTaskKind;
   mode: LocktoberTaskMode;
   cadence: LocktoberCadence;
@@ -408,6 +410,7 @@ export async function saveTask(input: {
 
 function normalizeTask(input: {
   title: string;
+  description?: string | null;
   kind: LocktoberTaskKind;
   mode: LocktoberTaskMode;
   cadence: LocktoberCadence;
@@ -422,6 +425,7 @@ function normalizeTask(input: {
       ok: true;
       task: {
         title: string;
+        description: string | null;
         kind: LocktoberTaskKind;
         mode: LocktoberTaskMode;
         cadence: LocktoberCadence;
@@ -436,13 +440,24 @@ function normalizeTask(input: {
   | { ok: false; error: string } {
   const title = input.title.trim();
   if (!title || title.length > 80) return fail("Give the task a short title.");
+  const description = (input.description ?? "").trim();
+  if (description.length > 2000) return fail("Keep the description under 2000 characters.");
   if (!Object.values(LocktoberTaskKind).includes(input.kind)) return fail("Invalid task kind.");
   if (!Object.values(LocktoberTaskMode).includes(input.mode)) return fail("Invalid task mode.");
   if (!Object.values(LocktoberCadence).includes(input.cadence)) return fail("Invalid cadence.");
 
+  const blank = {
+    description: description || null,
+    maxCompletions: null as number | null,
+    maxPoints: null as number | null,
+    noteRequired: false,
+    rateEvery: null as number | null,
+    rateUnit: null as LocktoberRateUnit | null,
+  };
+
   if (input.mode === "TIME_LOCKED") {
     if (input.kind !== "REWARD") return fail("Time locked is a reward.");
-    if (!Number.isInteger(input.points) || input.points == null || input.points < 1 || input.points > 500) {
+    if (!wholePoints(input.points)) {
       return fail("Points have to be a whole number from 1 to 500.");
     }
     if (
@@ -453,68 +468,76 @@ function normalizeTask(input: {
     ) {
       return fail("The time period has to be a whole number from 1 to 744.");
     }
-    if (input.rateUnit !== "HOUR" && input.rateUnit !== "DAY") {
-      return fail("Pick hours or days.");
+    if (
+      input.rateUnit !== "SECOND" &&
+      input.rateUnit !== "MINUTE" &&
+      input.rateUnit !== "HOUR" &&
+      input.rateUnit !== "DAY"
+    ) {
+      return fail("Pick seconds, minutes, hours, or days.");
     }
     return {
       ok: true,
       task: {
+        ...blank,
         title,
         kind: "REWARD",
         mode: "TIME_LOCKED",
         cadence: "DAILY",
         points: input.points,
-        maxCompletions: null,
-        maxPoints: null,
-        noteRequired: false,
         rateEvery: input.rateEvery,
         rateUnit: input.rateUnit,
       },
     };
   }
 
+  const attempts = optionalCount(input.maxCompletions, "Attempts", 20);
+  if (!attempts.ok) return attempts;
+  const pointCap = optionalCount(input.maxPoints, "The points cap", 500);
+  if (!pointCap.ok) return pointCap;
+
   if (input.mode === "ENTER_AMOUNT") {
     return {
       ok: true,
       task: {
+        ...blank,
         title,
         kind: input.kind,
         mode: input.mode,
         cadence: input.cadence,
         points: null,
-        maxCompletions: clampCount(input.maxCompletions),
-        maxPoints: null,
+        maxCompletions: attempts.value,
+        maxPoints: pointCap.value,
         noteRequired: input.kind === "PENALTY" ? true : Boolean(input.noteRequired),
-        rateEvery: null,
-        rateUnit: null,
       },
     };
   }
 
-  if (!Number.isInteger(input.points) || input.points == null || input.points < 1 || input.points > 500) {
+  if (!wholePoints(input.points)) {
     return fail("Points have to be a whole number from 1 to 500.");
   }
-  const signed = input.kind === "PENALTY" ? -input.points : input.points;
+  const signed = input.kind === "PENALTY" ? -input.points! : input.points!;
   if (input.mode === "PER_MINUTE") {
     if (
-      input.maxPoints != null &&
-      (!Number.isInteger(input.maxPoints) || input.maxPoints < 1 || input.maxPoints > 500)
+      input.rateUnit !== "SECOND" &&
+      input.rateUnit !== "MINUTE" &&
+      input.rateUnit !== "HOUR"
     ) {
-      return fail("The points cap has to be a whole number from 1 to 500.");
+      return fail("Pick seconds, minutes, or hours.");
     }
     return {
       ok: true,
       task: {
+        ...blank,
         title,
         kind: input.kind,
         mode: input.mode,
         cadence: input.cadence,
         points: signed,
-        maxCompletions: null,
-        maxPoints: input.maxPoints,
+        maxCompletions: attempts.value,
+        maxPoints: pointCap.value,
         noteRequired: Boolean(input.noteRequired),
-        rateEvery: null,
-        rateUnit: null,
+        rateUnit: input.rateUnit,
       },
     };
   }
@@ -522,18 +545,32 @@ function normalizeTask(input: {
   return {
     ok: true,
     task: {
+      ...blank,
       title,
       kind: input.kind,
       mode: "FIXED",
       cadence: input.cadence,
       points: signed,
       maxCompletions: clampCount(input.maxCompletions),
-      maxPoints: null,
       noteRequired: Boolean(input.noteRequired),
-      rateEvery: null,
-      rateUnit: null,
     },
   };
+}
+
+function wholePoints(value: number | null): value is number {
+  return Number.isInteger(value) && value != null && value >= 1 && value <= 500;
+}
+
+function optionalCount(
+  value: number | null,
+  label: string,
+  max: number,
+): { ok: true; value: number | null } | { ok: false; error: string } {
+  if (value == null) return { ok: true, value: null };
+  if (!Number.isInteger(value) || value < 1 || value > max) {
+    return fail(`${label} has to be a whole number from 1 to ${max}, or blank.`);
+  }
+  return { ok: true, value };
 }
 
 function clampCount(value: number | null): number {
@@ -566,6 +603,7 @@ export async function deleteTask(taskId: string): Promise<ActionResult> {
 export async function completeTask(input: {
   taskId: string;
   minutes?: number;
+  quantity?: number;
   amount?: number;
   note?: string;
 }): Promise<ActionResult> {
@@ -644,18 +682,26 @@ export async function completeTask(input: {
   if (task.mode === "PER_MINUTE") {
     const rate = task.points ?? 0;
     if (rate === 0) return fail("This task has no point value.");
-    if (!Number.isInteger(input.minutes) || !input.minutes || input.minutes < 1 || input.minutes > 1440) {
-      return fail("Enter the minutes you played.");
+    const unit = manualRateUnit(task.rateUnit);
+    const quantity = input.quantity ?? (unit === "MINUTE" ? input.minutes : undefined);
+    const limit = manualQuantityLimit(unit);
+    const unitName = unit === "SECOND" ? "seconds" : unit === "HOUR" ? "hours" : "minutes";
+    if (!Number.isInteger(quantity) || !quantity || quantity < 1 || quantity > limit) {
+      return fail(`Enter the ${unitName} as a whole number from 1 to ${limit}.`);
     }
-    const awarded = rate * input.minutes;
+    const awarded = rate * quantity;
     if (cap.remainingPoints != null && Math.abs(awarded) > cap.remainingPoints) {
       return fail(`Only ${cap.remainingPoints} points are left for this period.`);
     }
     pointsAwarded = awarded;
-    minutes = input.minutes;
+    minutes =
+      unit === "HOUR" ? quantity * 60 : unit === "MINUTE" ? quantity : Math.max(1, Math.round(quantity / 60));
   } else if (task.mode === "ENTER_AMOUNT") {
     if (!Number.isInteger(input.amount) || !input.amount || input.amount < 1 || input.amount > 500) {
       return fail("Enter a whole number of points from 1 to 500.");
+    }
+    if (cap.remainingPoints != null && input.amount > cap.remainingPoints) {
+      return fail(`Only ${cap.remainingPoints} points are left for this period.`);
     }
     pointsAwarded = task.kind === "PENALTY" ? -input.amount : input.amount;
   } else {

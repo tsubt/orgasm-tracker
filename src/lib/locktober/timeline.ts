@@ -13,6 +13,8 @@ export type LocktoberTimelineEvent = {
   label: string;
   kind: LocktoberTimelineKind;
   note: string | null;
+  /** Still locked. The chip is a stopwatch; `note` is the hover explanation. */
+  live?: boolean;
 };
 
 export type LocktoberTimelineSegment =
@@ -64,7 +66,7 @@ function noteOrNull(note: string | null | undefined) {
   return trimmed ? trimmed : null;
 }
 
-/** Compact session length for an unlock badge, e.g. "40m" or "2d 4h". */
+/** Compact session length, e.g. "40m" or "2d 4h". */
 function sessionDurationLabel(ms: number) {
   const minutes = Math.max(1, Math.round(ms / 60_000));
   if (minutes < 60) return `${minutes}m`;
@@ -76,10 +78,12 @@ function sessionDurationLabel(ms: number) {
   return dayHours === 0 ? `${days}d` : `${days}d ${dayHours}h`;
 }
 
-/** Whole hours for a session that is still open. */
-function activeHoursLabel(ms: number) {
-  const hours = Math.floor(Math.max(0, ms) / 3_600_000);
-  return hours < 1 ? "<1h" : `${hours}h`;
+/** Elapsed time for an open session, as h:mm. */
+function liveLockedLabel(ms: number) {
+  const total = Math.max(0, Math.round(ms / 60_000));
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return `Currently locked for ${hours}:${String(minutes).padStart(2, "0")}`;
 }
 
 function sessionAt(at: number, spans: MergedSpan[]) {
@@ -140,21 +144,16 @@ function daySegments(events: RawEvent[], spans: MergedSpan[], now: number): Lock
     }
     const span = spans[session];
     const active = span.to == null || span.to > now;
-    const eventsInSession = chunk.map((event) => {
-      const published = publish(event);
-      if (event.kind === "lock" && active) {
-        published.label = activeHoursLabel(now - span.from);
-      }
-      return published;
+    const eventsInSession = chunk
+      .filter((event) => event.kind !== "lock" && event.kind !== "unlock")
+      .map((event) => publish(event));
+    eventsInSession.unshift({
+      id: `lock-${session}-${chunk[0].at}`,
+      kind: "lock",
+      label: active ? "" : sessionDurationLabel((span.to ?? now) - span.from),
+      note: active ? liveLockedLabel(now - span.from) : null,
+      live: active,
     });
-    if (active && !eventsInSession.some((event) => event.kind === "lock")) {
-      eventsInSession.unshift({
-        id: `lock-open-${session}-${chunk[0].at}`,
-        kind: "lock",
-        label: activeHoursLabel(now - span.from),
-        note: null,
-      });
-    }
     segments.push({ type: "session", events: eventsInSession });
   }
   return segments;

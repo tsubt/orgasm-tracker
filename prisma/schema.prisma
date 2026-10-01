@@ -184,11 +184,14 @@ enum LocktoberTaskMode {
 enum LocktoberRateUnit {
   HOUR
   DAY
+  SECOND
+  MINUTE
 }
 
 enum LocktoberCadence {
   DAILY
   WEEKLY
+  MONTHLY
 }
 
 model LocktoberChallenge {
@@ -273,6 +276,7 @@ model LocktoberTask {
   id             String             @id @default(cuid())
   challengeId    String
   title          String
+  description    String?            @db.Text
   kind           LocktoberTaskKind
   points         Int?
   mode           LocktoberTaskMode

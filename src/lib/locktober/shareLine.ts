@@ -16,14 +16,17 @@ export function lockedHoursLabel(calendar: LocktoberCalendarDay[]) {
 
 export type RewardTarget = { label: string; points: number };
 
-/** The reward the cum day is counting toward: the one earned, or the first target. */
-export function countdownReward(points: number, targets: RewardTarget[]): string | null {
+/** Outcome when the bar has not reached any reward. */
+export const DENIAL_LABEL = "Denial";
+
+/** Highest reward already earned. Denial when none of the targets are reached. */
+export function countdownReward(points: number, targets: RewardTarget[]): string {
   const sorted = [...targets].sort((a, b) => a.points - b.points);
   let earned: RewardTarget | null = null;
   for (const target of sorted) {
     if (points >= target.points) earned = target;
   }
-  return earned?.label ?? sorted[0]?.label ?? null;
+  return earned?.label ?? DENIAL_LABEL;
 }
 
 export function daysLeftPhrase(daysLeft: number | null, reward: string | null) {

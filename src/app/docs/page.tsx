@@ -124,7 +124,9 @@ export default function DocsPage() {
                 <strong>Cage check:</strong> 1 point, once a day
               </li>
               <li>
-                <strong>Dildo play:</strong> 1 point per minute, up to 15 a day
+                <strong>Dildo play:</strong> 1 point per minute, up to 15 a day.
+                A points-per-time task can be per second, minute, or hour, with
+                a point cap and an attempt cap for the day, week, or month
               </li>
               <li>
                 <strong>Locked and plugged supermarket shop:</strong> 10 points,
@@ -136,13 +138,17 @@ export default function DocsPage() {
               </li>
               <li>
                 <strong>Time locked:</strong> 1 point per hour you are locked,
-                added automatically. Only whole hours count, so 59 minutes is 0
-                points. This uses your chastity sessions
+                added automatically. The rate can be per second, minute, hour,
+                or day. Only whole periods count, so 59 minutes at 1 per hour
+                is 0 points. This uses your chastity sessions
               </li>
             </ul>
             <p>
-              Tasks and penalties are separate cards. Click a card to confirm
-              it. Time locked is not clicked; it updates from time already
+              Tasks and penalties are separate cards. Each one has a short title
+              and an optional longer description. Click a card to confirm it;
+              the description is shown there, and on a public page it opens
+              when you click the card. Hovering a card shows the description
+              too. Time locked is not clicked; it updates from time already
               locked in the current cycle. Past completions keep the points they
               earned. Changing a task only affects what you log after that.
             </p>
@@ -153,7 +159,9 @@ export default function DocsPage() {
               name. Completing it logs the reward and resets the bar for the
               next cum day. You can skip the day with no reward instead. Days
               left is 0 until you claim or skip, then it counts toward the next
-              cum day. Claiming a ruined reward logs a ruined orgasm. A full
+              cum day. That line names the reward you have already reached. If
+              your points are still under every reward, it says Denial.
+              Claiming a ruined reward logs a ruined orgasm. A full
               unlocked reward can end an active chastity session.
             </p>
             <p>

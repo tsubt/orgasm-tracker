@@ -318,11 +318,25 @@ export type TimeLockedTaskInput = {
   mode: LocktoberTaskMode;
   points: number | null;
   rateEvery: number | null;
-  rateUnit: "HOUR" | "DAY" | null;
+  rateUnit: "SECOND" | "MINUTE" | "HOUR" | "DAY" | null;
 };
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
+
+export type LockedRateUnit = "SECOND" | "MINUTE" | "HOUR" | "DAY";
+
+/** Missing units stay on hours so existing time-locked tasks keep their rate. */
+export function lockedRateUnit(unit: string | null | undefined): LockedRateUnit {
+  if (unit === "SECOND" || unit === "MINUTE" || unit === "HOUR" || unit === "DAY") return unit;
+  return "HOUR";
+}
+
+export function ratePeriodMs(every: number, unit: LockedRateUnit): number {
+  const base =
+    unit === "SECOND" ? 1_000 : unit === "MINUTE" ? 60_000 : unit === "DAY" ? DAY_MS : HOUR_MS;
+  return base * every;
+}
 
 /** Merged chastity intervals inside [start, end). */
 export function lockedIntervals(
@@ -366,13 +380,12 @@ export function timeLockedAward(
   lockedMs: number,
   points: number,
   every: number,
-  unit: "HOUR" | "DAY",
+  unit: LockedRateUnit,
 ): number {
   if (!Number.isInteger(points) || points < 1) return 0;
   if (!Number.isInteger(every) || every < 1) return 0;
   if (!(lockedMs > 0)) return 0;
-  const periodMs = (unit === "DAY" ? DAY_MS : HOUR_MS) * every;
-  return Math.floor(lockedMs / periodMs) * points;
+  return Math.floor(lockedMs / ratePeriodMs(every, unit)) * points;
 }
 
 export function timeLockedProgress(args: {
@@ -401,7 +414,7 @@ export function timeLockedProgress(args: {
       lockedMs,
       task.points ?? 0,
       task.rateEvery ?? 1,
-      task.rateUnit === "DAY" ? "DAY" : "HOUR",
+      lockedRateUnit(task.rateUnit),
     ),
   }));
   return {
@@ -489,6 +502,7 @@ export function periodStart(
 ): Dayjs {
   const dayStart = now.startOf("day");
   if (cadence === "DAILY") return dayStart;
+  if (cadence === "MONTHLY") return dayStart.startOf("month");
   const diff = (now.day() - firstDayOfWeek + 7) % 7;
   return dayStart.subtract(diff, "day");
 }
@@ -516,20 +530,17 @@ export function taskCapState(args: {
   if (args.mode === "TIME_LOCKED") {
     return { maxed: false, remainingPoints: null };
   }
-  if (args.mode === "PER_MINUTE") {
-    const used = mine.reduce(
-      (sum, completion) => sum + Math.abs(completion.pointsAwarded),
-      0,
-    );
-    const cap = args.maxPoints ?? Number.POSITIVE_INFINITY;
-    const remaining = Number.isFinite(cap) ? Math.max(0, cap - used) : null;
-    return { maxed: remaining === 0, remainingPoints: remaining };
+
+  const countCap = args.mode === "FIXED" ? (args.maxCompletions ?? 1) : args.maxCompletions;
+  const pointsCap =
+    args.mode === "PER_MINUTE" || args.mode === "ENTER_AMOUNT" ? args.maxPoints : null;
+  const countMaxed = countCap != null && mine.length >= countCap;
+  if (pointsCap == null) {
+    return { maxed: countMaxed, remainingPoints: null };
   }
-  const cap = args.maxCompletions ?? 1;
-  return {
-    maxed: mine.length >= cap,
-    remainingPoints: null,
-  };
+  const used = mine.reduce((sum, completion) => sum + Math.abs(completion.pointsAwarded), 0);
+  const remaining = Math.max(0, pointsCap - used);
+  return { maxed: countMaxed || remaining === 0, remainingPoints: remaining };
 }
 
 export function barFillPercent(points: number, tiers: { points: number }[]): number {
