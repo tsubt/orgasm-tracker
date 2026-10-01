@@ -1,5 +1,6 @@
 "use client";
 
+import EventTimeline from "../../EventTimeline";
 import PowerBar from "../../PowerBar";
 import PointsCalendar from "../../PointsCalendar";
 import TaskTile, { TaskGrid } from "../../TaskTile";
@@ -8,6 +9,7 @@ import type { SerializedTask } from "@/lib/locktober/load";
 import { countLabel, lockedHoursLabel } from "@/lib/locktober/shareLine";
 import { compareTasksByValue } from "@/lib/locktober/taskLabel";
 import { BarView, TierSnapshot } from "@/lib/locktober/scoring";
+import type { LocktoberTimelineDay } from "@/lib/locktober/timeline";
 import { RelativeTime, TheirTime } from "@/app/components/SubjectTime";
 import { LockClosedIcon } from "@heroicons/react/24/solid";
 import dayjs from "dayjs";
@@ -52,6 +54,7 @@ export default function ShareView({
   isOwner,
   timeZone,
   serverNow,
+  eventDays,
 }: {
   slug: string;
   year: number;
@@ -69,6 +72,7 @@ export default function ShareView({
   isOwner: boolean;
   timeZone: string;
   serverNow: string;
+  eventDays: LocktoberTimelineDay[];
 }) {
   const router = useRouter();
   const [body, setBody] = useState("");
@@ -134,6 +138,7 @@ export default function ShareView({
         days={calendar}
         tiers={tiers}
       />
+      <EventTimeline days={eventDays} />
       <TaskList tasks={tasks} />
 
       <div className="flex items-center gap-3">

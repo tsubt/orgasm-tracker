@@ -8,6 +8,7 @@ import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
 import { locktoberDisplayName, saveLocktoberCard } from "@/lib/locktober/cardSnapshot";
 import { locktoberShareDescription } from "@/lib/locktober/shareLine";
 import { BarView, focusYear } from "@/lib/locktober/scoring";
+import { locktoberTimeline } from "@/lib/locktober/timeline";
 import { prisma } from "@/prisma";
 import dayjs from "dayjs";
 import type { Metadata } from "next";
@@ -35,6 +36,7 @@ const loadShare = cache(async (slug: string) => {
     challenge,
     owner,
     serialized: serializeChallenge(challenge, sessions),
+    sessions,
   };
 });
 
@@ -144,7 +146,7 @@ export default async function LocktoberSharePage({
   const { v } = await searchParams;
   const loaded = await loadShare(slug);
   if (!loaded) notFound();
-  const { challenge, owner, serialized } = loaded;
+  const { challenge, owner, serialized, sessions } = loaded;
 
   const session = await auth();
   const viewerId = session?.user?.id ?? null;
@@ -207,6 +209,14 @@ export default async function LocktoberSharePage({
           isOwner={isOwner}
           timeZone={serialized.timezone}
           serverNow={new Date().toISOString()}
+          eventDays={locktoberTimeline({
+            year: serialized.year,
+            timeZone: serialized.timezone,
+            now: new Date(),
+            completions: serialized.completions,
+            cumDays: serialized.cumDays,
+            spans: sessions,
+          })}
         />
       </div>
     </div>
