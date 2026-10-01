@@ -42,7 +42,7 @@ function shareCard(args: {
 }): Metadata {
   const display = args.username ? `@${args.username}` : args.name || "Someone";
   const title = `${display}'s Locktober ${args.year}`;
-  const status = args.bar.locked ? "Reward day" : "In progress";
+  const status = args.bar.locked ? "Cum day" : "In progress";
   const reached = args.bar.reached ? ` · ${args.bar.reached.label}` : "";
   const days =
     args.bar.daysLeft != null && args.bar.daysLeft > 0

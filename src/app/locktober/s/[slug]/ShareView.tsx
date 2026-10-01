@@ -105,7 +105,7 @@ export default function ShareView({
           {display}&apos;s Locktober {year}
         </h1>
         <p className="text-sm text-gray-500">
-          {bar.locked ? "Reward day" : "In progress"}
+          {bar.locked ? "Cum day" : "In progress"}
           {bar.reached ? ` · ${bar.reached.label}` : ""}
         </p>
         <TheirTime timeZone={timeZone} serverNow={serverNow} own={isOwner} />

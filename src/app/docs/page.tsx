@@ -147,12 +147,14 @@ export default function DocsPage() {
               earned. Changing a task only affects what you log after that.
             </p>
             <p>
-              On a cum day the bar locks at local midnight and shows the reward
-              you reached. Claim it, or skip the day with no reward. Either way
-              the bar resets. Days left is 0 until you claim or skip, then it
-              counts toward the next cum day. Claiming a ruined reward logs a
-              ruined orgasm. A full unlocked reward can end an active chastity
-              session.
+              Cum days are when you claim. At local midnight the bar locks and
+              you only receive the highest reward you earned. The others gray
+              out. The bar button reads “Cum day reward” plus that reward’s
+              name. Completing it logs the reward and resets the bar for the
+              next cum day. You can skip the day with no reward instead. Days
+              left is 0 until you claim or skip, then it counts toward the next
+              cum day. Claiming a ruined reward logs a ruined orgasm. A full
+              unlocked reward can end an active chastity session.
             </p>
             <p>
               A challenge can be private, visible to anyone with the link, or

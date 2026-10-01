@@ -128,7 +128,7 @@ export default function LocktoberApp({
           Locktober {year}
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Schedule your cum days, earn points, and claim the reward you reached.
+          Earn points between cum days. On a cum day you claim only your highest reward, and the bar resets.
         </p>
       </div>
 
@@ -410,6 +410,9 @@ function ChallengeView({
         tiers={challenge.bar.tiers}
         locked={locked}
         daysLeft={challenge.bar.daysLeft}
+        onClaim={
+          locked && challenge.bar.reached ? () => setClaimOpen(true) : undefined
+        }
       />
       <p className="text-center text-xs text-gray-500 dark:text-gray-400">
         Midnight locks use {challenge.timezone}.{" "}
@@ -419,23 +422,14 @@ function ChallengeView({
       {locked && challenge.bar.cumDayDate && (
         <div className="rounded-lg border border-rose-300 bg-rose-50 p-4 dark:border-rose-900 dark:bg-rose-950/40">
           <h2 className="font-semibold text-rose-700 dark:text-rose-200">
-            {dayjs(challenge.bar.cumDayDate).format("MMMM D")} is here
+            {dayjs(challenge.bar.cumDayDate).format("MMMM D")} is a cum day
           </h2>
           <p className="mt-1 text-sm text-rose-800 dark:text-rose-100">
             {challenge.bar.reached
-              ? `Your reward is ${challenge.bar.reached.label}. This uses the tiers from when the day locked.`
-              : "You didn't reach a reward tier. You can skip this day and reset the bar."}
+              ? `You only get ${challenge.bar.reached.label}. The other rewards are locked. Claim it on the bar to log it and reset your points.`
+              : "You didn't reach a reward. Skip this day to reset the bar."}
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {challenge.bar.reached && (
-              <button
-                type="button"
-                className={buttonClass}
-                onClick={() => setClaimOpen(true)}
-              >
-                Complete reward
-              </button>
-            )}
+          <div className="mt-3">
             <button
               type="button"
               className={quietButtonClass}
@@ -1307,6 +1301,9 @@ function ClaimModal({
           });
         }}
       >
+        <p className="text-sm text-gray-600">
+          Completing this claims {tier.label} and resets the bar.
+        </p>
         {tier.expectsLocked && !activeChastity && (
           <p className="text-sm text-amber-700">
             This reward expects you to be locked. You can still log it.
@@ -1375,7 +1372,7 @@ function ClaimModal({
           </p>
         )}
         <button type="submit" className={buttonClass} disabled={pending}>
-          Confirm reward
+          Complete reward
         </button>
       </form>
     </Modal>

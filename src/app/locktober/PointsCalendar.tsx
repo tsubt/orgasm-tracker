@@ -1,3 +1,4 @@
+import { TierLockIcon } from "./PowerBar";
 import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
 import type { TierSnapshot } from "@/lib/locktober/scoring";
 import { tierCellClass, tierMarkClass, tierToneName } from "@/lib/locktober/tierTone";
@@ -152,6 +153,7 @@ export default function PointsCalendar({
               className={`inline-block h-2.5 w-2.5 rounded-sm ${tierMarkClass(tierToneName(tier, tiers))}`}
             />
             {tier.label}
+            {tier.expectsLocked && <TierLockIcon />}
           </li>
         ))}
         <li className="flex items-center gap-1">
