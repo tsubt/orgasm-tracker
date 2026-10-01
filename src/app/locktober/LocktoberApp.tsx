@@ -544,27 +544,6 @@ function ChallengeView({
         )}
       </section>
 
-      {challenge.cumDays.some((day) => day.status === "CLAIMED" || day.status === "SKIPPED") && (
-        <section className="text-sm text-gray-600 dark:text-gray-300">
-          <h2 className="mb-2 font-semibold text-gray-900 dark:text-white">
-            Finished days
-          </h2>
-          <ul className="flex flex-col gap-1">
-            {challenge.cumDays
-              .filter((day) => day.status === "CLAIMED" || day.status === "SKIPPED")
-              .map((day) => (
-                <li key={day.id}>
-                  {dayjs(day.date).format("MMMM D")} ·{" "}
-                  {day.status === "SKIPPED"
-                    ? "Skipped"
-                    : day.claimedTierLabel ?? "Claimed"}
-                  {day.pointsAtLock != null ? ` · ${day.pointsAtLock} pts` : ""}
-                </li>
-              ))}
-          </ul>
-        </section>
-      )}
-
       {completing && (
         <CompleteModal
           task={completing}

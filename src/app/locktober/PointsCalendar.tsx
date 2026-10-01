@@ -1,7 +1,7 @@
 import { TierLockIcon } from "./PowerBar";
 import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
 import type { TierSnapshot } from "@/lib/locktober/scoring";
-import { tierCellClass, tierMarkClass, tierToneName } from "@/lib/locktober/tierTone";
+import { tierCellClass } from "@/lib/locktober/tierTone";
 import dayjs from "dayjs";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -86,6 +86,9 @@ export default function PointsCalendar({
           const isFuture = date > today;
           const isToday = date === today;
           const rewardTone = day?.rewardTone ?? null;
+          const rewardTier = day?.rewardLabel
+            ? tiers.find((tier) => tier.label === day.rewardLabel)
+            : null;
           const isSkipped = day?.cumStatus === "SKIPPED";
           const isCum = Boolean(day?.cumStatus);
           const showPoints = !rewardTone && !isSkipped && !isFuture && points !== 0;
@@ -130,45 +133,26 @@ export default function PointsCalendar({
                   </span>
                 )}
               </span>
-              <span className="flex w-full flex-1 items-center justify-center gap-0.5">
-                {showPoints && (
+              <span className="flex w-full flex-1 items-center justify-center px-0.5 text-center">
+                {day?.rewardLabel ? (
+                  <span className="text-[9px] font-semibold leading-tight">
+                    {day.rewardLabel}
+                    {rewardTier?.expectsLocked && <TierLockIcon />}
+                  </span>
+                ) : showPoints ? (
                   <span className="text-[10px] font-semibold leading-none tabular-nums">
                     {pointsLabel(points)}
                   </span>
-                )}
-                {cumShade && (
+                ) : cumShade ? (
                   <span className="text-sm leading-none" aria-hidden>
                     💦
                   </span>
-                )}
+                ) : null}
               </span>
             </div>
           );
         })}
       </div>
-      <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-600 dark:text-gray-300">
-        {tiers.map((tier) => (
-          <li key={`${tier.label}-${tier.points}`} className="flex items-center gap-1">
-            <span
-              className={`inline-block h-2.5 w-2.5 rounded-sm ${tierMarkClass(tierToneName(tier, tiers))}`}
-            />
-            {tier.label}
-            {tier.expectsLocked && <TierLockIcon />}
-          </li>
-        ))}
-        <li className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-600" />
-          Points earned
-        </li>
-        <li className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-violet-700" />
-          Points lost
-        </li>
-        <li className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-pink-100" />
-          💦 Cum day
-        </li>
-      </ul>
     </div>
   );
 }

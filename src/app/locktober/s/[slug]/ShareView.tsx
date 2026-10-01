@@ -5,11 +5,11 @@ import PointsCalendar from "../../PointsCalendar";
 import TaskTile, { TaskGrid } from "../../TaskTile";
 import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
 import type { SerializedTask } from "@/lib/locktober/load";
+import { countLabel, lockedHoursLabel } from "@/lib/locktober/shareLine";
 import { compareTasksByValue } from "@/lib/locktober/taskLabel";
 import { BarView, TierSnapshot } from "@/lib/locktober/scoring";
-import { onDate } from "@/lib/zonedTime";
 import { RelativeTime, TheirTime } from "@/app/components/SubjectTime";
-import { LocktoberCumDayStatus } from "@prisma/client";
+import { LockClosedIcon } from "@heroicons/react/24/solid";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -45,7 +45,6 @@ export default function ShareView({
   calendar,
   tiers,
   firstDayOfWeek,
-  cumDays,
   likeCount,
   liked,
   comments,
@@ -63,12 +62,6 @@ export default function ShareView({
   calendar: LocktoberCalendarDay[];
   tiers: TierSnapshot[];
   firstDayOfWeek: number;
-  cumDays: {
-    date: string;
-    status: LocktoberCumDayStatus;
-    claimedTierLabel: string | null;
-    pointsAtLock: number | null;
-  }[];
   likeCount: number;
   liked: boolean;
   comments: ShareComment[];
@@ -104,9 +97,25 @@ export default function ShareView({
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           {display}&apos;s Locktober {year}
         </h1>
-        <p className="text-sm text-gray-500">
-          {bar.locked ? "Cum day" : "In progress"}
-          {bar.reached ? ` · ${bar.reached.label}` : ""}
+        <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 dark:text-gray-300">
+          <span className="inline-flex items-center gap-1">
+            <LockClosedIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {lockedHoursLabel(calendar)}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-2.5 w-2.5 shrink-0 rotate-45 border-2"
+              style={{ backgroundColor: "#f0c014", borderColor: "#a16207" }}
+              aria-hidden
+            />
+            {countLabel(bar.points, "point", "points")}
+          </span>
+          {bar.daysLeft != null && (
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden>💦</span>
+              {countLabel(bar.daysLeft, "day", "days")} left
+            </span>
+          )}
         </p>
         <TheirTime timeZone={timeZone} serverNow={serverNow} own={isOwner} />
       </div>
@@ -126,18 +135,6 @@ export default function ShareView({
         tiers={tiers}
       />
       <TaskList tasks={tasks} />
-
-      <ul className="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-gray-300">
-        {cumDays.map((day) => (
-          <li
-            key={day.date}
-            className="rounded-full border border-gray-300 px-3 py-1 dark:border-gray-600"
-          >
-            {onDate(day.date, timeZone).format("MMM D")} · {day.status.toLowerCase()}
-            {day.claimedTierLabel ? ` · ${day.claimedTierLabel}` : ""}
-          </li>
-        ))}
-      </ul>
 
       <div className="flex items-center gap-3">
         <button

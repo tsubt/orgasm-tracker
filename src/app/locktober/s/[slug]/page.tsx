@@ -4,6 +4,8 @@ import {
   loadChastitySpans,
   serializeChallenge,
 } from "@/lib/locktober/load";
+import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
+import { locktoberShareDescription } from "@/lib/locktober/shareLine";
 import { BarView, focusYear } from "@/lib/locktober/scoring";
 import { prisma } from "@/prisma";
 import dayjs from "dayjs";
@@ -39,16 +41,11 @@ function shareCard(args: {
   name: string | null;
   year: number;
   bar: BarView;
+  calendar: LocktoberCalendarDay[];
 }): Metadata {
   const display = args.username ? `@${args.username}` : args.name || "Someone";
   const title = `${display}'s Locktober ${args.year}`;
-  const status = args.bar.locked ? "Cum day" : "In progress";
-  const reached = args.bar.reached ? ` · ${args.bar.reached.label}` : "";
-  const days =
-    args.bar.daysLeft != null && args.bar.daysLeft > 0
-      ? ` · ${args.bar.daysLeft} ${args.bar.daysLeft === 1 ? "day" : "days"} left`
-      : "";
-  const description = `${args.bar.points} points · ${status}${reached}${days}`;
+  const description = locktoberShareDescription(args.calendar, args.bar);
   return {
     title: `${title} · OrgasmTracker`,
     description,
@@ -84,6 +81,7 @@ export async function generateMetadata({
     name: loaded.owner?.name ?? null,
     year: loaded.serialized.year,
     bar: loaded.serialized.bar,
+    calendar: loaded.serialized.calendar,
   });
 }
 
@@ -150,12 +148,6 @@ export default async function LocktoberSharePage({
           calendar={serialized.calendar}
           tiers={serialized.tiers}
           firstDayOfWeek={owner?.firstDayOfWeek ?? 1}
-          cumDays={serialized.cumDays.map((day) => ({
-            date: day.date,
-            status: day.status,
-            claimedTierLabel: day.claimedTierLabel,
-            pointsAtLock: day.pointsAtLock,
-          }))}
           likeCount={serialized.likeCount}
           liked={Boolean(like)}
           comments={shareComments}
