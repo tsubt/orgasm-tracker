@@ -191,13 +191,24 @@ function Mark({
   kind,
   color,
   muted,
+  dense = false,
 }: {
   kind: MarkKind;
   color: string;
   muted: boolean;
+  dense?: boolean;
 }) {
-  const size =
-    kind === "passed" ? "h-2 w-2 border" : kind === "current" ? "h-3.5 w-3.5 border-2" : "h-3 w-3 border-2";
+  const size = dense
+    ? kind === "passed"
+      ? "h-1.5 w-1.5 border"
+      : kind === "current"
+        ? "h-2.5 w-2.5 border-2"
+        : "h-2 w-2 border"
+    : kind === "passed"
+      ? "h-2 w-2 border"
+      : kind === "current"
+        ? "h-3.5 w-3.5 border-2"
+        : "h-3 w-3 border-2";
   const style: CSSProperties = muted
     ? {
         backgroundColor: kind === "passed" ? "#9ca3af" : "transparent",
@@ -208,7 +219,7 @@ function Mark({
       : kind === "passed"
         ? { backgroundColor: PASSED, borderColor: PASSED }
         : { backgroundColor: "transparent", borderColor: color };
-  return <div className={`rotate-45 ${size}`} style={style} />;
+  return <div className={`inline-block shrink-0 rotate-45 ${size}`} style={style} />;
 }
 
 export function TierLockIcon() {
@@ -256,6 +267,7 @@ function BarTrack({
   earned,
   rewardReady,
   slim = false,
+  dense = false,
 }: {
   orientation: "horizontal" | "vertical";
   fill: number;
@@ -263,9 +275,10 @@ function BarTrack({
   earned: TierSnapshot | null;
   rewardReady: boolean;
   slim?: boolean;
+  dense?: boolean;
 }) {
   const horizontal = orientation === "horizontal";
-  const thickness = slim ? "h-6" : "h-8";
+  const thickness = dense ? "h-4" : slim ? "h-6" : "h-8";
   return (
     <div className={horizontal ? `relative ${thickness}` : "relative h-full w-8 shrink-0"}>
       <div
@@ -317,7 +330,7 @@ function BarTrack({
             style={style}
             title={title}
           >
-            <Mark kind={kind} color={scaleColor(at / 100)} muted={muted} />
+            <Mark kind={kind} color={scaleColor(at / 100)} muted={muted} dense={dense} />
           </div>
         );
       })}
@@ -417,10 +430,10 @@ export default function PowerBar({
 
   return (
     <div
-      className={`@container min-w-0 max-w-full rounded-xl border border-gray-200 bg-white text-gray-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white ${compact ? "p-3" : "p-5"}`}
+      className={`@container min-w-0 max-w-full rounded-xl border border-gray-200 bg-white text-gray-900 dark:border-slate-800 dark:bg-slate-950 dark:text-white ${compact ? "p-3" : "p-3 @min-[640px]:p-5"}`}
     >
       {!compact && (
-        <div className="mb-4 text-center">
+        <div className="mb-2 text-center @min-[640px]:mb-4">
           <h2 className="text-xl font-bold tracking-wide text-rose-600 dark:text-rose-400">
             LOCKTOBER POWER BAR
           </h2>
@@ -442,42 +455,37 @@ export default function PowerBar({
       ) : (
         <>
           <div className="@min-[640px]:hidden">
-            <div
-              className="flex min-w-0 items-stretch justify-start gap-3"
-              style={{ height: Math.max(220, sorted.length * 56) }}
-            >
-              <BarTrack
-                orientation="vertical"
-                fill={fill}
-                sorted={sorted}
-                earned={earned}
-                rewardReady={rewardReady}
-              />
-              <DodgeLabels items={names} direction="right" className="h-full shrink-0" />
-              {!rewardReady && (
-                <div className="flex min-w-0 flex-1 flex-col justify-center text-left leading-tight">
-                  <div className="whitespace-nowrap text-[11px] font-semibold uppercase" style={{ color: here }}>
-                    Current power
-                  </div>
-                  <div className="text-lg font-bold" style={{ color: here }}>
-                    {points}
-                    <span className="ml-1 text-xs font-semibold">pts</span>
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">
-                    {daysPhrase ?? outcome}
-                  </div>
-                </div>
-              )}
-            </div>
-            {rewardReady && (
-              <div className="mt-3 w-full min-w-0">
-                {earned ? (
-                  <ClaimControl earned={earned} points={points} onClaim={onClaim} align="left" />
-                ) : (
-                  <div className="text-sm font-semibold text-gray-500">{DENIAL_LABEL}</div>
-                )}
-              </div>
-            )}
+            <BarTrack
+              orientation="horizontal"
+              fill={fill}
+              sorted={sorted}
+              earned={earned}
+              rewardReady={rewardReady}
+              dense
+            />
+            <ul className="mt-2 flex flex-wrap justify-center gap-x-2.5 gap-y-1">
+              {sorted.map((tier) => {
+                const at = barFillPercent(tier.points, sorted);
+                const kind = markKind(tier, earned);
+                const muted = rewardReady && kind !== "current";
+                return (
+                  <li
+                    key={`legend-${tier.label}-${tier.points}`}
+                    className="inline-flex items-center gap-1 leading-none"
+                  >
+                    <Mark kind={kind} color={scaleColor(at / 100)} muted={muted} dense />
+                    <TierName tier={tier} kind={kind} at={at} muted={muted} />
+                    <span
+                      className={`text-[10px] tabular-nums ${
+                        muted ? "text-gray-400 dark:text-gray-500" : "text-gray-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {tier.points}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
           <div className="hidden px-6 @min-[640px]:block">
@@ -495,11 +503,7 @@ export default function PowerBar({
       )}
 
       <div
-        className={
-          compact
-            ? "mt-2 w-full min-w-0"
-            : "mt-3 hidden w-full min-w-0 @min-[640px]:block"
-        }
+        className={compact ? "mt-2 w-full min-w-0" : "mt-2 w-full min-w-0 @min-[640px]:mt-3"}
       >
         {rewardReady && earned ? (
           <ClaimControl earned={earned} points={points} onClaim={onClaim} align="left" />
