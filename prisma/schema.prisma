@@ -284,6 +284,9 @@ model LocktoberTask {
   maxCompletions Int?
   maxPoints      Int?
   noteRequired   Boolean            @default(false)
+  deadlineMinute Int?
+  missPenalty    Int                @default(0)
+  deadlineSetAt  DateTime?
   rateEvery      Int?
   rateUnit       LocktoberRateUnit?
   sortOrder      Int                @default(0)

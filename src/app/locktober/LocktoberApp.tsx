@@ -1,5 +1,6 @@
 "use client";
 
+import ChastityStatus from "../components/ChastityStatus";
 import PowerBar from "./PowerBar";
 import type { SerializedChallenge } from "@/lib/locktober/load";
 import {
@@ -16,16 +17,20 @@ import {
 } from "@/lib/locktober/scoring";
 import OctoberCalendar from "./OctoberCalendar";
 import PointsCalendar from "./PointsCalendar";
-import TaskTile, { TaskGrid } from "./TaskTile";
+import TaskTile, { DeadlineMark, TaskGrid } from "./TaskTile";
 import {
   cadencePeriod,
   compareTasksByValue,
+  deadlinePassed,
+  deadlineTimeValue,
   manualQuantityLimit,
   manualRateUnit,
+  parseDeadlineTime,
   rateUnitWord,
   taskCardDetail,
   taskSummary,
 } from "@/lib/locktober/taskLabel";
+import { ClockIcon } from "@heroicons/react/24/outline";
 import {
   LocktoberCadence,
   LocktoberRateUnit,
@@ -58,7 +63,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(relativeTime);
 
-type ActionResult = { ok: true } | { ok: false; error: string };
+type ActionResult = { ok: true } | { ok: false; error: string; refresh?: boolean };
 
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100";
@@ -86,12 +91,19 @@ export default function LocktoberApp({
   challenges,
   username,
   firstDayOfWeek,
+  trackChastityStatus,
   activeChastity,
 }: {
   challenges: SerializedChallenge[];
   username: string | null;
   firstDayOfWeek: number;
-  activeChastity: { id: string; startTime: string } | null;
+  trackChastityStatus: boolean;
+  activeChastity: {
+    id: string;
+    startTime: string;
+    endTime: null;
+    note: string | null;
+  } | null;
 }) {
   const ready = useSyncExternalStore(
     () => () => {},
@@ -121,6 +133,11 @@ export default function LocktoberApp({
           Earn points between cum days. On a cum day you claim only your highest reward, and the bar resets.
         </p>
       </div>
+
+      <ChastityStatus
+        trackChastityStatus={trackChastityStatus}
+        activeSession={activeChastity}
+      />
 
       {challenge ? (
         <ChallengeView
@@ -314,7 +331,12 @@ function ChallengeView({
   challenge: SerializedChallenge;
   username: string | null;
   firstDayOfWeek: number;
-  activeChastity: { id: string; startTime: string } | null;
+  activeChastity: {
+    id: string;
+    startTime: string;
+    endTime: null;
+    note: string | null;
+  } | null;
 }) {
   const { pending, run } = useRunner();
   const now = dayjs().tz(challenge.timezone);
@@ -474,25 +496,45 @@ function ChallengeView({
                       <li key={task.id} className="h-full">
                         <TaskTile
                           task={task}
-                          detail={`${taskCardDetail(task)} · ${status}`}
+                          detail={[taskCardDetail(task), status].filter(Boolean).join(" · ")}
                           onClick={() => setReading(task)}
                         />
                       </li>
                     );
                   }
-                  const disabled = Boolean(tasksClosedReason) || cap.maxed;
+                  const pastDeadline = deadlinePassed(
+                    task.deadlineMinute,
+                    now.hour(),
+                    now.minute(),
+                  );
+                  const disabled = Boolean(tasksClosedReason) || cap.maxed || pastDeadline;
                   const detail = cap.maxed
                     ? `${taskCardDetail(task)} · logged`
-                    : cap.remainingPoints != null
-                      ? `${taskCardDetail(task)} · ${cap.remainingPoints}pt left`
-                      : undefined;
+                    : pastDeadline
+                      ? `${taskCardDetail(task)} · closed`
+                      : cap.remainingPoints != null
+                        ? `${taskCardDetail(task)} · ${cap.remainingPoints}pt left`
+                        : undefined;
                   return (
                     <li key={task.id} className="h-full">
                       <TaskTile
                         task={task}
                         detail={detail}
                         disabled={disabled}
-                        onClick={() => setCompleting(task)}
+                        onClick={() => {
+                          const current = dayjs().tz(challenge.timezone);
+                          if (
+                            deadlinePassed(
+                              task.deadlineMinute,
+                              current.hour(),
+                              current.minute(),
+                            )
+                          ) {
+                            void run(() => completeTask({ taskId: task.id }));
+                            return;
+                          }
+                          setCompleting(task);
+                        }}
                       />
                     </li>
                   );
@@ -869,7 +911,16 @@ function TaskEditor({
               className="flex items-start justify-between gap-3 border-b border-gray-100 py-2 dark:border-gray-700"
             >
               <div>
-                <div className="font-medium text-gray-900 dark:text-white">{task.title}</div>
+                <div className="flex flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
+                  {task.title}
+                  {task.deadlineMinute != null && (
+                    <DeadlineMark
+                      minute={task.deadlineMinute}
+                      penalty={task.missPenalty}
+                      className="text-xs font-normal text-gray-500"
+                    />
+                  )}
+                </div>
                 <div className="text-sm text-gray-500">{taskSummary(task)}</div>
                 {task.description ? (
                   <div className="line-clamp-2 text-sm text-gray-600 dark:text-gray-300">
@@ -968,6 +1019,10 @@ function TaskForm({
     task?.maxPoints == null ? "" : String(task.maxPoints),
   );
   const [noteRequired, setNoteRequired] = useState(task?.noteRequired ?? false);
+  const [deadline, setDeadline] = useState(
+    task?.deadlineMinute == null ? "" : deadlineTimeValue(task.deadlineMinute),
+  );
+  const [missPenalty, setMissPenalty] = useState(String(task?.missPenalty ?? 0));
   const [rateEvery, setRateEvery] = useState(task?.rateEvery ?? 1);
   const [rateUnit, setRateUnit] = useState<LocktoberRateUnit>(startingRateUnit(task));
   const auto = mode === "TIME_LOCKED";
@@ -976,6 +1031,8 @@ function TaskForm({
   const period = cadencePeriod(cadence);
   const noteLocked = kind === "PENALTY" && chosen;
   const perUnit: LocktoberRateUnit = rated && rateUnit === "DAY" ? "HOUR" : rateUnit;
+  const deadlineMinute = parseDeadlineTime(deadline);
+  const penaltyPreview = Number.isInteger(Number(missPenalty)) ? Number(missPenalty) : 0;
   const modes: { value: LocktoberTaskMode; label: string }[] = [
     { value: "FIXED", label: "Fixed points" },
     { value: "PER_MINUTE", label: "Points per time" },
@@ -1009,6 +1066,8 @@ function TaskForm({
             maxCompletions: auto ? null : parsedAttempts,
             maxPoints: rated || chosen ? parsedPoints : null,
             noteRequired: noteLocked ? true : noteRequired,
+            deadlineMinute: auto ? null : deadlineMinute,
+            missPenalty: auto || deadlineMinute == null ? 0 : Number(missPenalty),
             rateEvery: auto ? rateEvery : null,
             rateUnit: auto || rated ? perUnit : null,
           });
@@ -1168,6 +1227,45 @@ function TaskForm({
         </p>
       )}
 
+      {!auto && (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex w-36 flex-col gap-1">
+            <span className={`${caption} inline-flex items-center gap-1`}>
+              <ClockIcon className="size-3.5" aria-hidden />
+              Deadline
+            </span>
+            <input
+              type="time"
+              value={deadline}
+              disabled={disabled}
+              onChange={(event) => setDeadline(event.target.value)}
+              className={inputClass}
+            />
+          </label>
+          {deadline !== "" && (
+            <label className="flex w-28 flex-col gap-1">
+              <span className={caption}>Penalty</span>
+              <input
+                type="number"
+                min={0}
+                max={500}
+                step={1}
+                value={missPenalty}
+                disabled={disabled}
+                onChange={(event) => setMissPenalty(event.target.value)}
+                className={inputClass}
+              />
+            </label>
+          )}
+          {deadlineMinute != null && (
+            <DeadlineMark
+              minute={deadlineMinute}
+              penalty={penaltyPreview > 0 ? penaltyPreview : 0}
+              className="mb-2 text-sm text-gray-700 dark:text-gray-200"
+            />
+          )}
+        </div>
+      )}
       <label className="flex flex-col gap-1">
         <span className={caption}>Description</span>
         <textarea
@@ -1340,7 +1438,12 @@ function ClaimModal({
 }: {
   cumDayId: string;
   tier: NonNullable<SerializedChallenge["bar"]["reached"]>;
-  activeChastity: { id: string; startTime: string } | null;
+  activeChastity: {
+    id: string;
+    startTime: string;
+    endTime: null;
+    note: string | null;
+  } | null;
   onClose: () => void;
 }) {
   const { pending, run } = useRunner();
@@ -1488,6 +1591,7 @@ function useRunner() {
       const result = await action();
       if (!result.ok) {
         toast.error(result.error);
+        if (result.refresh) router.refresh();
         return;
       }
       router.refresh();

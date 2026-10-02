@@ -3,9 +3,9 @@
 import { auth } from "@/auth";
 import { prisma } from "@/prisma";
 import { DEFAULT_TASKS, DEFAULT_TIERS } from "@/lib/locktober/defaults";
-import { manualQuantityLimit, manualRateUnit } from "@/lib/locktober/taskLabel";
+import { deadlinePassed, manualQuantityLimit, manualRateUnit } from "@/lib/locktober/taskLabel";
 import { refreshLocktoberCard } from "@/lib/locktober/cardSnapshot";
-import { ensureCumDayLocks } from "@/lib/locktober/locks";
+import { applyMissedDeadlines, ensureCumDayLocks } from "@/lib/locktober/locks";
 import {
   cumDayInstant,
   cumDayIsFixed,
@@ -22,6 +22,7 @@ import {
   octoberEnd,
   octoberStart,
   parseTierSnapshot,
+  isDeadlineMiss,
   setupYear,
   taskCapState,
   tiersToSnapshot,
@@ -46,10 +47,10 @@ import { revalidatePath } from "next/cache";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-type ActionResult = { ok: true } | { ok: false; error: string };
+type ActionResult = { ok: true } | { ok: false; error: string; refresh?: boolean };
 
-function fail(error: string): { ok: false; error: string } {
-  return { ok: false, error };
+function fail(error: string, refresh = false): { ok: false; error: string; refresh: boolean } {
+  return { ok: false, error, refresh };
 }
 
 async function requireUserId() {
@@ -369,6 +370,8 @@ export async function saveTask(input: {
   maxCompletions: number | null;
   maxPoints: number | null;
   noteRequired: boolean;
+  deadlineMinute?: number | null;
+  missPenalty?: number | null;
   rateEvery?: number | null;
   rateUnit?: LocktoberRateUnit | null;
 }): Promise<ActionResult> {
@@ -383,12 +386,21 @@ export async function saveTask(input: {
   if (input.taskId) {
     const task = await prisma.locktoberTask.findFirst({
       where: { id: input.taskId, challengeId: owned.challenge.id },
-      select: { id: true },
+      select: {
+        id: true,
+        deadlineMinute: true,
+        missPenalty: true,
+        deadlineSetAt: true,
+        cadence: true,
+      },
     });
     if (!task) return fail("Task not found.");
     await prisma.locktoberTask.update({
       where: { id: task.id },
-      data: normalized.task,
+      data: {
+        ...normalized.task,
+        deadlineSetAt: nextDeadlineSetAt(task, normalized.task),
+      },
     });
   } else {
     const count = await prisma.locktoberTask.count({
@@ -398,6 +410,7 @@ export async function saveTask(input: {
     await prisma.locktoberTask.create({
       data: {
         ...normalized.task,
+        deadlineSetAt: normalized.task.deadlineMinute == null ? null : new Date(),
         challengeId: owned.challenge.id,
         sortOrder: count,
       },
@@ -406,6 +419,27 @@ export async function saveTask(input: {
 
   await revalidateChallenge(owned.challenge.shareSlug, owned.challenge.id);
   return { ok: true };
+}
+
+function nextDeadlineSetAt(
+  existing: {
+    deadlineMinute: number | null;
+    missPenalty: number;
+    deadlineSetAt: Date | null;
+    cadence: LocktoberCadence;
+  },
+  next: { deadlineMinute: number | null; missPenalty: number; cadence: LocktoberCadence },
+): Date | null {
+  if (next.deadlineMinute == null) return null;
+  if (
+    existing.deadlineMinute === next.deadlineMinute &&
+    existing.missPenalty === next.missPenalty &&
+    existing.cadence === next.cadence &&
+    existing.deadlineSetAt
+  ) {
+    return existing.deadlineSetAt;
+  }
+  return new Date();
 }
 
 function normalizeTask(input: {
@@ -418,6 +452,8 @@ function normalizeTask(input: {
   maxCompletions: number | null;
   maxPoints: number | null;
   noteRequired: boolean;
+  deadlineMinute?: number | null;
+  missPenalty?: number | null;
   rateEvery?: number | null;
   rateUnit?: LocktoberRateUnit | null;
 }):
@@ -433,6 +469,8 @@ function normalizeTask(input: {
         maxCompletions: number | null;
         maxPoints: number | null;
         noteRequired: boolean;
+        deadlineMinute: number | null;
+        missPenalty: number;
         rateEvery: number | null;
         rateUnit: LocktoberRateUnit | null;
       };
@@ -446,11 +484,20 @@ function normalizeTask(input: {
   if (!Object.values(LocktoberTaskMode).includes(input.mode)) return fail("Invalid task mode.");
   if (!Object.values(LocktoberCadence).includes(input.cadence)) return fail("Invalid cadence.");
 
+  const deadline = readDeadline(
+    input.deadlineMinute,
+    input.missPenalty,
+    input.mode !== "TIME_LOCKED",
+  );
+  if (!deadline.ok) return deadline;
+
   const blank = {
     description: description || null,
     maxCompletions: null as number | null,
     maxPoints: null as number | null,
     noteRequired: false,
+    deadlineMinute: deadline.deadlineMinute,
+    missPenalty: deadline.missPenalty,
     rateEvery: null as number | null,
     rateUnit: null as LocktoberRateUnit | null,
   };
@@ -557,6 +604,24 @@ function normalizeTask(input: {
   };
 }
 
+function readDeadline(
+  minute: number | null | undefined,
+  penalty: number | null | undefined,
+  allow: boolean,
+):
+  | { ok: true; deadlineMinute: number | null; missPenalty: number }
+  | { ok: false; error: string; refresh: boolean } {
+  if (!allow || minute == null) return { ok: true, deadlineMinute: null, missPenalty: 0 };
+  if (!Number.isInteger(minute) || minute < 0 || minute > 1439) {
+    return fail("The deadline has to be a time of day.");
+  }
+  const miss = penalty ?? 0;
+  if (!Number.isInteger(miss) || miss < 0 || miss > 500) {
+    return fail("The deadline penalty has to be a whole number from 0 to 500.");
+  }
+  return { ok: true, deadlineMinute: minute, missPenalty: miss };
+}
+
 function wholePoints(value: number | null): value is number {
   return Number.isInteger(value) && value != null && value >= 1 && value <= 500;
 }
@@ -616,6 +681,7 @@ export async function completeTask(input: {
   if (!task || task.challenge.userId !== userId) return fail("Task not found.");
   if (task.mode === "TIME_LOCKED") return fail("Time locked is added automatically.");
 
+  const applied = await applyMissedDeadlines(task.challengeId);
   await ensureCumDayLocks(task.challengeId);
   const challenge = await prisma.locktoberChallenge.findUnique({
     where: { id: task.challengeId },
@@ -623,7 +689,7 @@ export async function completeTask(input: {
       tiers: { orderBy: { sortOrder: "asc" } },
       cumDays: { orderBy: { date: "asc" } },
       completions: {
-        select: { taskId: true, completedAt: true, pointsAwarded: true },
+        select: { taskId: true, completedAt: true, pointsAwarded: true, snapshot: true },
       },
     },
   });
@@ -631,10 +697,14 @@ export async function completeTask(input: {
 
   const now = dayjs().tz(challenge.timezone);
   if (now.isBefore(octoberStart(challenge.year, challenge.timezone))) {
-    return fail("Tasks open on October 1.");
+    return fail("Tasks open on October 1.", applied > 0);
   }
   if (!now.isBefore(octoberEnd(challenge.year, challenge.timezone))) {
-    return fail("October is over.");
+    return fail("October is over.", applied > 0);
+  }
+  if (deadlinePassed(task.deadlineMinute, now.hour(), now.minute())) {
+    await revalidateChallenge(challenge.shareSlug, challenge.id);
+    return fail("That deadline has passed, so this one is closed for today.", true);
   }
 
   const cumDays: CumDayInput[] = challenge.cumDays.map((day) => ({
@@ -646,15 +716,21 @@ export async function completeTask(input: {
     claimedTierLabel: day.claimedTierLabel,
     claimedAt: day.claimedAt,
   }));
+  const logged = challenge.completions.map((completion) => ({
+    taskId: completion.taskId,
+    completedAt: completion.completedAt,
+    pointsAwarded: completion.pointsAwarded,
+    deadlineMiss: isDeadlineMiss(completion.snapshot),
+  }));
   const bar = describeBar(
     challenge.year,
     challenge.timezone,
     cumDays,
     tiersToSnapshot(challenge.tiers),
-    challenge.completions,
+    logged,
   );
   if (bar.locked) {
-    return fail("The power bar is locked until you claim or skip this cum day.");
+    return fail("The power bar is locked until you claim or skip this cum day.", applied > 0);
   }
 
   const user = await prisma.user.findUnique({
@@ -667,7 +743,7 @@ export async function completeTask(input: {
     cadence: task.cadence,
     maxCompletions: task.maxCompletions,
     maxPoints: task.maxPoints,
-    completions: challenge.completions,
+    completions: logged,
     now,
     firstDayOfWeek: user?.firstDayOfWeek ?? 1,
   });
@@ -718,6 +794,8 @@ export async function completeTask(input: {
     maxCompletions: task.maxCompletions,
     maxPoints: task.maxPoints,
     noteRequired: task.noteRequired,
+    deadlineMinute: task.deadlineMinute,
+    missPenalty: task.missPenalty,
   };
 
   await prisma.locktoberCompletion.create({

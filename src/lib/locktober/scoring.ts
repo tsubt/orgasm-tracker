@@ -33,6 +33,9 @@ export type CompletionSnapshot = {
   maxCompletions: number | null;
   maxPoints: number | null;
   noteRequired: boolean;
+  deadlineMinute?: number | null;
+  missPenalty?: number;
+  deadlineMiss?: boolean;
 };
 
 export type CumDayInput = {
@@ -282,10 +285,12 @@ function pointsInWindow(
   completions: { completedAt: Date | string; pointsAwarded: number }[],
   start: Dayjs,
   end: Dayjs | null,
+  gapStart: Dayjs | null = null,
 ): number {
   return completions.reduce((sum, completion) => {
     const at = dayjs(completion.completedAt);
-    if (at.isBefore(start)) return sum;
+    const inGap = gapStart != null && !at.isBefore(gapStart) && at.isBefore(start);
+    if (!inGap && at.isBefore(start)) return sum;
     if (end && !at.isBefore(end)) return sum;
     return sum + completion.pointsAwarded;
   }, 0);
@@ -304,8 +309,9 @@ export function cyclePoints(
   start: Dayjs,
   end: Dayjs | null,
   autoPoints = 0,
+  gapStart: Dayjs | null = null,
 ): number {
-  return Math.max(0, pointsInWindow(completions, start, end) + autoPoints);
+  return Math.max(0, pointsInWindow(completions, start, end, gapStart) + autoPoints);
 }
 
 export type LockedSpan = {
@@ -427,20 +433,24 @@ export function currentCycle(
   year: number,
   tz: string,
   cumDays: CumDayInput[],
-): { start: Dayjs; end: Dayjs | null; cumDay: CumDayInput | null } {
+): { start: Dayjs; end: Dayjs | null; gapStart: Dayjs | null; cumDay: CumDayInput | null } {
   const sorted = [...cumDays].sort((a, b) => a.date.localeCompare(b.date));
   let start = octoberStart(year, tz);
+  let gapStart: Dayjs | null = null;
   for (const day of sorted) {
     if (day.status === "CLAIMED" || day.status === "SKIPPED") {
       if (day.claimedAt) {
         const closed = dayjs(day.claimedAt);
-        if (closed.isAfter(start)) start = closed;
+        if (closed.isAfter(start)) {
+          gapStart = cumDayInstant(day.date, tz);
+          start = closed;
+        }
       }
       continue;
     }
-    return { start, end: cumDayInstant(day.date, tz), cumDay: day };
+    return { start, end: cumDayInstant(day.date, tz), gapStart, cumDay: day };
   }
-  return { start, end: null, cumDay: null };
+  return { start, end: null, gapStart, cumDay: null };
 }
 
 /** Zero on a cum day until it is claimed or skipped, then the gap until the next one. */
@@ -482,7 +492,7 @@ export function describeBar(
       daysLeft: daysLeftUntilCum(tz, cumDays),
     };
   }
-  const points = cyclePoints(completions, cycle.start, cycle.end, autoPoints);
+  const points = cyclePoints(completions, cycle.start, cycle.end, autoPoints, cycle.gapStart);
   return {
     points,
     locked: false,
@@ -517,6 +527,7 @@ export function taskCapState(args: {
     taskId: string | null;
     completedAt: Date | string;
     pointsAwarded: number;
+    deadlineMiss?: boolean;
   }[];
   now: Dayjs;
   firstDayOfWeek: number;
@@ -525,6 +536,7 @@ export function taskCapState(args: {
   const mine = args.completions.filter(
     (completion) =>
       completion.taskId === args.taskId &&
+      !completion.deadlineMiss &&
       !dayjs(completion.completedAt).isBefore(start),
   );
   if (args.mode === "TIME_LOCKED") {
@@ -564,4 +576,13 @@ export function snapshotTitle(snapshot: unknown): string {
     return (snapshot as { title: string }).title;
   }
   return "Task";
+}
+
+export function isDeadlineMiss(snapshot: unknown): boolean {
+  return (
+    snapshot != null &&
+    typeof snapshot === "object" &&
+    "deadlineMiss" in snapshot &&
+    (snapshot as { deadlineMiss?: unknown }).deadlineMiss === true
+  );
 }

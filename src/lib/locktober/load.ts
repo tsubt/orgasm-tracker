@@ -9,7 +9,7 @@ import {
   LocktoberVisibility,
   Prisma,
 } from "@prisma/client";
-import { ensureCumDayLocks } from "./locks";
+import { applyMissedDeadlines, ensureCumDayLocks } from "./locks";
 import { octoberCalendar, type LocktoberCalendarDay } from "./calendar";
 import {
   BarView,
@@ -21,6 +21,7 @@ import {
   LockedSpan,
   parseTierSnapshot,
   snapshotTitle,
+  isDeadlineMiss,
   timeLockedProgress,
   tiersToSnapshot,
 } from "./scoring";
@@ -48,6 +49,8 @@ export type SerializedTask = {
   maxCompletions: number | null;
   maxPoints: number | null;
   noteRequired: boolean;
+  deadlineMinute: number | null;
+  missPenalty: number;
   rateEvery: number | null;
   rateUnit: LocktoberRateUnit | null;
   sortOrder: number;
@@ -62,6 +65,7 @@ export type SerializedCompletion = {
   note: string | null;
   pointsAwarded: number;
   title: string;
+  deadlineMiss: boolean;
 };
 
 export type SerializedCumDay = {
@@ -151,7 +155,7 @@ export function serializeChallenge(
   });
   const useCountByTask = new Map<string, number>();
   for (const completion of challenge.completions) {
-    if (!completion.taskId) continue;
+    if (!completion.taskId || isDeadlineMiss(completion.snapshot)) continue;
     useCountByTask.set(
       completion.taskId,
       (useCountByTask.get(completion.taskId) ?? 0) + 1,
@@ -186,6 +190,8 @@ export function serializeChallenge(
       maxCompletions: task.maxCompletions,
       maxPoints: task.maxPoints,
       noteRequired: task.noteRequired,
+      deadlineMinute: task.deadlineMinute,
+      missPenalty: task.missPenalty,
       rateEvery: task.rateEvery,
       rateUnit: task.rateUnit,
       sortOrder: task.sortOrder,
@@ -203,6 +209,7 @@ export function serializeChallenge(
       note: completion.note,
       pointsAwarded: completion.pointsAwarded,
       title: snapshotTitle(completion.snapshot),
+      deadlineMiss: isDeadlineMiss(completion.snapshot),
     })),
     timeLocked: timeLocked.byTask,
     calendar: octoberCalendar({
@@ -243,14 +250,13 @@ export async function loadOwnerLocktober(
   if (!user) return null;
 
   const year = new Date().getUTCFullYear();
-  if (options?.lockDays) {
-    const found = await prisma.locktoberChallenge.findMany({
-      where: { userId, year: { in: [year - 1, year, year + 1] } },
-      select: { id: true },
-    });
-    for (const challenge of found) {
-      await ensureCumDayLocks(challenge.id);
-    }
+  const found = await prisma.locktoberChallenge.findMany({
+    where: { userId, year: { in: [year - 1, year, year + 1] } },
+    select: { id: true },
+  });
+  for (const challenge of found) {
+    await applyMissedDeadlines(challenge.id);
+    if (options?.lockDays) await ensureCumDayLocks(challenge.id);
   }
   const challenges = await prisma.locktoberChallenge.findMany({
     where: { userId, year: { in: [year - 1, year, year + 1] } },
@@ -271,7 +277,7 @@ export async function loadOwnerLocktober(
     }),
     prisma.chastitySession.findFirst({
       where: { userId, endTime: null },
-      select: { id: true, startTime: true },
+      select: { id: true, startTime: true, endTime: true, note: true },
     }),
   ]);
 
@@ -279,7 +285,12 @@ export async function loadOwnerLocktober(
     user,
     challenges: challenges.map((challenge) => serializeChallenge(challenge, sessions)),
     activeChastity: active
-      ? { id: active.id, startTime: active.startTime.toISOString() }
+      ? {
+          id: active.id,
+          startTime: active.startTime.toISOString(),
+          endTime: null,
+          note: active.note,
+        }
       : null,
   };
 }
@@ -292,6 +303,14 @@ export async function loadChallengeById(id: string) {
 }
 
 export async function loadChallengeBySlug(slug: string) {
+  const challenge = await loadChallengeBySlugRecord(slug);
+  if (!challenge) return null;
+  const applied = await applyMissedDeadlines(challenge.id);
+  if (applied === 0) return challenge;
+  return loadChallengeById(challenge.id);
+}
+
+async function loadChallengeBySlugRecord(slug: string) {
   const bySlug = await prisma.locktoberChallenge.findUnique({
     where: { shareSlug: slug },
     include: challengeInclude,
@@ -315,6 +334,20 @@ export async function loadChallengeBySlug(slug: string) {
 }
 
 export async function loadPublicBoard(year: number): Promise<PublicChallengeCard[]> {
+  const due = await prisma.locktoberTask.findMany({
+    where: {
+      deadlineMinute: { not: null },
+      missPenalty: { gt: 0 },
+      mode: { not: "TIME_LOCKED" },
+      challenge: { visibility: "PUBLIC", year },
+    },
+    select: { challengeId: true },
+    distinct: ["challengeId"],
+  });
+  for (const task of due) {
+    await applyMissedDeadlines(task.challengeId);
+  }
+
   const challenges = await prisma.locktoberChallenge.findMany({
     where: { visibility: "PUBLIC", year },
     include: {

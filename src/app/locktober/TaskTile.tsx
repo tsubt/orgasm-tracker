@@ -1,10 +1,34 @@
 import type { CSSProperties, ReactNode } from "react";
+import { ClockIcon } from "@heroicons/react/24/outline";
 import type { SerializedTask } from "@/lib/locktober/load";
-import { taskCardDetail, taskPointsText } from "@/lib/locktober/taskLabel";
+import { formatDeadline, taskCardDetail, taskPointsText, taskRateSuffix } from "@/lib/locktober/taskLabel";
 import UseCount from "./UseCount";
 
 const taskGridClass =
   "grid grid-cols-2 gap-2 @min-[24rem]:grid-cols-3 @min-[44rem]:grid-cols-6";
+
+export function DeadlineMark({
+  minute,
+  penalty,
+  className = "",
+}: {
+  minute: number;
+  penalty: number;
+  className?: string;
+}) {
+  const time = formatDeadline(minute);
+  const label =
+    penalty > 0 ? `Deadline ${time}, penalty ${penalty}` : `Deadline ${time}`;
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${className}`} aria-label={label}>
+      <ClockIcon className="size-3 shrink-0" aria-hidden />
+      <span aria-hidden className="tabular-nums">
+        {time}
+        {penalty > 0 ? ` (-${penalty})` : ""}
+      </span>
+    </span>
+  );
+}
 
 export function TaskGrid({ children }: { children: ReactNode }) {
   return <ul className={taskGridClass}>{children}</ul>;
@@ -43,6 +67,8 @@ export default function TaskTile({
   onClick?: () => void;
 }) {
   const points = taskPointsText(task);
+  const rate = taskRateSuffix(task);
+  const line = detail ?? taskCardDetail(task);
   const tip = task.description?.trim().replace(/\s+/g, " ") || undefined;
   const className = `flex h-full min-h-[7.5rem] w-full flex-col items-center rounded-lg border-2 px-1.5 py-1.5 text-center shadow-sm ${
     onClick ? "transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100" : ""
@@ -57,16 +83,22 @@ export default function TaskTile({
           {task.title}
         </span>
         <span
-          className={`font-bold leading-none tabular-nums ${
+          className={`inline-flex items-baseline font-bold leading-none tabular-nums ${
             points.length >= 4 ? "text-xl" : "text-2xl"
           }`}
         >
           {points}
+          {rate ? <span className="text-[0.55em] font-semibold">/{rate}</span> : null}
         </span>
       </span>
-      <span className="text-[10px] leading-tight opacity-80">
-        {detail ?? taskCardDetail(task)}
-      </span>
+      {line || task.deadlineMinute != null ? (
+        <span className="flex flex-col items-center gap-0.5 text-[10px] leading-tight opacity-80">
+          {line ? <span>{line}</span> : null}
+          {task.deadlineMinute != null && (
+            <DeadlineMark minute={task.deadlineMinute} penalty={task.missPenalty} />
+          )}
+        </span>
+      ) : null}
     </>
   );
 

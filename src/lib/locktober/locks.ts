@@ -3,10 +3,12 @@ import { Prisma } from "@prisma/client";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
+import { missedDeadlinePenalties } from "./deadline";
 import {
   CumDayInput,
   cumDayInstant,
   dateOnlyString,
+  isDeadlineMiss,
   parseTierSnapshot,
   tiersToSnapshot,
   currentCycle,
@@ -39,8 +41,79 @@ function toCumDays(
   }));
 }
 
+/** Write one penalty per missed deadline period. Returns how many were created. */
+export async function applyMissedDeadlines(challengeId: string): Promise<number> {
+  const challenge = await prisma.locktoberChallenge.findUnique({
+    where: { id: challengeId },
+    select: {
+      id: true,
+      year: true,
+      timezone: true,
+      user: { select: { firstDayOfWeek: true } },
+      tasks: {
+        select: {
+          id: true,
+          title: true,
+          kind: true,
+          points: true,
+          mode: true,
+          cadence: true,
+          maxCompletions: true,
+          maxPoints: true,
+          noteRequired: true,
+          deadlineMinute: true,
+          missPenalty: true,
+          deadlineSetAt: true,
+        },
+      },
+    },
+  });
+  if (!challenge) return 0;
+  if (
+    !challenge.tasks.some(
+      (task) => task.deadlineMinute != null && task.missPenalty > 0 && task.mode !== "TIME_LOCKED",
+    )
+  ) {
+    return 0;
+  }
+
+  const now = dayjs().tz(challenge.timezone);
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "LocktoberChallenge" WHERE id = ${challengeId} FOR UPDATE`;
+    const completions = await tx.locktoberCompletion.findMany({
+      where: { challengeId },
+      select: { taskId: true, completedAt: true, snapshot: true },
+    });
+    const pending = missedDeadlinePenalties({
+      year: challenge.year,
+      tz: challenge.timezone,
+      now,
+      firstDayOfWeek: challenge.user.firstDayOfWeek,
+      tasks: challenge.tasks,
+      completions: completions.map((completion) => ({
+        taskId: completion.taskId,
+        completedAt: completion.completedAt,
+        deadlineMiss: isDeadlineMiss(completion.snapshot),
+      })),
+    });
+    if (pending.length === 0) return 0;
+    await tx.locktoberCompletion.createMany({
+      data: pending.map((item) => ({
+        challengeId: challenge.id,
+        taskId: item.taskId,
+        completedAt: item.completedAt,
+        note: item.note,
+        pointsAwarded: item.pointsAwarded,
+        snapshot: item.snapshot as unknown as Prisma.InputJsonValue,
+      })),
+    });
+    return pending.length;
+  });
+}
+
 /** Freeze the earliest unresolved cum day once its local midnight has passed. */
 export async function ensureCumDayLocks(challengeId: string) {
+  await applyMissedDeadlines(challengeId);
   const challenge = await prisma.locktoberChallenge.findUnique({
     where: { id: challengeId },
     include: {
@@ -97,6 +170,7 @@ export async function ensureCumDayLocks(challengeId: string) {
       cycle.start,
       cycle.end,
       auto.total,
+      cycle.gapStart,
     );
     await prisma.locktoberCumDay.update({
       where: { id: day.id },

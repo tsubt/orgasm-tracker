@@ -137,9 +137,14 @@ export function octoberCalendar(args: {
 
   for (const completion of args.completions) {
     const at = dayjs(completion.completedAt);
-    const counted = windows.some(
-      (window) => !at.isBefore(window.start) && at.isBefore(window.end),
-    );
+    const counted =
+      windows.some((window) => !at.isBefore(window.start) && at.isBefore(window.end)) ||
+      args.cumDays.some((day) => {
+        if (day.status === "SCHEDULED") return false;
+        const boundary = cumDayInstant(day.date, args.tz);
+        const closed = day.claimedAt ? dayjs(day.claimedAt) : null;
+        return !at.isBefore(boundary) && (closed == null || at.isBefore(closed));
+      });
     if (!counted) continue;
     const date = at.tz(args.tz).format("YYYY-MM-DD");
     if (!date.startsWith(`${args.year}-10-`)) continue;

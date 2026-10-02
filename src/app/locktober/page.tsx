@@ -21,6 +21,7 @@ export default async function LocktoberPage() {
           challenges={data.challenges}
           username={data.user.username}
           firstDayOfWeek={data.user.firstDayOfWeek}
+          trackChastityStatus={data.user.trackChastityStatus}
           activeChastity={data.activeChastity}
         />
       </div>

@@ -144,6 +144,13 @@ export default function DocsPage() {
               </li>
             </ul>
             <p>
+              A task can have a deadline, shown with a clock, like 8am or 8am
+              (-5). After that time you cannot log it until the next day. If
+              the penalty is above zero and you missed the cutoff, those points
+              come off once for that day, week, or month. Zero has no point
+              cost: the task is simply closed for the day.
+            </p>
+            <p>
               Tasks and penalties are separate cards. Each one has a short title
               and an optional longer description. Click a card to confirm it;
               the description is shown there, and on a public page it opens
