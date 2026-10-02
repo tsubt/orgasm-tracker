@@ -200,8 +200,12 @@ src/
 - [Prisma Documentation](https://prisma.io/docs)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 
-## Deploy
+## Releases
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
+`develop` is the working branch. `main` is the released code, and production deploys from `main` on its own.
 
-Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Add a changeset in the same pull request as the change: `bun changeset`.
+2. Merge the pull request into `develop`. That opens or updates a Version packages pull request.
+3. Merge the Version packages pull request. That tags `v<version>` and fast-forwards `main` to the tag.
+
+The app is private, so a release tags the repo and writes `CHANGELOG.md`. It does not publish to npm.

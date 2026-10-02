@@ -7,7 +7,10 @@
     "build": "next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "tag-release": "changeset publish"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
@@ -24,6 +27,7 @@
     "recharts": "^2.15.1"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^20",
     "@types/react": "19.2.7",
