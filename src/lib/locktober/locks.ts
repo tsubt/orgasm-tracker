@@ -78,37 +78,34 @@ export async function applyMissedDeadlines(challengeId: string): Promise<number>
   }
 
   const now = dayjs().tz(challenge.timezone);
-  return prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "LocktoberChallenge" WHERE id = ${challengeId} FOR UPDATE`;
-    const completions = await tx.locktoberCompletion.findMany({
-      where: { challengeId },
-      select: { taskId: true, completedAt: true, snapshot: true },
-    });
-    const pending = missedDeadlinePenalties({
-      year: challenge.year,
-      tz: challenge.timezone,
-      now,
-      firstDayOfWeek: challenge.user.firstDayOfWeek,
-      tasks: challenge.tasks,
-      completions: completions.map((completion) => ({
-        taskId: completion.taskId,
-        completedAt: completion.completedAt,
-        deadlineMiss: isDeadlineMiss(completion.snapshot),
-      })),
-    });
-    if (pending.length === 0) return 0;
-    await tx.locktoberCompletion.createMany({
-      data: pending.map((item) => ({
-        challengeId: challenge.id,
-        taskId: item.taskId,
-        completedAt: item.completedAt,
-        note: item.note,
-        pointsAwarded: item.pointsAwarded,
-        snapshot: item.snapshot as unknown as Prisma.InputJsonValue,
-      })),
-    });
-    return pending.length;
+  const completions = await prisma.locktoberCompletion.findMany({
+    where: { challengeId },
+    select: { taskId: true, completedAt: true, snapshot: true },
   });
+  const pending = missedDeadlinePenalties({
+    year: challenge.year,
+    tz: challenge.timezone,
+    now,
+    firstDayOfWeek: challenge.user.firstDayOfWeek,
+    tasks: challenge.tasks,
+    completions: completions.map((completion) => ({
+      taskId: completion.taskId,
+      completedAt: completion.completedAt,
+      deadlineMiss: isDeadlineMiss(completion.snapshot),
+    })),
+  });
+  if (pending.length === 0) return 0;
+  await prisma.locktoberCompletion.createMany({
+    data: pending.map((item) => ({
+      challengeId: challenge.id,
+      taskId: item.taskId,
+      completedAt: item.completedAt,
+      note: item.note,
+      pointsAwarded: item.pointsAwarded,
+      snapshot: item.snapshot as unknown as Prisma.InputJsonValue,
+    })),
+  });
+  return pending.length;
 }
 
 /** Freeze the earliest unresolved cum day once its local midnight has passed. */

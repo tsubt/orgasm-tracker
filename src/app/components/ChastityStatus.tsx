@@ -187,14 +187,20 @@ export default function ChastityStatus({
           <div className="flex flex-col gap-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                <h4
+                  className="text-lg font-bold text-gray-900 dark:text-white"
+                  suppressHydrationWarning
+                >
                   Chastity status: locked{" "}
                   {dayjs(activeSession.startTime)
                     .utc()
                     .tz(Intl.DateTimeFormat().resolvedOptions().timeZone)
                     .fromNow(true)}
                 </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p
+                  className="text-sm text-gray-600 dark:text-gray-400 mt-1"
+                  suppressHydrationWarning
+                >
                   Started{" "}
                   {dayjs(activeSession.startTime)
                     .utc()
