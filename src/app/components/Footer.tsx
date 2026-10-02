@@ -18,7 +18,14 @@ export default function Footer() {
           OrgasmTracker &copy; 2022 &ndash; {currentYear}
         </div>
         <div className="text-gray-600 dark:text-gray-500">
-          v{packageJson.version}
+          <Link
+            href={`https://github.com/tsubt/orgasm-tracker/releases/tag/v${packageJson.version}`}
+            className="hover:text-blue-500 dark:hover:text-blue-400 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            v{packageJson.version}
+          </Link>
         </div>
         <div className="text-gray-600 dark:text-gray-500">
           By{" "}
