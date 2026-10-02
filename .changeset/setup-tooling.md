@@ -1,4 +1,5 @@
 ---
+"otrack": major
 ---
 
-Set up Changesets. This commit does not bump the app version.
+Set up versioning, and show the current version in the footer.
