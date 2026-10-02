@@ -1,5 +1,15 @@
 # otrack
 
+## 1.1.0
+
+### Minor Changes
+
+- 7037a20: Filter, search, and sort the orgasm list.
+
+### Patch Changes
+
+- b5405ea: Link the footer version to its GitHub release notes.
+
 ## 1.0.0
 
 ### Major Changes
