@@ -7,6 +7,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { pastTimeError } from "@/lib/pastTime";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -18,11 +19,13 @@ export default function RecordChastitySession({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(() =>
+    dayjs().format("YYYY-MM-DD")
+  );
+  const [endDate, setEndDate] = useState("");
   const router = useRouter();
 
-  const startDateRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLInputElement>(null);
-  const endDateRef = useRef<HTMLInputElement>(null);
   const endTimeRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
 
@@ -33,9 +36,9 @@ export default function RecordChastitySession({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const startLocalDate = startDateRef.current?.value || defaultDate;
+    const startLocalDate = startDate || defaultDate;
     const startLocalTime = startTimeRef.current?.value || defaultTime;
-    const endLocalDate = endDateRef.current?.value || "";
+    const endLocalDate = endDate;
     const endLocalTime = endTimeRef.current?.value || "";
     const note = noteRef.current?.value || null;
 
@@ -56,6 +59,14 @@ export default function RecordChastitySession({
         userTimezone
       );
       endTime = endLocalDateTime.utc().toDate();
+    }
+
+    const timeError =
+      pastTimeError(startTime, "Start time") ||
+      (endTime ? pastTimeError(endTime, "End time") : null);
+    if (timeError) {
+      setErrorMessage(timeError);
+      return;
     }
 
     // Hide modal immediately
@@ -92,9 +103,9 @@ export default function RecordChastitySession({
       router.refresh();
 
       // Reset form
-      if (startDateRef.current) startDateRef.current.value = defaultDate;
+      setStartDate(dayjs().format("YYYY-MM-DD"));
+      setEndDate("");
       if (startTimeRef.current) startTimeRef.current.value = defaultTime;
-      if (endDateRef.current) endDateRef.current.value = "";
       if (endTimeRef.current) endTimeRef.current.value = "";
       if (noteRef.current) noteRef.current.value = "";
     } catch (error) {
@@ -166,8 +177,9 @@ export default function RecordChastitySession({
                     <input
                       type="date"
                       id="startDate"
-                      ref={startDateRef}
-                      defaultValue={defaultDate}
+                      value={startDate}
+                      max={defaultDate}
+                      onChange={(e) => setStartDate(e.target.value)}
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                       required
                     />
@@ -184,6 +196,7 @@ export default function RecordChastitySession({
                       id="startTime"
                       ref={startTimeRef}
                       defaultValue={defaultTime}
+                      max={startDate === defaultDate ? defaultTime : undefined}
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                       required
                     />
@@ -198,7 +211,9 @@ export default function RecordChastitySession({
                     <input
                       type="date"
                       id="endDate"
-                      ref={endDateRef}
+                      value={endDate}
+                      max={defaultDate}
+                      onChange={(e) => setEndDate(e.target.value)}
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                     />
                   </div>
@@ -213,6 +228,7 @@ export default function RecordChastitySession({
                       type="time"
                       id="endTime"
                       ref={endTimeRef}
+                      max={endDate === defaultDate ? defaultTime : undefined}
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                     />
                   </div>

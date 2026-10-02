@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { refreshLocktoberCardsForUser } from "@/lib/locktober/cardSnapshot";
+import { pastTimeError } from "@/lib/pastTime";
 import { prisma } from "@/prisma";
 import { NextResponse } from "next/server";
 import dayjs from "dayjs";
@@ -75,6 +76,17 @@ export async function POST(request: Request) {
           { error: "endTime must be after startTime" },
           { status: 400 }
         );
+      }
+    }
+
+    const startInFuture = pastTimeError(startTimeDate, "Start time");
+    if (startInFuture) {
+      return NextResponse.json({ error: startInFuture }, { status: 400 });
+    }
+    if (endTimeDate) {
+      const endInFuture = pastTimeError(endTimeDate, "End time");
+      if (endInFuture) {
+        return NextResponse.json({ error: endInFuture }, { status: 400 });
       }
     }
 
@@ -177,6 +189,17 @@ export async function PUT(request: Request) {
           { error: "endTime must be after startTime" },
           { status: 400 }
         );
+      }
+    }
+
+    const startInFuture = pastTimeError(startTimeDate, "Start time");
+    if (startInFuture) {
+      return NextResponse.json({ error: startInFuture }, { status: 400 });
+    }
+    if (endTimeDate) {
+      const endInFuture = pastTimeError(endTimeDate, "End time");
+      if (endInFuture) {
+        return NextResponse.json({ error: endInFuture }, { status: 400 });
       }
     }
 

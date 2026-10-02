@@ -10,6 +10,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { pastTimeError } from "@/lib/pastTime";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -77,12 +78,8 @@ export default function ChastityTable() {
     if (!editSession) return;
 
     const sessionToEdit = { ...editSession };
-    setEditSession(null);
-    setEditErrorMessage(null);
-
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    // Convert local date/time to UTC timestamp
     const startDate =
       sessionToEdit._localStartDate ||
       (sessionToEdit.startTime
@@ -109,6 +106,17 @@ export default function ChastityTable() {
       );
       endTimestamp = endDateTime.utc().toDate();
     }
+
+    const timeError =
+      pastTimeError(startTimestamp, "Start time") ||
+      (endTimestamp ? pastTimeError(endTimestamp, "End time") : null);
+    if (timeError) {
+      setEditErrorMessage(timeError);
+      return;
+    }
+
+    setEditSession(null);
+    setEditErrorMessage(null);
 
     const toastId = toast.loading("Updating session...", {
       id: "edit-session",
@@ -212,6 +220,17 @@ export default function ChastityTable() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedSessions = sessions.slice(startIndex, endIndex);
+  const todayDate = dayjs().format("YYYY-MM-DD");
+  const nowTime = dayjs().format("HH:mm");
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const localCalendarDate = (
+    explicit: string | undefined,
+    timestamp: Date | string | null | undefined
+  ) =>
+    explicit ||
+    (timestamp
+      ? dayjs(timestamp).tz(timeZone).format("YYYY-MM-DD")
+      : "");
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -477,6 +496,7 @@ export default function ChastityTable() {
                             : null
                         )
                       }
+                      max={todayDate}
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                       required
                     />
@@ -508,6 +528,14 @@ export default function ChastityTable() {
                             : null
                         )
                       }
+                      max={
+                        localCalendarDate(
+                          editSession._localStartDate,
+                          editSession.startTime
+                        ) === todayDate
+                          ? nowTime
+                          : undefined
+                      }
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                       required
                     />
@@ -530,6 +558,7 @@ export default function ChastityTable() {
                             : null
                         )
                       }
+                      max={todayDate}
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                     />
                   </div>
@@ -550,6 +579,11 @@ export default function ChastityTable() {
                             ? { ...prev, _localEndTime: e.target.value }
                             : null
                         )
+                      }
+                      max={
+                        (editSession._localEndDate || "") === todayDate
+                          ? nowTime
+                          : undefined
                       }
                       className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                     />
