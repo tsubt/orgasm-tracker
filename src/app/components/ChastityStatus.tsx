@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -9,6 +9,7 @@ import duration from "dayjs/plugin/duration";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { localPastTimeError, watchFields } from "@/lib/pastTime";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -37,13 +38,35 @@ export default function ChastityStatus({
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(() => dayjs().format("YYYY-MM-DD"));
+  const [startTime, setStartTime] = useState(() => dayjs().format("HH:mm"));
+  const [endDate, setEndDate] = useState(() => dayjs().format("YYYY-MM-DD"));
+  const [endTime, setEndTime] = useState(() => dayjs().format("HH:mm"));
 
-  const startDateRef = useRef<HTMLInputElement>(null);
-  const startTimeRef = useRef<HTMLInputElement>(null);
   const startNoteRef = useRef<HTMLTextAreaElement>(null);
-  const endDateRef = useRef<HTMLInputElement>(null);
-  const endTimeRef = useRef<HTMLInputElement>(null);
   const endNoteRef = useRef<HTMLTextAreaElement>(null);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const startFieldError = localPastTimeError(
+    startDate,
+    startTime,
+    "Start time",
+    timeZone,
+  );
+  const endFieldError = localPastTimeError(
+    endDate,
+    endTime,
+    "End time",
+    timeZone,
+  );
+
+  useEffect(() => {
+    if (!isStartModalOpen && !isEndModalOpen) return;
+    return watchFields(
+      isStartModalOpen
+        ? { startDate: setStartDate, startTime: setStartTime }
+        : { endDate: setEndDate, endTime: setEndTime },
+    );
+  }, [isStartModalOpen, isEndModalOpen]);
 
   const fetchActiveSession = async () => {
     try {
@@ -62,14 +85,13 @@ export default function ChastityStatus({
 
   const handleStartSession = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!startDateRef.current || !startTimeRef.current) return;
-
-    const localDate = startDateRef.current.value;
-    const localTime = startTimeRef.current.value;
     const note = startNoteRef.current?.value || null;
 
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const localDateTime = dayjs.tz(`${localDate} ${localTime}`, userTimezone);
+    if (localPastTimeError(startDate, startTime, "Start time", timeZone)) {
+      return;
+    }
+
+    const localDateTime = dayjs.tz(`${startDate} ${startTime}`, timeZone);
     const timestamp = localDateTime.utc().toDate();
 
     setIsStartModalOpen(false);
@@ -114,14 +136,14 @@ export default function ChastityStatus({
 
   const handleEndSession = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!activeSession || !endDateRef.current || !endTimeRef.current) return;
-
-    const localDate = endDateRef.current.value;
-    const localTime = endTimeRef.current.value;
+    if (!activeSession) return;
     const note = endNoteRef.current?.value || activeSession.note || null;
 
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const localDateTime = dayjs.tz(`${localDate} ${localTime}`, userTimezone);
+    if (localPastTimeError(endDate, endTime, "End time", timeZone)) {
+      return;
+    }
+
+    const localDateTime = dayjs.tz(`${endDate} ${endTime}`, timeZone);
     const timestamp = localDateTime.utc().toDate();
 
     setIsEndModalOpen(false);
@@ -176,10 +198,6 @@ export default function ChastityStatus({
     );
   }
 
-  const today = dayjs.utc().local();
-  const defaultDate = today.format("YYYY-MM-DD");
-  const defaultTime = today.format("HH:mm");
-
   return (
     <>
       <div className="w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
@@ -210,15 +228,13 @@ export default function ChastityStatus({
               </div>
               <button
                 onClick={() => {
-                  if (activeSession) {
-                    if (endDateRef.current)
-                      endDateRef.current.value = defaultDate;
-                    if (endTimeRef.current)
-                      endTimeRef.current.value = defaultTime;
-                    if (endNoteRef.current)
-                      endNoteRef.current.value = activeSession.note || "";
-                    setIsEndModalOpen(true);
+                  setEndDate(dayjs().format("YYYY-MM-DD"));
+                  setEndTime(dayjs().format("HH:mm"));
+                  if (endNoteRef.current) {
+                    endNoteRef.current.value = activeSession.note || "";
                   }
+                  setErrorMessage(null);
+                  setIsEndModalOpen(true);
                 }}
                 className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide w-full md:w-auto"
               >
@@ -240,11 +256,10 @@ export default function ChastityStatus({
             </div>
             <button
               onClick={() => {
-                if (startDateRef.current)
-                  startDateRef.current.value = defaultDate;
-                if (startTimeRef.current)
-                  startTimeRef.current.value = defaultTime;
+                setStartDate(dayjs().format("YYYY-MM-DD"));
+                setStartTime(dayjs().format("HH:mm"));
                 if (startNoteRef.current) startNoteRef.current.value = "";
+                setErrorMessage(null);
                 setIsStartModalOpen(true);
               }}
               className="px-4 py-2 bg-pink-500 dark:bg-pink-600 text-white rounded-md shadow hover:bg-pink-600 dark:hover:bg-pink-700 transition-colors text-sm font-semibold uppercase tracking-wide w-full md:w-auto"
@@ -296,9 +311,12 @@ export default function ChastityStatus({
                   <input
                     type="date"
                     id="startDate"
-                    ref={startDateRef}
-                    defaultValue={defaultDate}
-                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.currentTarget.value)}
+                    onInput={(e) => setStartDate(e.currentTarget.value)}
+                    className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                      startFieldError ? "border-red-500" : "border-gray-300"
+                    }`}
                     required
                   />
 
@@ -311,9 +329,12 @@ export default function ChastityStatus({
                   <input
                     type="time"
                     id="startTime"
-                    ref={startTimeRef}
-                    defaultValue={defaultTime}
-                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.currentTarget.value)}
+                    onInput={(e) => setStartTime(e.currentTarget.value)}
+                    className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                      startFieldError ? "border-red-500" : "border-gray-300"
+                    }`}
                     required
                   />
                 </div>
@@ -335,13 +356,13 @@ export default function ChastityStatus({
                   />
                 </div>
 
-                {errorMessage && (
+                {(startFieldError || errorMessage) && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
                   >
-                    ✗ {errorMessage}
+                    ✗ {startFieldError || errorMessage}
                   </motion.div>
                 )}
 
@@ -407,9 +428,12 @@ export default function ChastityStatus({
                   <input
                     type="date"
                     id="endDate"
-                    ref={endDateRef}
-                    defaultValue={defaultDate}
-                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.currentTarget.value)}
+                    onInput={(e) => setEndDate(e.currentTarget.value)}
+                    className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                      endFieldError ? "border-red-500" : "border-gray-300"
+                    }`}
                     required
                   />
 
@@ -422,9 +446,12 @@ export default function ChastityStatus({
                   <input
                     type="time"
                     id="endTime"
-                    ref={endTimeRef}
-                    defaultValue={defaultTime}
-                    className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.currentTarget.value)}
+                    onInput={(e) => setEndTime(e.currentTarget.value)}
+                    className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                      endFieldError ? "border-red-500" : "border-gray-300"
+                    }`}
                     required
                   />
                 </div>
@@ -447,13 +474,13 @@ export default function ChastityStatus({
                   />
                 </div>
 
-                {errorMessage && (
+                {(endFieldError || errorMessage) && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
                   >
-                    ✗ {errorMessage}
+                    ✗ {endFieldError || errorMessage}
                   </motion.div>
                 )}
 

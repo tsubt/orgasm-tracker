@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { pastTimeError } from "@/lib/pastTime";
+import { localPastTimeError, watchFields } from "@/lib/pastTime";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -22,12 +22,35 @@ export default function RecordChastitySession({
   const [startDate, setStartDate] = useState(() =>
     dayjs().format("YYYY-MM-DD")
   );
+  const [startTime, setStartTime] = useState(() => dayjs().format("HH:mm"));
   const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("");
   const router = useRouter();
 
-  const startTimeRef = useRef<HTMLInputElement>(null);
-  const endTimeRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const startFieldError = localPastTimeError(
+    startDate,
+    startTime,
+    "Start time",
+    timeZone,
+  );
+  const endFieldError = localPastTimeError(
+    endDate,
+    endTime,
+    "End time",
+    timeZone,
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    return watchFields({
+      startDate: setStartDate,
+      startTime: setStartTime,
+      endDate: setEndDate,
+      endTime: setEndTime,
+    });
+  }, [isOpen]);
 
   const today = dayjs.utc().local();
   const defaultDate = today.format("YYYY-MM-DD");
@@ -37,10 +60,17 @@ export default function RecordChastitySession({
     e.preventDefault();
 
     const startLocalDate = startDate || defaultDate;
-    const startLocalTime = startTimeRef.current?.value || defaultTime;
+    const startLocalTime = startTime || defaultTime;
     const endLocalDate = endDate;
-    const endLocalTime = endTimeRef.current?.value || "";
+    const endLocalTime = endTime;
     const note = noteRef.current?.value || null;
+
+    if (
+      localPastTimeError(startLocalDate, startLocalTime, "Start time", timeZone) ||
+      localPastTimeError(endLocalDate, endLocalTime, "End time", timeZone)
+    ) {
+      return;
+    }
 
     // Get user's timezone
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -50,23 +80,15 @@ export default function RecordChastitySession({
       `${startLocalDate} ${startLocalTime}`,
       userTimezone
     );
-    const startTime = startLocalDateTime.utc().toDate();
+    const startTimestamp = startLocalDateTime.utc().toDate();
 
-    let endTime: Date | null = null;
+    let endTimestamp: Date | null = null;
     if (endLocalDate && endLocalTime) {
       const endLocalDateTime = dayjs.tz(
         `${endLocalDate} ${endLocalTime}`,
         userTimezone
       );
-      endTime = endLocalDateTime.utc().toDate();
-    }
-
-    const timeError =
-      pastTimeError(startTime, "Start time") ||
-      (endTime ? pastTimeError(endTime, "End time") : null);
-    if (timeError) {
-      setErrorMessage(timeError);
-      return;
+      endTimestamp = endLocalDateTime.utc().toDate();
     }
 
     // Hide modal immediately
@@ -85,8 +107,8 @@ export default function RecordChastitySession({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          startTime: startTime.toISOString(),
-          endTime: endTime ? endTime.toISOString() : null,
+          startTime: startTimestamp.toISOString(),
+          endTime: endTimestamp ? endTimestamp.toISOString() : null,
           note,
         }),
       });
@@ -104,9 +126,9 @@ export default function RecordChastitySession({
 
       // Reset form
       setStartDate(dayjs().format("YYYY-MM-DD"));
+      setStartTime(dayjs().format("HH:mm"));
       setEndDate("");
-      if (startTimeRef.current) startTimeRef.current.value = defaultTime;
-      if (endTimeRef.current) endTimeRef.current.value = "";
+      setEndTime("");
       if (noteRef.current) noteRef.current.value = "";
     } catch (error) {
       console.error("Error recording session:", error);
@@ -178,11 +200,17 @@ export default function RecordChastitySession({
                       type="date"
                       id="startDate"
                       value={startDate}
-                      max={defaultDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      onChange={(e) => setStartDate(e.currentTarget.value)}
+                      onInput={(e) => setStartDate(e.currentTarget.value)}
+                      onBlur={(e) => setStartDate(e.currentTarget.value)}
+                      className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        startFieldError ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     />
+                    {startFieldError && (
+                      <p className="text-sm text-red-600">{startFieldError}</p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2">
                     <label
@@ -194,10 +222,11 @@ export default function RecordChastitySession({
                     <input
                       type="time"
                       id="startTime"
-                      ref={startTimeRef}
-                      defaultValue={defaultTime}
-                      max={startDate === defaultDate ? defaultTime : undefined}
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        startFieldError ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     />
                   </div>
@@ -212,10 +241,16 @@ export default function RecordChastitySession({
                       type="date"
                       id="endDate"
                       value={endDate}
-                      max={defaultDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      onChange={(e) => setEndDate(e.currentTarget.value)}
+                      onInput={(e) => setEndDate(e.currentTarget.value)}
+                      onBlur={(e) => setEndDate(e.currentTarget.value)}
+                      className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        endFieldError ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
+                    {endFieldError && (
+                      <p className="text-sm text-red-600">{endFieldError}</p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2">
                     <label
@@ -227,9 +262,11 @@ export default function RecordChastitySession({
                     <input
                       type="time"
                       id="endTime"
-                      ref={endTimeRef}
-                      max={endDate === defaultDate ? defaultTime : undefined}
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        endFieldError ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
                   </div>
                 </div>
@@ -252,13 +289,13 @@ export default function RecordChastitySession({
                 </div>
 
                 {/* Error message */}
-                {errorMessage && (
+                {(startFieldError || endFieldError || errorMessage) && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
                   >
-                    ✗ {errorMessage}
+                    ✗ {startFieldError || endFieldError || errorMessage}
                   </motion.div>
                 )}
 

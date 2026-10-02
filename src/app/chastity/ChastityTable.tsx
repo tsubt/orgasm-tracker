@@ -10,7 +10,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { pastTimeError } from "@/lib/pastTime";
+import { localPastTimeError, watchFields } from "@/lib/pastTime";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -49,6 +49,30 @@ export default function ChastityTable() {
   useEffect(() => {
     fetchSessions();
   }, []);
+
+  const editingId = editSession?.id ?? null;
+
+  useEffect(() => {
+    if (!editingId) return;
+    return watchFields({
+      editStartDate: (value) =>
+        setEditSession((prev) =>
+          prev ? { ...prev, _localStartDate: value } : null,
+        ),
+      editStartTime: (value) =>
+        setEditSession((prev) =>
+          prev ? { ...prev, _localStartTime: value } : null,
+        ),
+      editEndDate: (value) =>
+        setEditSession((prev) =>
+          prev ? { ...prev, _localEndDate: value } : null,
+        ),
+      editEndTime: (value) =>
+        setEditSession((prev) =>
+          prev ? { ...prev, _localEndTime: value } : null,
+        ),
+    });
+  }, [editingId]);
 
   const fetchSessions = async () => {
     try {
@@ -108,10 +132,14 @@ export default function ChastityTable() {
     }
 
     const timeError =
-      pastTimeError(startTimestamp, "Start time") ||
-      (endTimestamp ? pastTimeError(endTimestamp, "End time") : null);
+      localPastTimeError(startDate, startTime, "Start time", userTimezone) ||
+      localPastTimeError(
+        sessionToEdit._localEndDate || "",
+        sessionToEdit._localEndTime || "",
+        "End time",
+        userTimezone,
+      );
     if (timeError) {
-      setEditErrorMessage(timeError);
       return;
     }
 
@@ -220,17 +248,33 @@ export default function ChastityTable() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedSessions = sessions.slice(startIndex, endIndex);
-  const todayDate = dayjs().format("YYYY-MM-DD");
-  const nowTime = dayjs().format("HH:mm");
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const localCalendarDate = (
-    explicit: string | undefined,
-    timestamp: Date | string | null | undefined
-  ) =>
-    explicit ||
-    (timestamp
-      ? dayjs(timestamp).tz(timeZone).format("YYYY-MM-DD")
-      : "");
+  const editTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const editStartDate = editSession
+    ? editSession._localStartDate ||
+      (editSession.startTime
+        ? dayjs(editSession.startTime).tz(editTimeZone).format("YYYY-MM-DD")
+        : "")
+    : "";
+  const editStartTime = editSession
+    ? editSession._localStartTime ||
+      (editSession.startTime
+        ? dayjs(editSession.startTime).tz(editTimeZone).format("HH:mm")
+        : "")
+    : "";
+  const editEndDate = editSession?._localEndDate || "";
+  const editEndTime = editSession?._localEndTime || "";
+  const editStartError = localPastTimeError(
+    editStartDate,
+    editStartTime,
+    "Start time",
+    editTimeZone,
+  );
+  const editEndError = localPastTimeError(
+    editEndDate,
+    editEndTime,
+    "End time",
+    editTimeZone,
+  );
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -492,14 +536,25 @@ export default function ChastityTable() {
                       onChange={(e) =>
                         setEditSession((prev) =>
                           prev
-                            ? { ...prev, _localStartDate: e.target.value }
+                            ? { ...prev, _localStartDate: e.currentTarget.value }
                             : null
                         )
                       }
-                      max={todayDate}
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      onInput={(e) =>
+                        setEditSession((prev) =>
+                          prev
+                            ? { ...prev, _localStartDate: e.currentTarget.value }
+                            : null
+                        )
+                      }
+                      className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        editStartError ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     />
+                    {editStartError && (
+                      <p className="text-sm text-red-600">{editStartError}</p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2">
                     <label
@@ -528,15 +583,9 @@ export default function ChastityTable() {
                             : null
                         )
                       }
-                      max={
-                        localCalendarDate(
-                          editSession._localStartDate,
-                          editSession.startTime
-                        ) === todayDate
-                          ? nowTime
-                          : undefined
-                      }
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        editStartError ? "border-red-500" : "border-gray-300"
+                      }`}
                       required
                     />
                   </div>
@@ -554,13 +603,24 @@ export default function ChastityTable() {
                       onChange={(e) =>
                         setEditSession((prev) =>
                           prev
-                            ? { ...prev, _localEndDate: e.target.value }
+                            ? { ...prev, _localEndDate: e.currentTarget.value }
                             : null
                         )
                       }
-                      max={todayDate}
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      onInput={(e) =>
+                        setEditSession((prev) =>
+                          prev
+                            ? { ...prev, _localEndDate: e.currentTarget.value }
+                            : null
+                        )
+                      }
+                      className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        editEndError ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
+                    {editEndError && (
+                      <p className="text-sm text-red-600">{editEndError}</p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2">
                     <label
@@ -580,12 +640,9 @@ export default function ChastityTable() {
                             : null
                         )
                       }
-                      max={
-                        (editSession._localEndDate || "") === todayDate
-                          ? nowTime
-                          : undefined
-                      }
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      className={`border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                        editEndError ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
                   </div>
                 </div>
@@ -610,13 +667,13 @@ export default function ChastityTable() {
                   />
                 </div>
 
-                {editErrorMessage && (
+                {(editStartError || editEndError || editErrorMessage) && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded"
                   >
-                    ✗ {editErrorMessage}
+                    ✗ {editStartError || editEndError || editErrorMessage}
                   </motion.div>
                 )}
 
