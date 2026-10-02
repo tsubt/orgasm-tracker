@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -34,6 +34,73 @@ type EditOrgasm = Orgasm & {
   _localTime?: string;
 };
 
+type SortKey = "timestamp" | "type" | "sex" | "note";
+type SortDir = "asc" | "desc";
+
+const controlClass =
+  "w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500";
+
+function localDay(
+  timestamp: Date | string | null,
+  timeZone: string
+): string | null {
+  if (!timestamp) return null;
+  return dayjs(timestamp).tz(timeZone).format("YYYY-MM-DD");
+}
+
+function compareOrgasms(
+  a: Orgasm,
+  b: Orgasm,
+  sortKey: SortKey,
+  sortDir: SortDir
+): number {
+  const direction = sortDir === "asc" ? 1 : -1;
+  if (sortKey === "timestamp") {
+    const aTime = a.timestamp ? new Date(a.timestamp).getTime() : null;
+    const bTime = b.timestamp ? new Date(b.timestamp).getTime() : null;
+    if (aTime === null && bTime === null) return 0;
+    if (aTime === null) return 1;
+    if (bTime === null) return -1;
+    return (aTime - bTime) * direction;
+  }
+  const aText = (sortKey === "note" ? a.note ?? "" : a[sortKey]).toLowerCase();
+  const bText = (sortKey === "note" ? b.note ?? "" : b[sortKey]).toLowerCase();
+  return aText.localeCompare(bText) * direction;
+}
+
+function filterOrgasms(
+  orgasms: Orgasm[],
+  query: {
+    search: string;
+    type: OrgasmType | "";
+    sex: SexType | "";
+    fromDate: string;
+    toDate: string;
+    sortKey: SortKey;
+    sortDir: SortDir;
+    timeZone: string;
+  }
+): Orgasm[] {
+  const search = query.search.trim().toLowerCase();
+  const filtered = orgasms.filter((orgasm) => {
+    if (query.type && orgasm.type !== query.type) return false;
+    if (query.sex && orgasm.sex !== query.sex) return false;
+    if (search && !(orgasm.note ?? "").toLowerCase().includes(search)) {
+      return false;
+    }
+    if (query.fromDate || query.toDate) {
+      const day = localDay(orgasm.timestamp, query.timeZone);
+      if (!day) return false;
+      if (query.fromDate && day < query.fromDate) return false;
+      if (query.toDate && day > query.toDate) return false;
+    }
+    return true;
+  });
+  return [...filtered].sort((a, b) =>
+    compareOrgasms(a, b, query.sortKey, query.sortDir)
+  );
+}
+
 export default function OrgasmsTable() {
   const [orgasms, setOrgasms] = useState<Orgasm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,28 +113,31 @@ export default function OrgasmsTable() {
     null
   );
   const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<OrgasmType | "">("");
+  const [sexFilter, setSexFilter] = useState<SexType | "">("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("timestamp");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const router = useRouter();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
     fetchOrgasms();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, sexFilter, fromDate, toDate, sortKey, sortDir]);
 
   const fetchOrgasms = async () => {
     try {
       const response = await fetch("/api/orgasms");
       if (response.ok) {
         const data = await response.json();
-        // Sort by timestamp descending (most recent first)
-        const sorted = (data.orgasms || []).sort((a: Orgasm, b: Orgasm) => {
-          if (!a.timestamp && !b.timestamp) return 0;
-          if (!a.timestamp) return 1;
-          if (!b.timestamp) return -1;
-          return (
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          );
-        });
-        setOrgasms(sorted);
-        setCurrentPage(1); // Reset to first page when fetching new data
+        setOrgasms(data.orgasms || []);
+        setCurrentPage(1);
       }
     } catch (error) {
       console.error("Error fetching orgasms:", error);
@@ -204,6 +274,31 @@ export default function OrgasmsTable() {
     }
   };
 
+  const filteredOrgasms = useMemo(
+    () =>
+      filterOrgasms(orgasms, {
+        search,
+        type: typeFilter,
+        sex: sexFilter,
+        fromDate,
+        toDate,
+        sortKey,
+        sortDir,
+        timeZone,
+      }),
+    [
+      orgasms,
+      search,
+      typeFilter,
+      sexFilter,
+      fromDate,
+      toDate,
+      sortKey,
+      sortDir,
+      timeZone,
+    ]
+  );
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-8 w-full">
@@ -224,11 +319,36 @@ export default function OrgasmsTable() {
     );
   }
 
-  // Calculate pagination
-  const totalPages = Math.ceil(orgasms.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const totalPages = Math.ceil(filteredOrgasms.length / ITEMS_PER_PAGE);
+  const page = Math.min(currentPage, Math.max(totalPages, 1));
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedOrgasms = orgasms.slice(startIndex, endIndex);
+  const paginatedOrgasms = filteredOrgasms.slice(startIndex, endIndex);
+
+  const toggleSort = (column: SortKey) => {
+    if (sortKey === column) {
+      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(column);
+    setSortDir(column === "timestamp" ? "desc" : "asc");
+  };
+
+  const sortHeader = (column: SortKey, label: string) => {
+    const active = sortKey === column;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(column)}
+        className="inline-flex items-center gap-1 text-left text-sm font-semibold text-white cursor-pointer"
+      >
+        {label}
+        {active && (
+          <span aria-hidden>{sortDir === "asc" ? "↑" : "↓"}</span>
+        )}
+      </button>
+    );
+  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -239,21 +359,117 @@ export default function OrgasmsTable() {
   return (
     <>
       <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 border-b border-gray-200 dark:border-gray-600 px-4 py-3 bg-gray-50 dark:bg-gray-700">
+          <label className="flex flex-col gap-1 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
+            Search notes
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search notes"
+              className={controlClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
+            Type
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as OrgasmType | "")}
+              className={controlClass}
+            >
+              <option value="">Any</option>
+              {OrgasmTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
+            Partner
+            <select
+              value={sexFilter}
+              onChange={(e) => setSexFilter(e.target.value as SexType | "")}
+              className={controlClass}
+            >
+              <option value="">Any</option>
+              {SexTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
+            From
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className={`${controlClass} dark:[color-scheme:dark]`}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-bold uppercase text-gray-600 dark:text-gray-300">
+            To
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className={`${controlClass} dark:[color-scheme:dark]`}
+            />
+          </label>
+        </div>
         <div className="overflow-x-auto flex-1">
           <table className="w-full">
             <thead>
               <tr className="bg-pink-500 dark:bg-pink-600">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-white">
-                  Time
+                <th
+                  className="px-4 py-3 text-left"
+                  aria-sort={
+                    sortKey === "timestamp"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  {sortHeader("timestamp", "Time")}
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-white">
-                  Type
+                <th
+                  className="px-4 py-3 text-left"
+                  aria-sort={
+                    sortKey === "type"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  {sortHeader("type", "Type")}
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-white">
-                  Partner?
+                <th
+                  className="px-4 py-3 text-left"
+                  aria-sort={
+                    sortKey === "sex"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  {sortHeader("sex", "Partner?")}
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-white">
-                  Note
+                <th
+                  className="px-4 py-3 text-left"
+                  aria-sort={
+                    sortKey === "note"
+                      ? sortDir === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  {sortHeader("note", "Note")}
                 </th>
                 <th className="px-4 py-3 text-center text-sm font-semibold text-white">
                   Actions
@@ -261,6 +477,16 @@ export default function OrgasmsTable() {
               </tr>
             </thead>
             <tbody>
+              {paginatedOrgasms.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-8 text-center text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    No orgasms match.
+                  </td>
+                </tr>
+              )}
               {paginatedOrgasms.map((orgasm, index) => {
                 const actualIndex = startIndex + index;
                 return (
@@ -347,46 +573,46 @@ export default function OrgasmsTable() {
           <div className="border-t border-gray-200 dark:border-gray-600 px-4 py-3 bg-gray-50 dark:bg-gray-700">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700 dark:text-gray-300">
-                Showing {startIndex + 1} to {Math.min(endIndex, orgasms.length)}{" "}
-                of {orgasms.length} orgasms
+                Showing {startIndex + 1} to{" "}
+                {Math.min(endIndex, filteredOrgasms.length)} of{" "}
+                {filteredOrgasms.length} orgasms
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
                   className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                 >
                   Previous
                 </button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => {
-                      // Show first page, last page, current page, and pages around current
+                    (pageNumber) => {
                       if (
-                        page === 1 ||
-                        page === totalPages ||
-                        (page >= currentPage - 1 && page <= currentPage + 1)
+                        pageNumber === 1 ||
+                        pageNumber === totalPages ||
+                        (pageNumber >= page - 1 && pageNumber <= page + 1)
                       ) {
                         return (
                           <button
-                            key={page}
-                            onClick={() => handlePageChange(page)}
+                            key={pageNumber}
+                            onClick={() => handlePageChange(pageNumber)}
                             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors cursor-pointer ${
-                              currentPage === page
+                              page === pageNumber
                                 ? "bg-pink-500 dark:bg-pink-600 text-white"
                                 : "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
                             }`}
                           >
-                            {page}
+                            {pageNumber}
                           </button>
                         );
                       } else if (
-                        page === currentPage - 2 ||
-                        page === currentPage + 2
+                        pageNumber === page - 2 ||
+                        pageNumber === page + 2
                       ) {
                         return (
                           <span
-                            key={page}
+                            key={pageNumber}
                             className="px-2 text-gray-500 dark:text-gray-400"
                           >
                             ...
@@ -398,8 +624,8 @@ export default function OrgasmsTable() {
                   )}
                 </div>
                 <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
                   className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                 >
                   Next
