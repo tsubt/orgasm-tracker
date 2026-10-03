@@ -461,6 +461,20 @@ export function lockedOverlapMs(spans: LockedSpan[], start: Dayjs, end: Dayjs): 
   );
 }
 
+/** Minutes locked from 1 October through now, capped at the end of the month. */
+export function lockedMinutesInOctober(
+  year: number,
+  tz: string,
+  sessions: LockedSpan[],
+  now: Dayjs = dayjs(),
+): number {
+  const start = dayjs.tz(`${year}-10-01 00:00`, tz);
+  const monthEnd = start.add(1, "month");
+  const end = now.isBefore(monthEnd) ? now : monthEnd;
+  if (!end.isAfter(start)) return 0;
+  return Math.floor(lockedOverlapMs(sessions, start, end) / 60000);
+}
+
 /** Whole periods only. 59 minutes at 1 per hour is 0. */
 export function timeLockedAward(
   lockedMs: number,

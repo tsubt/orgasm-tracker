@@ -423,6 +423,7 @@ export default function PowerBar({
   rewardTiers = null,
   daysLeft = null,
   compact = false,
+  trackOnly = false,
   onClaim,
 }: {
   points: number;
@@ -432,6 +433,8 @@ export default function PowerBar({
   rewardTiers?: TierSnapshot[] | null;
   daysLeft?: number | null;
   compact?: boolean;
+  /** Sidebar feed: the track alone, without the power pill or reward button. */
+  trackOnly?: boolean;
   /** Present on the owner page. Clicking claims the highest reward. */
   onClaim?: () => void;
 }) {
@@ -444,6 +447,20 @@ export default function PowerBar({
   const rewardSorted = [...(rewardTiers ?? tiers)].sort((a, b) => a.points - b.points);
   const rewardEarned = locked ? highestEarned(rewardScore, rewardSorted) : null;
   const rewardReady = locked && rewardScore > 0 ? rewardScore : undefined;
+  if (trackOnly) {
+    return (
+      <div className="min-w-0 px-2">
+        <BarTrack
+          orientation="horizontal"
+          fill={fill}
+          sorted={sorted}
+          earned={earned}
+          rewardReady={rewardReady}
+          slim
+        />
+      </div>
+    );
+  }
   const here = scaleColor(fill / 100);
   const outcome = countdownReward(points, sorted);
   const daysPhrase = daysLeft == null ? null : daysLeftPhrase(daysLeft, outcome);

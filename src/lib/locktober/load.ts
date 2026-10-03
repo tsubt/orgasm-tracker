@@ -19,6 +19,7 @@ import {
   barAutoPoints,
   describeBar,
   focusYear,
+  lockedMinutesInOctober,
   LockedSpan,
   parseTierSnapshot,
   snapshotTitle,
@@ -108,6 +109,7 @@ export type PublicChallengeCard = {
   username: string | null;
   name: string | null;
   likeCount: number;
+  lockedMinutes: number;
   bar: BarView;
   cumDays: { date: string; status: LocktoberCumDayStatus }[];
 };
@@ -416,6 +418,7 @@ export async function loadPublicBoard(year: number): Promise<PublicChallengeCard
         username: challenge.user.username,
         name: challenge.user.name,
         likeCount: challenge._count.likes,
+        lockedMinutes: lockedMinutesInOctober(challenge.year, challenge.timezone, mine),
         bar: describeBar(
           challenge.year,
           challenge.timezone,
