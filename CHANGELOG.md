@@ -1,5 +1,16 @@
 # otrack
 
+## 1.2.0
+
+### Minor Changes
+
+- 05b12be: Backdate a Locktober task log, and let that update an unclaimed cum-day reward.
+
+### Patch Changes
+
+- 2abcc14: Show locked hours beside each name in the dashboard Locktober list, and leave only the bar.
+- 05b12be: Color the cum-day reward from the power bar, and show the previous period as a gray bar.
+
 ## 1.1.0
 
 ### Minor Changes
