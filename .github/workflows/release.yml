@@ -21,8 +21,23 @@ jobs:
       - uses: oven-sh/setup-bun@v2.2.0
       - run: bun install --frozen-lockfile
       - uses: changesets/action@v2.1.2
+        id: changesets
         with:
           version-script: bun run version-packages
           publish-script: bun run tag-release
           pr-title: Version packages
           commit-message: Version packages
+      - name: Fast-forward main to the release
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          version="$(jq -r .version package.json)"
+          git fetch origin main
+          git checkout -B main origin/main
+          if git merge --ff-only "${GITHUB_SHA}"; then
+            git push origin HEAD:main
+          else
+            git merge --no-ff "${GITHUB_SHA}" -m "Release ${version}"
+            git push origin HEAD:main
+          fi
