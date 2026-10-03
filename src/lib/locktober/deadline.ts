@@ -143,3 +143,44 @@ export function missedDeadlinePenalties(args: {
   }
   return results;
 }
+
+/** Miss penalties whose period now has an on-time log. */
+export function satisfiedDeadlineMissIds(args: {
+  tz: string;
+  firstDayOfWeek: number;
+  tasks: DeadlineTaskInput[];
+  completions: {
+    id: string;
+    taskId: string | null;
+    completedAt: Date | string;
+    deadlineMiss: boolean;
+  }[];
+}): string[] {
+  const ids: string[] = [];
+  for (const task of args.tasks) {
+    if (task.mode === "TIME_LOCKED" || task.deadlineMinute == null) continue;
+    const deadlineMinute = task.deadlineMinute;
+    const onTime = args.completions.filter((completion) => {
+      if (completion.taskId !== task.id || completion.deadlineMiss) return false;
+      const at = dayjs(completion.completedAt).tz(args.tz);
+      return at.hour() * 60 + at.minute() <= deadlineMinute;
+    });
+    if (onTime.length === 0) continue;
+
+    for (const miss of args.completions) {
+      if (miss.taskId !== task.id || !miss.deadlineMiss) continue;
+      const period = periodStart(
+        dayjs(miss.completedAt).tz(args.tz),
+        task.cadence,
+        args.firstDayOfWeek,
+      );
+      const end = periodEnd(period, task.cadence);
+      const cleared = onTime.some((completion) => {
+        const at = dayjs(completion.completedAt);
+        return !at.isBefore(period) && at.isBefore(end);
+      });
+      if (cleared) ids.push(miss.id);
+    }
+  }
+  return ids;
+}

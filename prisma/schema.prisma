@@ -302,7 +302,10 @@ model LocktoberCompletion {
   id            String   @id @default(cuid())
   challengeId   String
   taskId        String?
+  /** Time the log scores at. An override can place this earlier than it was entered. */
   completedAt   DateTime @default(now())
+  /** Wall time the log was submitted. Matches completedAt unless the time was overridden. */
+  enteredAt     DateTime @default(now())
   minutes       Int?
   note          String?  @db.Text
   pointsAwarded Int

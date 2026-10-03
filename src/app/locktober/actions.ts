@@ -5,13 +5,12 @@ import { prisma } from "@/prisma";
 import { DEFAULT_TASKS, DEFAULT_TIERS } from "@/lib/locktober/defaults";
 import { deadlinePassed, manualQuantityLimit, manualRateUnit } from "@/lib/locktober/taskLabel";
 import { refreshLocktoberCard } from "@/lib/locktober/cardSnapshot";
-import { applyMissedDeadlines, ensureCumDayLocks } from "@/lib/locktober/locks";
+import { applyMissedDeadlines, clearSatisfiedDeadlineMisses, ensureCumDayLocks } from "@/lib/locktober/locks";
 import {
   cumDayInstant,
   cumDayIsFixed,
   dateOnlyString,
   dateOnlyToDb,
-  describeBar,
   eligibleCumDates,
   evenlySpacedDates,
   focusYear,
@@ -26,6 +25,7 @@ import {
   setupYear,
   taskCapState,
   tiersToSnapshot,
+  windowIsFrozen,
   CompletionSnapshot,
   CumDayInput,
 } from "@/lib/locktober/scoring";
@@ -671,6 +671,8 @@ export async function completeTask(input: {
   quantity?: number;
   amount?: number;
   note?: string;
+  /** Scoring time, set only when the logger overrides the clock. */
+  completedAt?: string;
 }): Promise<ActionResult> {
   const userId = await requireUserId();
   if (!userId) return fail("You need to be signed in.");
@@ -702,9 +704,21 @@ export async function completeTask(input: {
   if (!now.isBefore(octoberEnd(challenge.year, challenge.timezone))) {
     return fail("October is over.", applied > 0);
   }
-  if (deadlinePassed(task.deadlineMinute, now.hour(), now.minute())) {
-    await revalidateChallenge(challenge.shareSlug, challenge.id);
-    return fail("That deadline has passed, so this one is closed for today.", true);
+
+  const enteredAt = new Date();
+  let completedAt = enteredAt;
+  const overriding = Boolean(input.completedAt);
+  if (input.completedAt) {
+    const parsed = dayjs(input.completedAt);
+    if (!parsed.isValid() || parsed.isAfter(dayjs())) {
+      return fail("The completed time has to be in the past.");
+    }
+    const zoned = parsed.tz(challenge.timezone);
+    const date = zoned.format("YYYY-MM-DD");
+    if (!isOctoberDate(date, challenge.year)) {
+      return fail("That time is outside October.");
+    }
+    completedAt = parsed.toDate();
   }
 
   const cumDays: CumDayInput[] = challenge.cumDays.map((day) => ({
@@ -716,22 +730,23 @@ export async function completeTask(input: {
     claimedTierLabel: day.claimedTierLabel,
     claimedAt: day.claimedAt,
   }));
+  const effective = dayjs(completedAt).tz(challenge.timezone);
+  if (
+    windowIsFrozen(challenge.year, challenge.timezone, cumDays, effective)
+  ) {
+    return fail("That time is already claimed or skipped.");
+  }
+  if (deadlinePassed(task.deadlineMinute, effective.hour(), effective.minute())) {
+    await revalidateChallenge(challenge.shareSlug, challenge.id);
+    return fail("That deadline has passed, so this one is closed for that time.", true);
+  }
+
   const logged = challenge.completions.map((completion) => ({
     taskId: completion.taskId,
     completedAt: completion.completedAt,
     pointsAwarded: completion.pointsAwarded,
     deadlineMiss: isDeadlineMiss(completion.snapshot),
   }));
-  const bar = describeBar(
-    challenge.year,
-    challenge.timezone,
-    cumDays,
-    tiersToSnapshot(challenge.tiers),
-    logged,
-  );
-  if (bar.locked) {
-    return fail("The power bar is locked until you claim or skip this cum day.", applied > 0);
-  }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -744,14 +759,14 @@ export async function completeTask(input: {
     maxCompletions: task.maxCompletions,
     maxPoints: task.maxPoints,
     completions: logged,
-    now,
+    now: effective,
     firstDayOfWeek: user?.firstDayOfWeek ?? 1,
   });
   if (cap.maxed) return fail("That task is already maxed out for this period.");
 
   const note = (input.note ?? "").trim();
   if (note.length > 500) return fail("Keep the note under 500 characters.");
-  if (task.noteRequired && !note) return fail("This one needs a note.");
+  if ((task.noteRequired || overriding) && !note) return fail("This one needs a note.");
 
   let pointsAwarded = 0;
   let minutes: number | null = null;
@@ -802,12 +817,16 @@ export async function completeTask(input: {
     data: {
       challengeId: challenge.id,
       taskId: task.id,
+      completedAt,
+      enteredAt,
       minutes,
       note: note || null,
       pointsAwarded,
       snapshot: snapshot as unknown as Prisma.InputJsonValue,
     },
   });
+  await clearSatisfiedDeadlineMisses(challenge.id);
+  await ensureCumDayLocks(challenge.id);
 
   await revalidateChallenge(challenge.shareSlug, challenge.id);
   return { ok: true };

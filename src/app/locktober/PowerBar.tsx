@@ -13,22 +13,49 @@ import {
 
 const BLUE: [number, number, number] = [59, 130, 246];
 const HOT_PINK: [number, number, number] = [255, 20, 147];
-const GOLD = "#f0c014";
-const GOLD_EDGE = "#a16207";
 const PASSED = "#171717";
 
 type MarkKind = "current" | "passed" | "ahead";
 type DodgeDirection = "up" | "down" | "right";
 
-function mix(from: [number, number, number], to: [number, number, number], t: number) {
-  const amount = Math.max(0, Math.min(1, t));
-  const blend = (start: number, end: number) => Math.round(start + (end - start) * amount);
-  return `rgb(${blend(from[0], to[0])}, ${blend(from[1], to[1])}, ${blend(from[2], to[2])})`;
+function scaleRgb(amount: number): [number, number, number] {
+  const t = Math.max(0, Math.min(1, amount));
+  return [
+    Math.round(BLUE[0] + (HOT_PINK[0] - BLUE[0]) * t),
+    Math.round(BLUE[1] + (HOT_PINK[1] - BLUE[1]) * t),
+    Math.round(BLUE[2] + (HOT_PINK[2] - BLUE[2]) * t),
+  ];
 }
 
 /** Blue at the start of the bar, hot pink at the top target. */
 function scaleColor(amount: number): string {
-  return mix(BLUE, HOT_PINK, amount);
+  const [r, g, b] = scaleRgb(amount);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function channelLinear(channel: number) {
+  const s = channel / 255;
+  return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+}
+
+function luminance(r: number, g: number, b: number) {
+  return 0.2126 * channelLinear(r) + 0.7152 * channelLinear(g) + 0.0722 * channelLinear(b);
+}
+
+/** Same hue as the bar, pulled darker only until white type stays readable. */
+function buttonFill(amount: number): string {
+  const [r, g, b] = scaleRgb(amount);
+  let depth = 0;
+  let cr = r;
+  let cg = g;
+  let cb = b;
+  while (1.05 / (luminance(cr, cg, cb) + 0.05) < 5 && depth < 0.45) {
+    depth += 0.02;
+    cr = Math.round(r * (1 - depth));
+    cg = Math.round(g * (1 - depth));
+    cb = Math.round(b * (1 - depth));
+  }
+  return `rgb(${cr}, ${cg}, ${cb})`;
 }
 
 function highestEarned(points: number, sorted: TierSnapshot[]): TierSnapshot | null {
@@ -215,7 +242,7 @@ function Mark({
         borderColor: "#9ca3af",
       }
     : kind === "current"
-      ? { backgroundColor: GOLD, borderColor: GOLD_EDGE, boxShadow: "0 0 0 1px #fff" }
+      ? { backgroundColor: color, borderColor: color, boxShadow: "0 0 0 1px #fff" }
       : kind === "passed"
         ? { backgroundColor: PASSED, borderColor: PASSED }
         : { backgroundColor: "transparent", borderColor: color };
@@ -245,14 +272,14 @@ function TierName({
   const className = muted
     ? "text-[10px] font-semibold uppercase leading-tight text-gray-400 dark:text-gray-500"
     : kind === "current"
-      ? "text-[10px] font-bold uppercase leading-tight text-amber-700 dark:text-amber-300"
+      ? "text-[10px] font-bold uppercase leading-tight"
       : kind === "passed"
         ? "text-[10px] font-semibold uppercase leading-tight text-gray-800 dark:text-gray-200"
         : "text-[10px] font-semibold uppercase leading-tight";
   return (
     <span
       className={className}
-      style={!muted && kind === "ahead" ? { color: scaleColor(at / 100) } : undefined}
+      style={!muted && kind !== "passed" ? { color: scaleColor(at / 100) } : undefined}
     >
       {tier.label}
       {tier.expectsLocked && <TierLockIcon />}
@@ -273,12 +300,14 @@ function BarTrack({
   fill: number;
   sorted: TierSnapshot[];
   earned: TierSnapshot | null;
-  rewardReady: boolean;
+  /** Previous period's points, while that reward is still unclaimed. */
+  rewardReady?: number;
   slim?: boolean;
   dense?: boolean;
 }) {
   const horizontal = orientation === "horizontal";
   const thickness = dense ? "h-4" : slim ? "h-6" : "h-8";
+  const ghost = rewardReady == null ? 0 : barFillPercent(rewardReady, sorted);
   return (
     <div className={horizontal ? `relative ${thickness}` : "relative h-full w-8 shrink-0"}>
       <div
@@ -286,9 +315,23 @@ function BarTrack({
           horizontal ? `inset-x-0 top-1/2 ${thickness} -translate-y-1/2` : "inset-0"
         }`}
       >
+        {ghost > 0 &&
+          (horizontal ? (
+            <div
+              className="absolute inset-y-0 left-0 z-0 bg-gray-400 dark:bg-gray-500"
+              style={{ width: `${ghost}%` }}
+              title={`Previous period: ${rewardReady} pts`}
+            />
+          ) : (
+            <div
+              className="absolute inset-x-0 bottom-0 z-0 bg-gray-400 dark:bg-gray-500"
+              style={{ height: `${ghost}%` }}
+              title={`Previous period: ${rewardReady} pts`}
+            />
+          ))}
         {fill > 0 &&
           (horizontal ? (
-            <div className="h-full overflow-hidden" style={{ width: `${fill}%` }}>
+            <div className="relative z-10 h-full overflow-hidden" style={{ width: `${fill}%` }}>
               <div
                 className="h-full"
                 style={{
@@ -298,7 +341,7 @@ function BarTrack({
               />
             </div>
           ) : (
-            <div className="absolute inset-x-0 bottom-0 overflow-hidden" style={{ height: `${fill}%` }}>
+            <div className="absolute inset-x-0 bottom-0 z-10 overflow-hidden" style={{ height: `${fill}%` }}>
               <div
                 className="absolute inset-x-0 bottom-0"
                 style={{
@@ -312,10 +355,8 @@ function BarTrack({
       {sorted.map((tier) => {
         const at = barFillPercent(tier.points, sorted);
         const kind = markKind(tier, earned);
-        const muted = rewardReady && kind !== "current";
-        const title = muted
-          ? `${tier.label} locked`
-          : kind === "current"
+        const title =
+          kind === "current"
             ? `${tier.label} earned`
             : kind === "passed"
               ? `${tier.label} passed`
@@ -330,7 +371,7 @@ function BarTrack({
             style={style}
             title={title}
           >
-            <Mark kind={kind} color={scaleColor(at / 100)} muted={muted} dense={dense} />
+            <Mark kind={kind} color={scaleColor(at / 100)} muted={false} dense={dense} />
           </div>
         );
       })}
@@ -341,17 +382,21 @@ function BarTrack({
 function ClaimControl({
   earned,
   points,
+  tone,
   onClaim,
   align,
 }: {
   earned: TierSnapshot;
   points: number;
+  tone: number;
   onClaim?: () => void;
   align: "left" | "center";
 }) {
-  const className = `box-border w-full min-w-0 max-w-full whitespace-normal break-words rounded-2xl border-2 border-amber-500 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-100 dark:border-amber-300 dark:bg-amber-950/50 dark:text-amber-50 ${
+  const color = buttonFill(tone);
+  const className = `box-border w-full min-w-0 max-w-full whitespace-normal break-words rounded-2xl border-2 px-4 py-2 text-sm font-semibold text-white hover:brightness-95 ${
     align === "center" ? "text-center" : "text-left"
   }`;
+  const style = { backgroundColor: color, borderColor: color };
   const label = `Cum day reward: ${earned.label}`;
   const body = (
     <>
@@ -359,14 +404,12 @@ function ClaimControl({
         {label}
         {earned.expectsLocked && <TierLockIcon />}
       </span>
-      <span className="mt-0.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
-        {points} pts · claiming resets the bar
-      </span>
+      <span className="mt-0.5 block text-xs font-medium">{points} pts</span>
     </>
   );
-  if (!onClaim) return <div className={className}>{body}</div>;
+  if (!onClaim) return <div className={className} style={style}>{body}</div>;
   return (
-    <button type="button" className={className} onClick={onClaim}>
+    <button type="button" className={className} style={style} onClick={onClaim}>
       {body}
     </button>
   );
@@ -376,6 +419,8 @@ export default function PowerBar({
   points,
   tiers,
   locked,
+  rewardPoints = null,
+  rewardTiers = null,
   daysLeft = null,
   compact = false,
   onClaim,
@@ -383,6 +428,8 @@ export default function PowerBar({
   points: number;
   tiers: TierSnapshot[];
   locked: boolean;
+  rewardPoints?: number | null;
+  rewardTiers?: TierSnapshot[] | null;
   daysLeft?: number | null;
   compact?: boolean;
   /** Present on the owner page. Clicking claims the highest reward. */
@@ -391,11 +438,15 @@ export default function PowerBar({
   const fill = barFillPercent(points, tiers);
   const sorted = [...tiers].sort((a, b) => a.points - b.points);
   const earned = highestEarned(points, sorted);
-  const rewardReady = locked;
+  // The preview locks the bar in place. The live page passes a separate reward score.
+  const separateReward = rewardPoints != null;
+  const rewardScore = separateReward ? rewardPoints : points;
+  const rewardSorted = [...(rewardTiers ?? tiers)].sort((a, b) => a.points - b.points);
+  const rewardEarned = locked ? highestEarned(rewardScore, rewardSorted) : null;
+  const rewardReady = locked && rewardScore > 0 ? rewardScore : undefined;
   const here = scaleColor(fill / 100);
   const outcome = countdownReward(points, sorted);
-  const daysPhrase =
-    daysLeft == null || locked ? null : daysLeftPhrase(daysLeft, outcome);
+  const daysPhrase = daysLeft == null ? null : daysLeftPhrase(daysLeft, outcome);
 
   const names = sorted.map((tier) => {
     const at = barFillPercent(tier.points, sorted);
@@ -403,24 +454,22 @@ export default function PowerBar({
     return {
       key: `${tier.label}-${tier.points}`,
       at,
-      node: <TierName tier={tier} kind={kind} at={at} muted={rewardReady && kind !== "current"} />,
+      node: <TierName tier={tier} kind={kind} at={at} muted={false} />,
     };
   });
   const pointLabels = sorted.map((tier) => {
     const kind = markKind(tier, earned);
-    const muted = rewardReady && kind !== "current";
     return {
       key: `pts-${tier.label}-${tier.points}`,
       at: barFillPercent(tier.points, sorted),
       node: (
         <span
           className={
-            muted
-              ? "text-[11px] text-gray-400 dark:text-gray-500"
-              : kind === "current"
-                ? "text-[11px] font-semibold text-amber-700 dark:text-amber-300"
-                : "text-[11px] text-gray-500 dark:text-slate-400"
+            kind === "current"
+              ? "text-[11px] font-semibold"
+              : "text-[11px] text-gray-500 dark:text-slate-400"
           }
+          style={kind === "current" ? { color: scaleColor(barFillPercent(tier.points, sorted) / 100) } : undefined}
         >
           {tier.points}
         </span>
@@ -438,7 +487,7 @@ export default function PowerBar({
             LOCKTOBER POWER BAR
           </h2>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Cum days are when you claim. Only the highest reward counts, then the bar resets.
+            Midnight locks in the highest reward and resets the bar. Points after that count toward the next cum day.
           </p>
         </div>
       )}
@@ -467,19 +516,14 @@ export default function PowerBar({
               {sorted.map((tier) => {
                 const at = barFillPercent(tier.points, sorted);
                 const kind = markKind(tier, earned);
-                const muted = rewardReady && kind !== "current";
                 return (
                   <li
                     key={`legend-${tier.label}-${tier.points}`}
                     className="inline-flex items-center gap-1 leading-none"
                   >
-                    <Mark kind={kind} color={scaleColor(at / 100)} muted={muted} dense />
-                    <TierName tier={tier} kind={kind} at={at} muted={muted} />
-                    <span
-                      className={`text-[10px] tabular-nums ${
-                        muted ? "text-gray-400 dark:text-gray-500" : "text-gray-500 dark:text-slate-400"
-                      }`}
-                    >
+                    <Mark kind={kind} color={scaleColor(at / 100)} muted={false} dense />
+                    <TierName tier={tier} kind={kind} at={at} muted={false} />
+                    <span className="text-[10px] tabular-nums text-gray-500 dark:text-slate-400">
                       {tier.points}
                     </span>
                   </li>
@@ -503,22 +547,32 @@ export default function PowerBar({
       )}
 
       <div
-        className={compact ? "mt-2 w-full min-w-0" : "mt-2 w-full min-w-0 @min-[640px]:mt-3"}
+        className={`flex flex-col gap-2 ${compact ? "mt-2 w-full min-w-0" : "mt-2 w-full min-w-0 @min-[640px]:mt-3"}`}
       >
-        {rewardReady && earned ? (
-          <ClaimControl earned={earned} points={points} onClaim={onClaim} align="left" />
-        ) : rewardReady ? (
-          <div className="text-sm font-semibold text-gray-500">{DENIAL_LABEL}</div>
-        ) : (
-          <div className="flex justify-center">
-            <div
-              className="rounded-full border px-4 py-1 text-center text-sm font-semibold"
-              style={{ borderColor: here, color: here }}
-            >
-              Current power: {points} pts · {daysPhrase ?? outcome}
-            </div>
-          </div>
+        {rewardReady != null && separateReward && (
+          <p className="text-center text-xs text-gray-500 dark:text-slate-400">
+            Gray bar is the locked reward.
+          </p>
         )}
+        <div className="flex justify-center">
+          <div
+            className="rounded-full border px-4 py-1 text-center text-sm font-semibold"
+            style={{ borderColor: here, color: here }}
+          >
+            Current power: {points} pts · {daysPhrase ?? outcome}
+          </div>
+        </div>
+        {locked && rewardEarned ? (
+          <ClaimControl
+            earned={rewardEarned}
+            points={rewardScore}
+            tone={barFillPercent(rewardScore, rewardSorted) / 100}
+            onClaim={onClaim}
+            align="left"
+          />
+        ) : locked ? (
+          <div className="text-sm font-semibold text-gray-500">{DENIAL_LABEL}</div>
+        ) : null}
       </div>
     </div>
   );

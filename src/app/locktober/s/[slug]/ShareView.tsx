@@ -128,6 +128,8 @@ export default function ShareView({
         points={bar.points}
         tiers={bar.tiers}
         locked={bar.locked}
+        rewardPoints={bar.rewardPoints}
+        rewardTiers={bar.rewardTiers}
         daysLeft={bar.daysLeft}
       />
 

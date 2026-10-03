@@ -30,7 +30,7 @@ export type LocktoberCalendarDay = {
   lockedMinutes: number | null;
 };
 
-/** Scoring stretches between claims. A locked or upcoming cum day ends the open stretch. */
+/** Each cum-day boundary splits locked time. The open stretch runs up to now. */
 export function scoringWindows(
   year: number,
   tz: string,
@@ -38,31 +38,20 @@ export function scoringWindows(
   now: Dayjs,
 ): { start: Dayjs; end: Dayjs }[] {
   const finish = octoberEnd(year, tz);
+  const cap = now.isBefore(finish) ? now : finish;
   const sorted = [...cumDays].sort((a, b) => a.date.localeCompare(b.date));
   let start = octoberStart(year, tz);
   const windows: { start: Dayjs; end: Dayjs }[] = [];
 
-  const push = (end: Dayjs) => {
-    if (end.isAfter(start)) windows.push({ start, end });
-  };
-
   for (const day of sorted) {
     const boundary = cumDayInstant(day.date, tz);
-    if (day.status === "CLAIMED" || day.status === "SKIPPED") {
-      push(boundary.isBefore(finish) ? boundary : finish);
-      if (day.claimedAt) {
-        const closed = dayjs(day.claimedAt).tz(tz);
-        if (closed.isAfter(start)) start = closed;
-      }
-      if (!start.isBefore(finish)) return windows;
-      continue;
-    }
-    const cap = boundary.isAfter(now) ? now : boundary;
-    push(cap.isBefore(finish) ? cap : finish);
-    return windows;
+    if (!boundary.isAfter(start)) continue;
+    if (boundary.isAfter(cap)) break;
+    windows.push({ start, end: boundary });
+    start = boundary;
   }
 
-  push(now.isBefore(finish) ? now : finish);
+  if (cap.isAfter(start)) windows.push({ start, end: cap });
   return windows;
 }
 
@@ -137,14 +126,9 @@ export function octoberCalendar(args: {
 
   for (const completion of args.completions) {
     const at = dayjs(completion.completedAt);
-    const counted =
-      windows.some((window) => !at.isBefore(window.start) && at.isBefore(window.end)) ||
-      args.cumDays.some((day) => {
-        if (day.status === "SCHEDULED") return false;
-        const boundary = cumDayInstant(day.date, args.tz);
-        const closed = day.claimedAt ? dayjs(day.claimedAt) : null;
-        return !at.isBefore(boundary) && (closed == null || at.isBefore(closed));
-      });
+    const counted = windows.some(
+      (window) => !at.isBefore(window.start) && at.isBefore(window.end),
+    );
     if (!counted) continue;
     const date = at.tz(args.tz).format("YYYY-MM-DD");
     if (!date.startsWith(`${args.year}-10-`)) continue;

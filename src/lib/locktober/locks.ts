@@ -3,17 +3,19 @@ import { Prisma } from "@prisma/client";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { missedDeadlinePenalties } from "./deadline";
+import { missedDeadlinePenalties, satisfiedDeadlineMissIds } from "./deadline";
 import {
   CumDayInput,
   cumDayInstant,
+  cyclePoints,
   dateOnlyString,
   isDeadlineMiss,
   parseTierSnapshot,
+  rewardWindowFor,
   tiersToSnapshot,
-  currentCycle,
-  cyclePoints,
-  timeLockedProgress,
+  timeLockedInWindow,
+  type LockedSpan,
+  type TimeLockedTaskInput,
 } from "./scoring";
 
 dayjs.extend(utc);
@@ -100,6 +102,7 @@ export async function applyMissedDeadlines(challengeId: string): Promise<number>
       challengeId: challenge.id,
       taskId: item.taskId,
       completedAt: item.completedAt,
+      enteredAt: item.completedAt,
       note: item.note,
       pointsAwarded: item.pointsAwarded,
       snapshot: item.snapshot as unknown as Prisma.InputJsonValue,
@@ -108,7 +111,72 @@ export async function applyMissedDeadlines(challengeId: string): Promise<number>
   return pending.length;
 }
 
-/** Freeze the earliest unresolved cum day once its local midnight has passed. */
+/** Drop a miss penalty once an on-time log exists for that period. */
+export async function clearSatisfiedDeadlineMisses(challengeId: string): Promise<number> {
+  const challenge = await prisma.locktoberChallenge.findUnique({
+    where: { id: challengeId },
+    select: {
+      timezone: true,
+      user: { select: { firstDayOfWeek: true } },
+      tasks: {
+        select: {
+          id: true,
+          title: true,
+          kind: true,
+          points: true,
+          mode: true,
+          cadence: true,
+          maxCompletions: true,
+          maxPoints: true,
+          noteRequired: true,
+          deadlineMinute: true,
+          missPenalty: true,
+          deadlineSetAt: true,
+        },
+      },
+    },
+  });
+  if (!challenge) return 0;
+  const completions = await prisma.locktoberCompletion.findMany({
+    where: { challengeId },
+    select: { id: true, taskId: true, completedAt: true, snapshot: true },
+  });
+  const ids = satisfiedDeadlineMissIds({
+    tz: challenge.timezone,
+    firstDayOfWeek: challenge.user.firstDayOfWeek,
+    tasks: challenge.tasks,
+    completions: completions.map((completion) => ({
+      id: completion.id,
+      taskId: completion.taskId,
+      completedAt: completion.completedAt,
+      deadlineMiss: isDeadlineMiss(completion.snapshot),
+    })),
+  });
+  if (ids.length === 0) return 0;
+  await prisma.locktoberCompletion.deleteMany({ where: { id: { in: ids } } });
+  return ids.length;
+}
+
+function rewardPoints(
+  year: number,
+  tz: string,
+  cumDays: CumDayInput[],
+  day: CumDayInput,
+  completions: { completedAt: Date; pointsAwarded: number }[],
+  tasks: TimeLockedTaskInput[],
+  sessions: LockedSpan[],
+) {
+  const window = rewardWindowFor(year, tz, cumDays, day);
+  const auto = timeLockedInWindow({
+    tasks,
+    sessions,
+    start: window.start,
+    end: window.end,
+  });
+  return cyclePoints(completions, window.start, window.end, auto.total);
+}
+
+/** Lock every cum day whose midnight has passed, and refresh an open reward's points. */
 export async function ensureCumDayLocks(challengeId: string) {
   await applyMissedDeadlines(challengeId);
   const challenge = await prisma.locktoberChallenge.findUnique({
@@ -150,25 +218,27 @@ export async function ensureCumDayLocks(challengeId: string) {
 
   for (const day of cumDays) {
     if (day.status === "CLAIMED" || day.status === "SKIPPED") continue;
-    if (day.status === "LOCKED") return;
-    if (cumDayInstant(day.date, challenge.timezone).isAfter(now)) return;
+    if (cumDayInstant(day.date, challenge.timezone).isAfter(now)) break;
 
-    const cycle = currentCycle(challenge.year, challenge.timezone, cumDays);
-    const auto = timeLockedProgress({
-      year: challenge.year,
-      tz: challenge.timezone,
+    const points = rewardPoints(
+      challenge.year,
+      challenge.timezone,
       cumDays,
-      tasks: challenge.tasks,
-      sessions,
-      now,
-    });
-    const points = cyclePoints(
+      day,
       challenge.completions,
-      cycle.start,
-      cycle.end,
-      auto.total,
-      cycle.gapStart,
+      challenge.tasks,
+      sessions,
     );
+    if (day.status === "LOCKED") {
+      if (day.pointsAtLock !== points) {
+        await prisma.locktoberCumDay.update({
+          where: { id: day.id },
+          data: { pointsAtLock: points },
+        });
+        day.pointsAtLock = points;
+      }
+      continue;
+    }
     await prisma.locktoberCumDay.update({
       where: { id: day.id },
       data: {
@@ -177,6 +247,8 @@ export async function ensureCumDayLocks(challengeId: string) {
         tierSnapshot: liveTiers as unknown as Prisma.InputJsonValue,
       },
     });
-    return;
+    day.status = "LOCKED";
+    day.pointsAtLock = points;
+    day.tierSnapshot = liveTiers;
   }
 }

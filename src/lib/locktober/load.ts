@@ -16,6 +16,7 @@ import {
   CumDayInput,
   TierSnapshot,
   dateOnlyString,
+  barAutoPoints,
   describeBar,
   focusYear,
   LockedSpan,
@@ -61,6 +62,7 @@ export type SerializedCompletion = {
   id: string;
   taskId: string | null;
   completedAt: string;
+  enteredAt: string;
   minutes: number | null;
   note: string | null;
   pointsAwarded: number;
@@ -153,6 +155,13 @@ export function serializeChallenge(
     tasks: challenge.tasks,
     sessions,
   });
+  const auto = barAutoPoints({
+    year: challenge.year,
+    tz: challenge.timezone,
+    cumDays,
+    tasks: challenge.tasks,
+    sessions,
+  });
   const useCountByTask = new Map<string, number>();
   for (const completion of challenge.completions) {
     if (!completion.taskId || isDeadlineMiss(completion.snapshot)) continue;
@@ -205,6 +214,7 @@ export function serializeChallenge(
       id: completion.id,
       taskId: completion.taskId,
       completedAt: completion.completedAt.toISOString(),
+      enteredAt: completion.enteredAt.toISOString(),
       minutes: completion.minutes,
       note: completion.note,
       pointsAwarded: completion.pointsAwarded,
@@ -227,7 +237,8 @@ export function serializeChallenge(
       cumDays,
       tiers,
       challenge.completions,
-      timeLocked.total,
+      auto.live,
+      auto.reward,
     ),
   };
 }
@@ -305,8 +316,8 @@ export async function loadChallengeById(id: string) {
 export async function loadChallengeBySlug(slug: string) {
   const challenge = await loadChallengeBySlugRecord(slug);
   if (!challenge) return null;
-  const applied = await applyMissedDeadlines(challenge.id);
-  if (applied === 0) return challenge;
+  await applyMissedDeadlines(challenge.id);
+  await ensureCumDayLocks(challenge.id);
   return loadChallengeById(challenge.id);
 }
 
@@ -391,7 +402,7 @@ export async function loadPublicBoard(year: number): Promise<PublicChallengeCard
         claimedAt: day.claimedAt,
       }));
       const tiers = tiersToSnapshot(challenge.tiers);
-      const auto = timeLockedProgress({
+      const auto = barAutoPoints({
         year: challenge.year,
         tz: challenge.timezone,
         cumDays,
@@ -411,7 +422,8 @@ export async function loadPublicBoard(year: number): Promise<PublicChallengeCard
           cumDays,
           tiers,
           challenge.completions,
-          auto.total,
+          auto.live,
+          auto.reward,
         ),
         cumDays: cumDays.map((day) => ({ date: day.date, status: day.status })),
       };

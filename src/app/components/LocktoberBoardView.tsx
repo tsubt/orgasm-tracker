@@ -17,6 +17,8 @@ export default function LocktoberBoardView({
     points: number;
     locked: boolean;
     tiers: TierSnapshot[];
+    rewardPoints: number | null;
+    rewardTiers: TierSnapshot[] | null;
     daysLeft: number | null;
     shareSlug: string;
   } | null;
@@ -50,6 +52,8 @@ export default function LocktoberBoardView({
             points={mine.points}
             tiers={mine.tiers}
             locked={mine.locked}
+            rewardPoints={mine.rewardPoints}
+            rewardTiers={mine.rewardTiers}
             daysLeft={mine.daysLeft}
             compact
           />

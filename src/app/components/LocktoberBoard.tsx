@@ -25,6 +25,8 @@ async function loadBoard(userId: string): Promise<{
     points: number;
     locked: boolean;
     tiers: TierSnapshot[];
+    rewardPoints: number | null;
+    rewardTiers: TierSnapshot[] | null;
     daysLeft: number | null;
     shareSlug: string;
   } | null;
@@ -45,6 +47,8 @@ async function loadBoard(userId: string): Promise<{
             points: mine.bar.points,
             locked: mine.bar.locked,
             tiers: mine.bar.tiers,
+            rewardPoints: mine.bar.rewardPoints,
+            rewardTiers: mine.bar.rewardTiers,
             daysLeft: mine.bar.daysLeft,
             shareSlug: mine.shareSlug,
           }

@@ -51,6 +51,8 @@ export default function LocktoberParticipantsView({
                     points={participant.bar.points}
                     tiers={participant.bar.tiers}
                     locked={participant.bar.locked}
+                    rewardPoints={participant.bar.rewardPoints}
+                    rewardTiers={participant.bar.rewardTiers}
                     daysLeft={participant.bar.daysLeft}
                     compact
                   />

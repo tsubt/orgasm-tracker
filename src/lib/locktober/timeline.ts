@@ -34,6 +34,7 @@ type TimelineInput = {
   completions: {
     id: string;
     completedAt: string;
+    enteredAt?: string | null;
     pointsAwarded: number;
     title: string;
     note: string | null;
@@ -64,6 +65,24 @@ function pointsLabel(title: string, points: number) {
 function noteOrNull(note: string | null | undefined) {
   const trimmed = note?.trim();
   return trimmed ? trimmed : null;
+}
+
+function sameMinute(left: string, right: string) {
+  return Math.abs(new Date(left).getTime() - new Date(right).getTime()) < 60_000;
+}
+
+/** Hover for an overridden log: the scoring time, the submit time, and the note. */
+function overrideHover(
+  completion: { completedAt: string; enteredAt?: string | null; note: string | null },
+  timeZone: string,
+) {
+  const reason = noteOrNull(completion.note);
+  const enteredAt = completion.enteredAt;
+  if (!enteredAt || sameMinute(completion.completedAt, enteredAt)) return reason;
+  const completed = dayjs(completion.completedAt).tz(timeZone).format("D MMM h:mma");
+  const entered = dayjs(enteredAt).tz(timeZone).format("D MMM h:mma");
+  const times = `Completed ${completed} · entered ${entered}`;
+  return reason ? `${times} · ${reason}` : times;
 }
 
 /** Compact session length, e.g. "40m" or "2d 4h". */
@@ -177,7 +196,7 @@ export function locktoberTimeline(input: TimelineInput): LocktoberTimelineDay[] 
       session: sessionAt(at, spans),
       kind: completion.pointsAwarded < 0 ? "penalty" : "reward",
       label: pointsLabel(completion.title, completion.pointsAwarded),
-      note: noteOrNull(completion.note),
+      note: overrideHover(completion, input.timeZone),
     });
   }
 

@@ -345,6 +345,7 @@ function ChallengeView({
     now.isBefore(octoberEnd(challenge.year, challenge.timezone));
   const editingOpen = now.isBefore(octoberEnd(challenge.year, challenge.timezone));
   const locked = challenge.bar.locked;
+  const rewardPoints = challenge.bar.rewardPoints;
   const [completing, setCompleting] = useState<SerializedChallenge["tasks"][number] | null>(
     null,
   );
@@ -365,13 +366,11 @@ function ChallengeView({
     }),
   }));
 
-  const tasksClosedReason = locked
-    ? "Claim or skip this cum day before earning more points."
-    : !scoringOpen
-      ? now.isBefore(octoberStart(challenge.year, challenge.timezone))
-        ? "Tasks open on October 1."
-        : "October is over."
-      : null;
+  const tasksClosedReason = !scoringOpen
+    ? now.isBefore(octoberStart(challenge.year, challenge.timezone))
+      ? "Tasks open on October 1."
+      : "October is over."
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -423,6 +422,8 @@ function ChallengeView({
         points={challenge.bar.points}
         tiers={challenge.bar.tiers}
         locked={locked}
+        rewardPoints={challenge.bar.rewardPoints}
+        rewardTiers={challenge.bar.rewardTiers}
         daysLeft={challenge.bar.daysLeft}
         onClaim={
           locked && challenge.bar.reached ? () => setClaimOpen(true) : undefined
@@ -440,8 +441,8 @@ function ChallengeView({
           </h2>
           <p className="mt-1 text-sm text-rose-800 dark:text-rose-100">
             {challenge.bar.reached
-              ? `You only get ${challenge.bar.reached.label}. The other rewards are locked. Claim it on the bar to log it and reset your points.`
-              : "This cum day is Denial. Skip it to reset the bar."}
+              ? `You reached ${challenge.bar.reached.label}${rewardPoints == null ? "" : ` (${rewardPoints} pts)`}. Claim it on the bar to log it. Points from today count toward the next cum day.`
+              : "This cum day is Denial. Skip it if you don't want a reward. Points from today count toward the next cum day."}
           </p>
           <div className="mt-3">
             <button
@@ -449,7 +450,7 @@ function ChallengeView({
               className={quietButtonClass}
               disabled={pending}
               onClick={() => {
-                if (confirm("Skip this cum day with no reward? The bar will reset.")) {
+                if (confirm("Skip this cum day with no reward?")) {
                   void run(() => skipCumDay(challenge.bar.cumDayId!));
                 }
               }}
@@ -485,13 +486,11 @@ function ChallengeView({
                     const progress = challenge.timeLocked.find(
                       (item) => item.taskId === task.id,
                     );
-                    const status = locked
-                      ? "paused"
-                      : !scoringOpen
-                        ? now.isBefore(octoberStart(challenge.year, challenge.timezone))
-                          ? "Oct 1"
-                          : "ended"
-                        : formatLocked(progress?.lockedMs ?? 0);
+                    const status = !scoringOpen
+                      ? now.isBefore(octoberStart(challenge.year, challenge.timezone))
+                        ? "Oct 1"
+                        : "ended"
+                      : formatLocked(progress?.lockedMs ?? 0);
                     return (
                       <li key={task.id} className="h-full">
                         <TaskTile
@@ -507,11 +506,11 @@ function ChallengeView({
                     now.hour(),
                     now.minute(),
                   );
-                  const disabled = Boolean(tasksClosedReason) || cap.maxed || pastDeadline;
+                  const disabled = Boolean(tasksClosedReason) || cap.maxed;
                   const detail = cap.maxed
                     ? `${taskCardDetail(task)} · logged`
                     : pastDeadline
-                      ? `${taskCardDetail(task)} · closed`
+                      ? `${taskCardDetail(task)} · deadline passed`
                       : cap.remainingPoints != null
                         ? `${taskCardDetail(task)} · ${cap.remainingPoints}pt left`
                         : undefined;
@@ -521,20 +520,7 @@ function ChallengeView({
                         task={task}
                         detail={detail}
                         disabled={disabled}
-                        onClick={() => {
-                          const current = dayjs().tz(challenge.timezone);
-                          if (
-                            deadlinePassed(
-                              task.deadlineMinute,
-                              current.hour(),
-                              current.minute(),
-                            )
-                          ) {
-                            void run(() => completeTask({ taskId: task.id }));
-                            return;
-                          }
-                          setCompleting(task);
-                        }}
+                        onClick={() => setCompleting(task)}
                       />
                     </li>
                   );
@@ -590,10 +576,9 @@ function ChallengeView({
       {completing && (
         <CompleteModal
           task={completing}
-          remainingPoints={
-            taskStates.find((item) => item.task.id === completing.id)?.cap
-              .remainingPoints ?? null
-          }
+          completions={challenge.completions}
+          timezone={challenge.timezone}
+          firstDayOfWeek={firstDayOfWeek}
           onClose={() => setCompleting(null)}
         />
       )}
@@ -1334,14 +1319,38 @@ function TaskForm({
 
 function CompleteModal({
   task,
-  remainingPoints,
+  completions,
+  timezone,
+  firstDayOfWeek,
   onClose,
 }: {
   task: SerializedChallenge["tasks"][number];
-  remainingPoints: number | null;
+  completions: SerializedChallenge["completions"];
+  timezone: string;
+  firstDayOfWeek: number;
   onClose: () => void;
 }) {
   const { pending, run } = useRunner();
+  const zoneNow = dayjs().tz(timezone);
+  const [date, setDate] = useState(zoneNow.format("YYYY-MM-DD"));
+  const [time, setTime] = useState(zoneNow.format("HH:mm"));
+  const [override, setOverride] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [amount, setAmount] = useState(1);
+  const [note, setNote] = useState("");
+  const effective = override ? dayjs.tz(`${date} ${time}`, timezone) : zoneNow;
+  const cap = taskCapState({
+    taskId: task.id,
+    mode: task.mode,
+    cadence: task.cadence,
+    maxCompletions: task.maxCompletions,
+    maxPoints: task.maxPoints,
+    completions,
+    now: effective.isValid() ? effective : zoneNow,
+    firstDayOfWeek,
+  });
+  const remainingPoints = cap.remainingPoints;
+  const noteNeeded = override || task.noteRequired;
   const rate = Math.abs(task.points ?? 1);
   const unit = manualRateUnit(task.rateUnit);
   const unitLimit = manualQuantityLimit(unit);
@@ -1350,9 +1359,6 @@ function CompleteModal({
   const maxQuantity = pointLimited
     ? Math.min(unitLimit, Math.floor(remainingPoints / rate))
     : unitLimit;
-  const [quantity, setQuantity] = useState(1);
-  const [amount, setAmount] = useState(1);
-  const [note, setNote] = useState("");
   const amountMax = remainingPoints == null ? 500 : Math.min(500, remainingPoints);
 
   return (
@@ -1362,11 +1368,15 @@ function CompleteModal({
         onSubmit={(event) => {
           event.preventDefault();
           void run(async () => {
+            if (override && !effective.isValid()) {
+              return { ok: false, error: "Enter a valid date and time." };
+            }
             const result = await completeTask({
               taskId: task.id,
               quantity: task.mode === "PER_MINUTE" ? quantity : undefined,
               amount: task.mode === "ENTER_AMOUNT" ? amount : undefined,
               note,
+              completedAt: override ? effective.toISOString() : undefined,
             });
             if (result.ok) onClose();
             return result;
@@ -1408,14 +1418,54 @@ function CompleteModal({
             />
           </label>
         )}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex flex-col gap-1 text-sm">
+            Date
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              className={inputClass}
+              disabled={!override}
+              required
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Time
+            <input
+              type="time"
+              value={time}
+              onChange={(event) => setTime(event.target.value)}
+              className={inputClass}
+              disabled={!override}
+              required
+            />
+          </label>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={override}
+            onChange={(event) => {
+              const next = event.target.checked;
+              if (next) {
+                const current = dayjs().tz(timezone);
+                setDate(current.format("YYYY-MM-DD"));
+                setTime(current.format("HH:mm"));
+              }
+              setOverride(next);
+            }}
+          />
+          Override time
+        </label>
         <label className="flex flex-col gap-1 text-sm">
-          Note{task.noteRequired ? "" : " (optional)"}
+          Note{noteNeeded ? "" : " (optional)"}
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
             className={inputClass}
             rows={3}
-            required={task.noteRequired}
+            required={noteNeeded}
           />
         </label>
         <button
@@ -1480,7 +1530,7 @@ function ClaimModal({
         }}
       >
         <p className="text-sm text-gray-600">
-          Completing this claims {tier.label} and resets the bar.
+          Completing this logs {tier.label}. The bar already reset at midnight.
         </p>
         {tier.expectsLocked && !activeChastity && (
           <p className="text-sm text-amber-700">
@@ -1546,7 +1596,7 @@ function ClaimModal({
           </>
         ) : (
           <p className="text-sm text-gray-600">
-            This reward doesn&apos;t log an orgasm. Claiming it resets the bar.
+            This reward doesn&apos;t log an orgasm. Claiming it records the locked reward.
           </p>
         )}
         <button type="submit" className={buttonClass} disabled={pending}>

@@ -49,14 +49,22 @@ export type CumDayInput = {
 };
 
 export type BarView = {
+  /** Points since the latest cum-day midnight. This is the live bar. */
   points: number;
+  /** A cum day has started and its reward is still unclaimed. */
   locked: boolean;
+  /** Tiers drawn on the live bar. */
   tiers: TierSnapshot[];
+  /** Highest tier of the waiting reward. Null when that reward is Denial, or when none is waiting. */
   reached: TierSnapshot | null;
+  /** Points that decide the waiting reward. Null when none is waiting. */
+  rewardPoints: number | null;
+  /** Tier list frozen for the waiting reward. */
+  rewardTiers: TierSnapshot[] | null;
   cumDayId: string | null;
   cumDayDate: string | null;
   cumDayStatus: LocktoberCumDayStatus | null;
-  /** Days until the next cum day. Zero while that day is waiting to be claimed. */
+  /** Days until the next cum day that has not started yet. */
   daysLeft: number | null;
 };
 
@@ -285,12 +293,10 @@ function pointsInWindow(
   completions: { completedAt: Date | string; pointsAwarded: number }[],
   start: Dayjs,
   end: Dayjs | null,
-  gapStart: Dayjs | null = null,
 ): number {
   return completions.reduce((sum, completion) => {
     const at = dayjs(completion.completedAt);
-    const inGap = gapStart != null && !at.isBefore(gapStart) && at.isBefore(start);
-    if (!inGap && at.isBefore(start)) return sum;
+    if (at.isBefore(start)) return sum;
     if (end && !at.isBefore(end)) return sum;
     return sum + completion.pointsAwarded;
   }, 0);
@@ -309,9 +315,83 @@ export function cyclePoints(
   start: Dayjs,
   end: Dayjs | null,
   autoPoints = 0,
-  gapStart: Dayjs | null = null,
 ): number {
-  return Math.max(0, pointsInWindow(completions, start, end, gapStart) + autoPoints);
+  return Math.max(0, pointsInWindow(completions, start, end) + autoPoints);
+}
+
+function sortedCumDays(cumDays: CumDayInput[]): CumDayInput[] {
+  return [...cumDays].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Reward window for one cum day: [previous cum-day midnight, this midnight). */
+export function rewardWindowFor(
+  year: number,
+  tz: string,
+  cumDays: CumDayInput[],
+  day: CumDayInput,
+): { start: Dayjs; end: Dayjs } {
+  const sorted = sortedCumDays(cumDays);
+  const index = sorted.findIndex((item) => item.date === day.date);
+  const end = cumDayInstant(day.date, tz);
+  const start =
+    index <= 0 ? octoberStart(year, tz) : cumDayInstant(sorted[index - 1].date, tz);
+  return { start, end };
+}
+
+/**
+ * Live bar. Starts at the latest cum-day midnight that has arrived,
+ * and ends at the next cum-day midnight.
+ */
+export function liveWindow(
+  year: number,
+  tz: string,
+  cumDays: CumDayInput[],
+  now: Dayjs = dayjs().tz(tz),
+): { start: Dayjs; end: Dayjs | null } {
+  const sorted = sortedCumDays(cumDays);
+  let start = octoberStart(year, tz);
+  let end: Dayjs | null = null;
+  for (const day of sorted) {
+    const boundary = cumDayInstant(day.date, tz);
+    if (boundary.isAfter(now)) {
+      end = boundary;
+      break;
+    }
+    start = boundary;
+  }
+  return { start, end };
+}
+
+/** Earliest cum day that has started and is not claimed or skipped. */
+export function pendingReward(
+  tz: string,
+  cumDays: CumDayInput[],
+  now: Dayjs = dayjs().tz(tz),
+): CumDayInput | null {
+  for (const day of sortedCumDays(cumDays)) {
+    if (day.status === "CLAIMED" || day.status === "SKIPPED") continue;
+    if (cumDayInstant(day.date, tz).isAfter(now)) return null;
+    return day;
+  }
+  return null;
+}
+
+/** Claimed and skipped reward windows reject new logs. The open and locked windows do not. */
+export function windowIsFrozen(
+  year: number,
+  tz: string,
+  cumDays: CumDayInput[],
+  at: Dayjs,
+): boolean {
+  let start = octoberStart(year, tz);
+  for (const day of sortedCumDays(cumDays)) {
+    const end = cumDayInstant(day.date, tz);
+    if (!at.isBefore(start) && at.isBefore(end)) {
+      return day.status === "CLAIMED" || day.status === "SKIPPED";
+    }
+    start = end;
+  }
+  return false;
 }
 
 export type LockedSpan = {
@@ -394,25 +474,15 @@ export function timeLockedAward(
   return Math.floor(lockedMs / ratePeriodMs(every, unit)) * points;
 }
 
-export function timeLockedProgress(args: {
-  year: number;
-  tz: string;
-  cumDays: CumDayInput[];
+export function timeLockedInWindow(args: {
   tasks: TimeLockedTaskInput[];
   sessions: LockedSpan[];
-  now?: Dayjs;
+  start: Dayjs;
+  end: Dayjs;
 }): { total: number; byTask: { taskId: string; lockedMs: number; points: number }[] } {
   const tasks = args.tasks.filter((task) => task.mode === "TIME_LOCKED");
-  if (tasks.length === 0) return { total: 0, byTask: [] };
-
-  const now = (args.now ?? dayjs()).tz(args.tz);
-  const cycle = currentCycle(args.year, args.tz, args.cumDays);
-  const windowEnd = cycle.end ?? octoberEnd(args.year, args.tz);
-  const end = now.isBefore(windowEnd) ? now : windowEnd;
-  const lockedMs = end.isAfter(cycle.start)
-    ? lockedOverlapMs(args.sessions, cycle.start, end)
-    : 0;
-
+  if (tasks.length === 0 || !args.end.isAfter(args.start)) return { total: 0, byTask: [] };
+  const lockedMs = lockedOverlapMs(args.sessions, args.start, args.end);
   const byTask = tasks.map((task) => ({
     taskId: task.id,
     lockedMs,
@@ -429,31 +499,50 @@ export function timeLockedProgress(args: {
   };
 }
 
-export function currentCycle(
-  year: number,
-  tz: string,
-  cumDays: CumDayInput[],
-): { start: Dayjs; end: Dayjs | null; gapStart: Dayjs | null; cumDay: CumDayInput | null } {
-  const sorted = [...cumDays].sort((a, b) => a.date.localeCompare(b.date));
-  let start = octoberStart(year, tz);
-  let gapStart: Dayjs | null = null;
-  for (const day of sorted) {
-    if (day.status === "CLAIMED" || day.status === "SKIPPED") {
-      if (day.claimedAt) {
-        const closed = dayjs(day.claimedAt);
-        if (closed.isAfter(start)) {
-          gapStart = cumDayInstant(day.date, tz);
-          start = closed;
-        }
-      }
-      continue;
-    }
-    return { start, end: cumDayInstant(day.date, tz), gapStart, cumDay: day };
-  }
-  return { start, end: null, gapStart, cumDay: null };
+export function timeLockedProgress(args: {
+  year: number;
+  tz: string;
+  cumDays: CumDayInput[];
+  tasks: TimeLockedTaskInput[];
+  sessions: LockedSpan[];
+  now?: Dayjs;
+}): { total: number; byTask: { taskId: string; lockedMs: number; points: number }[] } {
+  const now = (args.now ?? dayjs()).tz(args.tz);
+  const live = liveWindow(args.year, args.tz, args.cumDays, now);
+  const windowEnd = live.end ?? octoberEnd(args.year, args.tz);
+  const end = now.isBefore(windowEnd) ? now : windowEnd;
+  return timeLockedInWindow({
+    tasks: args.tasks,
+    sessions: args.sessions,
+    start: live.start,
+    end,
+  });
 }
 
-/** Zero on a cum day until it is claimed or skipped, then the gap until the next one. */
+/** Live points, plus the waiting reward when a cum day has started. */
+export function barAutoPoints(args: {
+  year: number;
+  tz: string;
+  cumDays: CumDayInput[];
+  tasks: TimeLockedTaskInput[];
+  sessions: LockedSpan[];
+  now?: Dayjs;
+}): { live: number; reward: number } {
+  const now = (args.now ?? dayjs()).tz(args.tz);
+  const live = timeLockedProgress({ ...args, now });
+  const pending = pendingReward(args.tz, args.cumDays, now);
+  if (!pending) return { live: live.total, reward: 0 };
+  const window = rewardWindowFor(args.year, args.tz, args.cumDays, pending);
+  const reward = timeLockedInWindow({
+    tasks: args.tasks,
+    sessions: args.sessions,
+    start: window.start,
+    end: window.end,
+  });
+  return { live: live.total, reward: reward.total };
+}
+
+/** Days until the next cum day that has not started. A started day does not count as zero. */
 export function daysLeftUntilCum(
   tz: string,
   cumDays: { date: string; status: LocktoberCumDayStatus }[],
@@ -461,9 +550,8 @@ export function daysLeftUntilCum(
 ): number | null {
   const next = [...cumDays]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .find((day) => day.status === "LOCKED" || day.status === "SCHEDULED");
+    .find((day) => cumDayInstant(day.date, tz).isAfter(now));
   if (!next) return null;
-  if (next.status === "LOCKED") return 0;
   const today = now.tz(tz).startOf("day");
   const target = cumDayInstant(next.date, tz).startOf("day");
   return Math.max(0, target.diff(today, "day"));
@@ -476,32 +564,41 @@ export function describeBar(
   liveTiers: TierSnapshot[],
   completions: { completedAt: Date | string; pointsAwarded: number }[],
   autoPoints = 0,
+  rewardAutoPoints = 0,
+  now: Dayjs = dayjs().tz(tz),
 ): BarView {
-  const cycle = currentCycle(year, tz, cumDays);
-  if (cycle.cumDay?.status === "LOCKED") {
-    const tiers = cycle.cumDay.tierSnapshot ?? liveTiers;
-    const points = cycle.cumDay.pointsAtLock ?? 0;
+  const live = liveWindow(year, tz, cumDays, now);
+  const points = cyclePoints(completions, live.start, live.end, autoPoints);
+  const daysLeft = daysLeftUntilCum(tz, cumDays, now);
+  const pending = pendingReward(tz, cumDays, now);
+  if (!pending) {
     return {
       points,
-      locked: true,
-      tiers,
-      reached: highestTier(points, tiers),
-      cumDayId: cycle.cumDay.id,
-      cumDayDate: cycle.cumDay.date,
-      cumDayStatus: cycle.cumDay.status,
-      daysLeft: daysLeftUntilCum(tz, cumDays),
+      locked: false,
+      tiers: liveTiers,
+      reached: null,
+      rewardPoints: null,
+      rewardTiers: null,
+      cumDayId: null,
+      cumDayDate: null,
+      cumDayStatus: null,
+      daysLeft,
     };
   }
-  const points = cyclePoints(completions, cycle.start, cycle.end, autoPoints, cycle.gapStart);
+  const window = rewardWindowFor(year, tz, cumDays, pending);
+  const rewardTiers = pending.tierSnapshot ?? liveTiers;
+  const rewardPoints = cyclePoints(completions, window.start, window.end, rewardAutoPoints);
   return {
     points,
-    locked: false,
+    locked: true,
     tiers: liveTiers,
-    reached: highestTier(points, liveTiers),
-    cumDayId: cycle.cumDay?.id ?? null,
-    cumDayDate: cycle.cumDay?.date ?? null,
-    cumDayStatus: cycle.cumDay?.status ?? null,
-    daysLeft: daysLeftUntilCum(tz, cumDays),
+    reached: highestTier(rewardPoints, rewardTiers),
+    rewardPoints,
+    rewardTiers,
+    cumDayId: pending.id,
+    cumDayDate: pending.date,
+    cumDayStatus: pending.status === "LOCKED" ? "LOCKED" : pending.status,
+    daysLeft,
   };
 }
 
@@ -533,12 +630,17 @@ export function taskCapState(args: {
   firstDayOfWeek: number;
 }): { maxed: boolean; remainingPoints: number | null } {
   const start = periodStart(args.now, args.cadence, args.firstDayOfWeek);
-  const mine = args.completions.filter(
-    (completion) =>
-      completion.taskId === args.taskId &&
-      !completion.deadlineMiss &&
-      !dayjs(completion.completedAt).isBefore(start),
-  );
+  const end =
+    args.cadence === "DAILY"
+      ? start.add(1, "day")
+      : args.cadence === "MONTHLY"
+        ? start.add(1, "month")
+        : start.add(7, "day");
+  const mine = args.completions.filter((completion) => {
+    if (completion.taskId !== args.taskId || completion.deadlineMiss) return false;
+    const at = dayjs(completion.completedAt);
+    return !at.isBefore(start) && at.isBefore(end);
+  });
   if (args.mode === "TIME_LOCKED") {
     return { maxed: false, remainingPoints: null };
   }
