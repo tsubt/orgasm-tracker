@@ -307,16 +307,17 @@ export function sumPoints(
   start: Dayjs,
   end: Dayjs | null,
 ): number {
-  return Math.max(0, pointsInWindow(completions, start, end));
+  return pointsInWindow(completions, start, end);
 }
 
+/** Signed cycle total. The power bar fill clamps this at zero. */
 export function cyclePoints(
   completions: { completedAt: Date | string; pointsAwarded: number }[],
   start: Dayjs,
   end: Dayjs | null,
   autoPoints = 0,
 ): number {
-  return Math.max(0, pointsInWindow(completions, start, end) + autoPoints);
+  return pointsInWindow(completions, start, end) + autoPoints;
 }
 
 function sortedCumDays(cumDays: CumDayInput[]): CumDayInput[] {
