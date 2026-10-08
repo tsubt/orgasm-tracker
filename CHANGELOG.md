@@ -1,5 +1,11 @@
 # otrack
 
+## 1.2.1
+
+### Patch Changes
+
+- 8aac0fe: Show a negative Locktober score, and keep the power bar empty until it climbs back above zero.
+
 ## 1.2.0
 
 ### Minor Changes
