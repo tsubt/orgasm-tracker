@@ -191,6 +191,11 @@ export function locktoberCardElement(card: {
                 <div style={{ fontSize: 36, fontWeight: 700 }}>{lines.days}</div>
               </div>
             ) : null}
+            {lines?.next ? (
+              <div style={{ display: "flex", marginTop: 18, fontSize: 32, fontWeight: 700 }}>
+                {lines.next}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div style={{ display: "flex", fontSize: 36, marginTop: 48, color: "#4b5563" }}>

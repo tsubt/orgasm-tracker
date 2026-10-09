@@ -2,7 +2,7 @@
 
 import { LockClosedIcon } from "@heroicons/react/24/solid";
 import { barFillPercent, TierSnapshot } from "@/lib/locktober/scoring";
-import { countdownReward, daysLeftPhrase, DENIAL_LABEL } from "@/lib/locktober/shareLine";
+import { countLabel, DENIAL_LABEL } from "@/lib/locktober/shareLine";
 import {
   useLayoutEffect,
   useRef,
@@ -379,6 +379,59 @@ function BarTrack({
   );
 }
 
+function nextReward(points: number, sorted: TierSnapshot[]): TierSnapshot | null {
+  return sorted.find((tier) => tier.points > points) ?? null;
+}
+
+function RewardName({ tier }: { tier: TierSnapshot }) {
+  return (
+    <>
+      {tier.label}
+      {tier.expectsLocked && <TierLockIcon />}
+    </>
+  );
+}
+
+function PowerStat({ value, detail }: { value: string; detail?: ReactNode }) {
+  return (
+    <div className="flex h-full min-w-0 flex-col items-center rounded-xl border border-gray-200 bg-gray-50 px-1.5 py-2 text-center dark:border-slate-700 dark:bg-slate-900">
+      <div className="text-sm font-semibold leading-tight tabular-nums">{value}</div>
+      {detail ? (
+        <div className="mt-0.5 break-words text-[10px] font-medium leading-tight text-gray-500 dark:text-slate-400">
+          {detail}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PowerStats({
+  points,
+  daysLeft,
+  earned,
+  upcoming,
+}: {
+  points: number;
+  daysLeft: number | null;
+  earned: TierSnapshot | null;
+  upcoming: TierSnapshot | null;
+}) {
+  const remaining = upcoming ? Math.max(0, upcoming.points - points) : 0;
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <PowerStat value={countLabel(points, "point", "points")} />
+      <PowerStat
+        value={daysLeft == null ? "—" : countLabel(daysLeft, "day", "days")}
+        detail={<>until {earned ? <RewardName tier={earned} /> : DENIAL_LABEL}</>}
+      />
+      <PowerStat
+        value={countLabel(remaining, "point", "points")}
+        detail={upcoming ? <>to unlock <RewardName tier={upcoming} /></> : "unlocked"}
+      />
+    </div>
+  );
+}
+
 function ClaimControl({
   earned,
   points,
@@ -461,9 +514,7 @@ export default function PowerBar({
       </div>
     );
   }
-  const here = scaleColor(fill / 100);
-  const outcome = countdownReward(points, sorted);
-  const daysPhrase = daysLeft == null ? null : daysLeftPhrase(daysLeft, outcome);
+  const upcoming = nextReward(points, sorted);
 
   const names = sorted.map((tier) => {
     const at = barFillPercent(tier.points, sorted);
@@ -533,16 +584,14 @@ export default function PowerBar({
               {sorted.map((tier) => {
                 const at = barFillPercent(tier.points, sorted);
                 const kind = markKind(tier, earned);
+                const passed = kind === "passed";
                 return (
                   <li
                     key={`legend-${tier.label}-${tier.points}`}
                     className="inline-flex items-center gap-1 leading-none"
                   >
-                    <Mark kind={kind} color={scaleColor(at / 100)} muted={false} dense />
-                    <TierName tier={tier} kind={kind} at={at} muted={false} />
-                    <span className="text-[10px] tabular-nums text-gray-500 dark:text-slate-400">
-                      {tier.points}
-                    </span>
+                    <Mark kind={kind} color={scaleColor(at / 100)} muted={passed} dense />
+                    <TierName tier={tier} kind={kind} at={at} muted={passed} />
                   </li>
                 );
               })}
@@ -571,14 +620,7 @@ export default function PowerBar({
             Gray bar is the locked reward.
           </p>
         )}
-        <div className="flex justify-center">
-          <div
-            className="rounded-full border px-4 py-1 text-center text-sm font-semibold"
-            style={{ borderColor: here, color: here }}
-          >
-            Current power: {points} pts · {daysPhrase ?? outcome}
-          </div>
-        </div>
+        <PowerStats points={points} daysLeft={daysLeft} earned={earned} upcoming={upcoming} />
         {locked && rewardEarned ? (
           <ClaimControl
             earned={rewardEarned}

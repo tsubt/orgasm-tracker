@@ -832,6 +832,199 @@ export async function completeTask(input: {
   return { ok: true };
 }
 
+export async function updateCompletion(input: {
+  completionId: string;
+  note?: string;
+  completedAt: string;
+  quantity?: number;
+  amount?: number;
+}): Promise<ActionResult> {
+  const owned = await ownedLog(input.completionId);
+  if (!owned.ok) return owned;
+  const { completion, task } = owned;
+
+  const applied = await applyMissedDeadlines(completion.challengeId);
+  await ensureCumDayLocks(completion.challengeId);
+  const challenge = await prisma.locktoberChallenge.findUnique({
+    where: { id: completion.challengeId },
+    include: {
+      tiers: { orderBy: { sortOrder: "asc" } },
+      cumDays: { orderBy: { date: "asc" } },
+      completions: {
+        select: { id: true, taskId: true, completedAt: true, pointsAwarded: true, snapshot: true },
+      },
+    },
+  });
+  if (!challenge) return fail("Challenge not found.");
+
+  const now = dayjs().tz(challenge.timezone);
+  if (!now.isBefore(octoberEnd(challenge.year, challenge.timezone))) {
+    return fail("October is over.", applied > 0);
+  }
+
+  const parsed = dayjs(input.completedAt);
+  if (!parsed.isValid() || parsed.isAfter(dayjs())) {
+    return fail("The completed time has to be in the past.");
+  }
+  const date = parsed.tz(challenge.timezone).format("YYYY-MM-DD");
+  if (!isOctoberDate(date, challenge.year)) {
+    return fail("That time is outside October.");
+  }
+
+  const cumDays: CumDayInput[] = challenge.cumDays.map((day) => ({
+    id: day.id,
+    date: dateOnlyString(day.date),
+    status: day.status,
+    pointsAtLock: day.pointsAtLock,
+    tierSnapshot: parseTierSnapshot(day.tierSnapshot),
+    claimedTierLabel: day.claimedTierLabel,
+    claimedAt: day.claimedAt,
+  }));
+  const previous = dayjs(completion.completedAt).tz(challenge.timezone);
+  const effective = parsed.tz(challenge.timezone);
+  if (
+    windowIsFrozen(challenge.year, challenge.timezone, cumDays, previous) ||
+    windowIsFrozen(challenge.year, challenge.timezone, cumDays, effective)
+  ) {
+    return fail("That log is in a claimed or skipped window.");
+  }
+
+  const miss = isDeadlineMiss(completion.snapshot);
+  const note = (input.note ?? "").trim();
+  if (note.length > 500) return fail("Keep the note under 500 characters.");
+  const overridden = Math.abs(effective.valueOf() - completion.enteredAt.getTime()) >= 60_000;
+  if ((task?.noteRequired || overridden) && !note) return fail("This one needs a note.");
+
+  let pointsAwarded = completion.pointsAwarded;
+  let minutes = completion.minutes;
+  if (!miss && task && task.mode !== "TIME_LOCKED") {
+    if (deadlinePassed(task.deadlineMinute, effective.hour(), effective.minute())) {
+      await revalidateChallenge(challenge.shareSlug, challenge.id);
+      return fail("That deadline has passed, so this one is closed for that time.", true);
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: owned.userId },
+      select: { firstDayOfWeek: true },
+    });
+    const cap = taskCapState({
+      taskId: task.id,
+      mode: task.mode,
+      cadence: task.cadence,
+      maxCompletions: task.maxCompletions,
+      maxPoints: task.maxPoints,
+      completions: challenge.completions
+        .filter((item) => item.id !== completion.id)
+        .map((item) => ({
+          taskId: item.taskId,
+          completedAt: item.completedAt,
+          pointsAwarded: item.pointsAwarded,
+          deadlineMiss: isDeadlineMiss(item.snapshot),
+        })),
+      now: effective,
+      firstDayOfWeek: user?.firstDayOfWeek ?? 1,
+    });
+    if (task.mode === "FIXED" && cap.maxed) {
+      return fail("That task is already maxed out for this period.");
+    }
+    if (task.mode === "PER_MINUTE") {
+      const rate = task.points ?? 0;
+      if (rate === 0) return fail("This task has no point value.");
+      const unit = manualRateUnit(task.rateUnit);
+      const quantity = input.quantity;
+      const limit = manualQuantityLimit(unit);
+      const unitName = unit === "SECOND" ? "seconds" : unit === "HOUR" ? "hours" : "minutes";
+      if (!Number.isInteger(quantity) || !quantity || quantity < 1 || quantity > limit) {
+        return fail(`Enter the ${unitName} as a whole number from 1 to ${limit}.`);
+      }
+      const awarded = rate * quantity;
+      if (cap.remainingPoints != null && Math.abs(awarded) > cap.remainingPoints) {
+        return fail(`Only ${cap.remainingPoints} points are left for this period.`);
+      }
+      pointsAwarded = awarded;
+      minutes =
+        unit === "HOUR"
+          ? quantity * 60
+          : unit === "MINUTE"
+            ? quantity
+            : Math.max(1, Math.round(quantity / 60));
+    } else if (task.mode === "ENTER_AMOUNT") {
+      if (!Number.isInteger(input.amount) || !input.amount || input.amount < 1 || input.amount > 500) {
+        return fail("Enter a whole number of points from 1 to 500.");
+      }
+      if (cap.remainingPoints != null && input.amount > cap.remainingPoints) {
+        return fail(`Only ${cap.remainingPoints} points are left for this period.`);
+      }
+      pointsAwarded = task.kind === "PENALTY" ? -input.amount : input.amount;
+    }
+  }
+
+  await prisma.locktoberCompletion.update({
+    where: { id: completion.id },
+    data: {
+      completedAt: parsed.toDate(),
+      minutes,
+      note: note || null,
+      pointsAwarded,
+    },
+  });
+  await clearSatisfiedDeadlineMisses(challenge.id);
+  await ensureCumDayLocks(challenge.id);
+  await revalidateChallenge(challenge.shareSlug, challenge.id);
+  return { ok: true };
+}
+
+export async function deleteCompletion(completionId: string): Promise<ActionResult> {
+  const owned = await ownedLog(completionId);
+  if (!owned.ok) return owned;
+  const { completion } = owned;
+
+  await ensureCumDayLocks(completion.challengeId);
+  const challenge = await prisma.locktoberChallenge.findUnique({
+    where: { id: completion.challengeId },
+    include: { cumDays: { orderBy: { date: "asc" } } },
+  });
+  if (!challenge) return fail("Challenge not found.");
+  if (!dayjs().tz(challenge.timezone).isBefore(octoberEnd(challenge.year, challenge.timezone))) {
+    return fail("October is over.");
+  }
+  const cumDays: CumDayInput[] = challenge.cumDays.map((day) => ({
+    id: day.id,
+    date: dateOnlyString(day.date),
+    status: day.status,
+    pointsAtLock: day.pointsAtLock,
+    tierSnapshot: parseTierSnapshot(day.tierSnapshot),
+    claimedTierLabel: day.claimedTierLabel,
+    claimedAt: day.claimedAt,
+  }));
+  if (
+    windowIsFrozen(
+      challenge.year,
+      challenge.timezone,
+      cumDays,
+      dayjs(completion.completedAt).tz(challenge.timezone),
+    )
+  ) {
+    return fail("That log is in a claimed or skipped window.");
+  }
+
+  await prisma.locktoberCompletion.delete({ where: { id: completion.id } });
+  await clearSatisfiedDeadlineMisses(challenge.id);
+  await ensureCumDayLocks(challenge.id);
+  await revalidateChallenge(challenge.shareSlug, challenge.id);
+  return { ok: true };
+}
+
+async function ownedLog(completionId: string) {
+  const userId = await requireUserId();
+  if (!userId) return fail("You need to be signed in.");
+  const completion = await prisma.locktoberCompletion.findUnique({
+    where: { id: completionId },
+    include: { task: true, challenge: { select: { userId: true } } },
+  });
+  if (!completion || completion.challenge.userId !== userId) return fail("Log not found.");
+  return { ok: true as const, userId, completion, task: completion.task };
+}
+
 export async function claimReward(input: {
   cumDayId: string;
   orgasm: {

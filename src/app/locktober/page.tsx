@@ -20,6 +20,8 @@ export default async function LocktoberPage() {
         <LocktoberApp
           challenges={data.challenges}
           username={data.user.username}
+          userId={session.user.id}
+          serverNow={new Date().toISOString()}
           firstDayOfWeek={data.user.firstDayOfWeek}
           trackChastityStatus={data.user.trackChastityStatus}
           activeChastity={data.activeChastity}

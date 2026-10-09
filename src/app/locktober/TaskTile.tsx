@@ -1,7 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ClockIcon } from "@heroicons/react/24/outline";
+import { LockClosedIcon } from "@heroicons/react/24/solid";
 import type { SerializedTask } from "@/lib/locktober/load";
-import { formatDeadline, taskCardDetail, taskPointsText, taskRateSuffix } from "@/lib/locktober/taskLabel";
+import { formatDeadline, lockedRateLabel, taskCardDetail, taskPointsText, taskRateSuffix } from "@/lib/locktober/taskLabel";
 import UseCount from "./UseCount";
 
 const taskGridClass =
@@ -32,6 +33,24 @@ export function DeadlineMark({
 
 export function TaskGrid({ children }: { children: ReactNode }) {
   return <ul className={taskGridClass}>{children}</ul>;
+}
+
+export function LockedRate({
+  task,
+}: {
+  task: Pick<SerializedTask, "mode" | "points" | "rateEvery" | "rateUnit" | "title">;
+}) {
+  const label = lockedRateLabel(task);
+  if (!label) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 dark:text-gray-300"
+      title={task.title}
+    >
+      <LockClosedIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="tabular-nums">{label}</span>
+    </span>
+  );
 }
 
 function mix(from: [number, number, number], to: [number, number, number], t: number) {

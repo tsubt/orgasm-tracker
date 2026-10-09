@@ -11,6 +11,7 @@ import {
 } from "@prisma/client";
 import { applyMissedDeadlines, ensureCumDayLocks } from "./locks";
 import { octoberCalendar, type LocktoberCalendarDay } from "./calendar";
+import { locktoberTimeline, type LocktoberTimelineDay } from "./timeline";
 import {
   BarView,
   CumDayInput,
@@ -69,6 +70,10 @@ export type SerializedCompletion = {
   pointsAwarded: number;
   title: string;
   deadlineMiss: boolean;
+  mode: LocktoberTaskMode | null;
+  kind: LocktoberTaskKind | null;
+  /** Point rate stored on the log. Null when the snapshot has no rate. */
+  rate: number | null;
 };
 
 export type SerializedCumDay = {
@@ -83,6 +88,15 @@ export type SerializedCumDay = {
 
 export type SerializedTier = TierSnapshot & { id: string };
 
+export type SerializedComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  userId: string;
+  username: string | null;
+  name: string | null;
+};
+
 export type SerializedChallenge = {
   id: string;
   year: number;
@@ -93,6 +107,9 @@ export type SerializedChallenge = {
   updatedAt: string;
   likeCount: number;
   commentCount: number;
+  liked: boolean;
+  comments: SerializedComment[];
+  eventDays: LocktoberTimelineDay[];
   tiers: SerializedTier[];
   tasks: SerializedTask[];
   cumDays: SerializedCumDay[];
@@ -113,6 +130,30 @@ export type PublicChallengeCard = {
   bar: BarView;
   cumDays: { date: string; status: LocktoberCumDayStatus }[];
 };
+
+function completionShape(snapshot: unknown): {
+  mode: LocktoberTaskMode | null;
+  kind: LocktoberTaskKind | null;
+  rate: number | null;
+} {
+  if (!snapshot || typeof snapshot !== "object") {
+    return { mode: null, kind: null, rate: null };
+  }
+  const row = snapshot as { mode?: unknown; kind?: unknown; points?: unknown };
+  const modes = new Set<string>(Object.values(LocktoberTaskMode));
+  const kinds = new Set<string>(Object.values(LocktoberTaskKind));
+  return {
+    mode:
+      typeof row.mode === "string" && modes.has(row.mode)
+        ? (row.mode as LocktoberTaskMode)
+        : null,
+    kind:
+      typeof row.kind === "string" && kinds.has(row.kind)
+        ? (row.kind as LocktoberTaskKind)
+        : null,
+    rate: typeof row.points === "number" ? row.points : null,
+  };
+}
 
 function cumDayInputs(challenge: ChallengeRecord): CumDayInput[] {
   return challenge.cumDays.map((day) => ({
@@ -172,6 +213,22 @@ export function serializeChallenge(
       (useCountByTask.get(completion.taskId) ?? 0) + 1,
     );
   }
+  const serializedCumDays = cumDays.map((day) => ({
+    ...day,
+    claimedAt: day.claimedAt ? new Date(day.claimedAt).toISOString() : null,
+  }));
+  const serializedCompletions = challenge.completions.map((completion) => ({
+    id: completion.id,
+    taskId: completion.taskId,
+    completedAt: completion.completedAt.toISOString(),
+    enteredAt: completion.enteredAt.toISOString(),
+    minutes: completion.minutes,
+    note: completion.note,
+    pointsAwarded: completion.pointsAwarded,
+    title: snapshotTitle(completion.snapshot),
+    deadlineMiss: isDeadlineMiss(completion.snapshot),
+    ...completionShape(completion.snapshot),
+  }));
   return {
     id: challenge.id,
     year: challenge.year,
@@ -208,21 +265,18 @@ export function serializeChallenge(
       sortOrder: task.sortOrder,
       useCount: useCountByTask.get(task.id) ?? 0,
     })),
-    cumDays: cumDays.map((day) => ({
-      ...day,
-      claimedAt: day.claimedAt ? new Date(day.claimedAt).toISOString() : null,
-    })),
-    completions: challenge.completions.map((completion) => ({
-      id: completion.id,
-      taskId: completion.taskId,
-      completedAt: completion.completedAt.toISOString(),
-      enteredAt: completion.enteredAt.toISOString(),
-      minutes: completion.minutes,
-      note: completion.note,
-      pointsAwarded: completion.pointsAwarded,
-      title: snapshotTitle(completion.snapshot),
-      deadlineMiss: isDeadlineMiss(completion.snapshot),
-    })),
+    cumDays: serializedCumDays,
+    completions: serializedCompletions,
+    liked: false,
+    comments: [],
+    eventDays: locktoberTimeline({
+      year: challenge.year,
+      timeZone: challenge.timezone,
+      now: new Date(),
+      completions: serializedCompletions,
+      cumDays: serializedCumDays,
+      spans: sessions,
+    }),
     timeLocked: timeLocked.byTask,
     calendar: octoberCalendar({
       year: challenge.year,
@@ -276,7 +330,8 @@ export async function loadOwnerLocktober(
     include: challengeInclude,
     orderBy: { year: "desc" },
   });
-  const [sessions, active] = await Promise.all([
+  const ids = challenges.map((challenge) => challenge.id);
+  const [sessions, active, commentRows, likeRows] = await Promise.all([
     prisma.chastitySession.findMany({
       where: {
         userId,
@@ -292,11 +347,42 @@ export async function loadOwnerLocktober(
       where: { userId, endTime: null },
       select: { id: true, startTime: true, endTime: true, note: true },
     }),
+    ids.length === 0
+      ? Promise.resolve([])
+      : prisma.locktoberComment.findMany({
+          where: { challengeId: { in: ids } },
+          orderBy: { createdAt: "asc" },
+          include: { user: { select: { id: true, username: true, name: true } } },
+        }),
+    ids.length === 0
+      ? Promise.resolve([])
+      : prisma.locktoberLike.findMany({
+          where: { userId, challengeId: { in: ids } },
+          select: { challengeId: true },
+        }),
   ]);
+  const commentsByChallenge = new Map<string, SerializedComment[]>();
+  for (const comment of commentRows) {
+    const list = commentsByChallenge.get(comment.challengeId) ?? [];
+    list.push({
+      id: comment.id,
+      body: comment.body,
+      createdAt: comment.createdAt.toISOString(),
+      userId: comment.user.id,
+      username: comment.user.username,
+      name: comment.user.name,
+    });
+    commentsByChallenge.set(comment.challengeId, list);
+  }
+  const likedIds = new Set(likeRows.map((like) => like.challengeId));
 
   return {
     user,
-    challenges: challenges.map((challenge) => serializeChallenge(challenge, sessions)),
+    challenges: challenges.map((challenge) => ({
+      ...serializeChallenge(challenge, sessions),
+      comments: commentsByChallenge.get(challenge.id) ?? [],
+      liked: likedIds.has(challenge.id),
+    })),
     activeChastity: active
       ? {
           id: active.id,

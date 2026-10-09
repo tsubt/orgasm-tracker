@@ -46,18 +46,22 @@ function StopwatchIcon() {
   );
 }
 
-function Chip({ event }: { event: LocktoberTimelineEvent }) {
+function Chip({
+  event,
+  onEdit,
+}: {
+  event: LocktoberTimelineEvent;
+  onEdit?: (id: string) => void;
+}) {
   const named = event.kind === "lock" || event.kind === "unlock";
   const bare = named;
   const name = chipName(event);
-  return (
-    <span
-      className={`inline-flex max-w-56 items-center gap-1 truncate text-xs ${
-        bare ? "px-0.5" : "rounded-full px-2 py-0.5"
-      } ${kindClass[event.kind]}`}
-      title={event.note ?? name}
-      aria-label={named ? name : undefined}
-    >
+  const editable = Boolean(onEdit) && (event.kind === "reward" || event.kind === "penalty");
+  const className = `inline-flex max-w-56 items-center gap-1 truncate text-xs ${
+    bare ? "px-0.5" : "rounded-full px-2 py-0.5"
+  } ${kindClass[event.kind]} ${editable ? "cursor-pointer hover:brightness-95" : ""}`;
+  const body = (
+    <>
       {event.kind === "lock" ? (
         event.live ? (
           <StopwatchIcon />
@@ -66,28 +70,62 @@ function Chip({ event }: { event: LocktoberTimelineEvent }) {
         )
       ) : null}
       {event.label ? <span className="truncate">{event.label}</span> : null}
+    </>
+  );
+  if (editable && onEdit) {
+    return (
+      <button
+        type="button"
+        className={className}
+        title={event.note ?? name ?? "Edit log"}
+        aria-label={name ? `Edit ${name}` : "Edit log"}
+        onClick={() => onEdit(event.id)}
+      >
+        {body}
+      </button>
+    );
+  }
+  return (
+    <span
+      className={className}
+      title={event.note ?? name}
+      aria-label={named ? name : undefined}
+    >
+      {body}
     </span>
   );
 }
 
-function SegmentView({ segment }: { segment: LocktoberTimelineSegment }) {
+function SegmentView({
+  segment,
+  onEdit,
+}: {
+  segment: LocktoberTimelineSegment;
+  onEdit?: (id: string) => void;
+}) {
   if (segment.type === "event") {
     return (
       <li>
-        <Chip event={segment.event} />
+        <Chip event={segment.event} onEdit={onEdit} />
       </li>
     );
   }
   return (
     <li className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-full bg-gray-300 px-1.5 py-1 dark:bg-gray-700">
       {segment.events.map((event) => (
-        <Chip key={event.id} event={event} />
+        <Chip key={event.id} event={event} onEdit={onEdit} />
       ))}
     </li>
   );
 }
 
-function DayRow({ day }: { day: LocktoberTimelineDay }) {
+function DayRow({
+  day,
+  onEdit,
+}: {
+  day: LocktoberTimelineDay;
+  onEdit?: (id: string) => void;
+}) {
   return (
     <div className="flex w-full flex-wrap items-center gap-1.5">
       <span className="px-1 text-xs leading-none text-gray-500 dark:text-gray-400">{day.label}</span>
@@ -96,6 +134,7 @@ function DayRow({ day }: { day: LocktoberTimelineDay }) {
           <SegmentView
             key={segment.type === "event" ? segment.event.id : segment.events.map((event) => event.id).join("-")}
             segment={segment}
+            onEdit={onEdit}
           />
         ))}
       </ul>
@@ -103,7 +142,14 @@ function DayRow({ day }: { day: LocktoberTimelineDay }) {
   );
 }
 
-export default function EventTimeline({ days }: { days: LocktoberTimelineDay[] }) {
+export default function EventTimeline({
+  days,
+  onEdit,
+}: {
+  days: LocktoberTimelineDay[];
+  /** Owner feed: open a logged task for editing. */
+  onEdit?: (id: string) => void;
+}) {
   const [shown, setShown] = useState(0);
   if (days.length === 0) return null;
 
@@ -114,9 +160,9 @@ export default function EventTimeline({ days }: { days: LocktoberTimelineDay[] }
   return (
     <section className="flex flex-col gap-2">
       <h2 className="font-semibold text-gray-900 dark:text-white">Recent</h2>
-      <DayRow day={latest} />
+      <DayRow day={latest} onEdit={onEdit} />
       {visible.map((day) => (
-        <DayRow key={day.date} day={day} />
+        <DayRow key={day.date} day={day} onEdit={onEdit} />
       ))}
       {remaining > 0 || shown > 0 ? (
         <div className="flex items-center gap-3 text-sm">

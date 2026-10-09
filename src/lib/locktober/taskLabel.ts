@@ -115,6 +115,16 @@ export function taskRateSuffix(
   return every === 1 ? unit : `${every}${unit}`;
 }
 
+/** Compact automatic lock rate, e.g. "1pt/hr". */
+export function lockedRateLabel(
+  task: Pick<SerializedTask, "mode" | "points" | "rateEvery" | "rateUnit">,
+): string | null {
+  if (task.mode !== "TIME_LOCKED") return null;
+  const suffix = taskRateSuffix(task);
+  if (!suffix) return null;
+  return `${Math.abs(task.points ?? 0)}pt/${suffix}`;
+}
+
 export function manualQuantityLimit(unit: ManualRateUnit): number {
   if (unit === "SECOND") return 86_400;
   if (unit === "HOUR") return 744;

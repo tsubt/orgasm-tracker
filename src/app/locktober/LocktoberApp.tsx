@@ -1,6 +1,8 @@
 "use client";
 
 import ChastityStatus from "../components/ChastityStatus";
+import ChallengeReplies from "./ChallengeReplies";
+import EventTimeline from "./EventTimeline";
 import PowerBar from "./PowerBar";
 import type { SerializedChallenge } from "@/lib/locktober/load";
 import {
@@ -14,10 +16,11 @@ import {
   octoberStart,
   setupYear,
   taskCapState,
+  windowIsFrozen,
 } from "@/lib/locktober/scoring";
 import OctoberCalendar from "./OctoberCalendar";
 import PointsCalendar from "./PointsCalendar";
-import TaskTile, { DeadlineMark, TaskGrid } from "./TaskTile";
+import TaskTile, { DeadlineMark, LockedRate, TaskGrid } from "./TaskTile";
 import {
   cadencePeriod,
   compareTasksByValue,
@@ -51,12 +54,14 @@ import {
   claimReward,
   completeTask,
   createChallenge,
+  deleteCompletion,
   deleteTask,
   saveSchedule,
   saveTask,
   saveTiers,
   setVisibility,
   skipCumDay,
+  updateCompletion,
 } from "./actions";
 
 dayjs.extend(utc);
@@ -79,23 +84,19 @@ function labelEnum(value: string) {
   return value.charAt(0) + value.slice(1).toLowerCase();
 }
 
-function formatLocked(ms: number): string {
-  const minutes = Math.floor(ms / 60000);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
-}
-
 export default function LocktoberApp({
   challenges,
   username,
+  userId,
+  serverNow,
   firstDayOfWeek,
   trackChastityStatus,
   activeChastity,
 }: {
   challenges: SerializedChallenge[];
   username: string | null;
+  userId: string;
+  serverNow: string;
   firstDayOfWeek: number;
   trackChastityStatus: boolean;
   activeChastity: {
@@ -143,6 +144,8 @@ export default function LocktoberApp({
         <ChallengeView
           challenge={challenge}
           username={username}
+          userId={userId}
+          serverNow={serverNow}
           firstDayOfWeek={firstDayOfWeek}
           activeChastity={activeChastity}
         />
@@ -325,11 +328,15 @@ function SetupForm({
 function ChallengeView({
   challenge,
   username,
+  userId,
+  serverNow,
   firstDayOfWeek,
   activeChastity,
 }: {
   challenge: SerializedChallenge;
   username: string | null;
+  userId: string;
+  serverNow: string;
   firstDayOfWeek: number;
   activeChastity: {
     id: string;
@@ -349,7 +356,9 @@ function ChallengeView({
   const [completing, setCompleting] = useState<SerializedChallenge["tasks"][number] | null>(
     null,
   );
-  const [reading, setReading] = useState<SerializedChallenge["tasks"][number] | null>(null);
+  const [editingLog, setEditingLog] = useState<SerializedChallenge["completions"][number] | null>(
+    null,
+  );
   const [claimOpen, setClaimOpen] = useState(false);
 
   const taskStates = challenge.tasks.map((task) => ({
@@ -429,10 +438,6 @@ function ChallengeView({
           locked && challenge.bar.reached ? () => setClaimOpen(true) : undefined
         }
       />
-      <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-        Midnight locks use {challenge.timezone}.{" "}
-        {challenge.likeCount} {challenge.likeCount === 1 ? "like" : "likes"}.
-      </p>
 
       {locked && challenge.bar.cumDayDate && (
         <div className="rounded-lg border border-rose-300 bg-rose-50 p-4 dark:border-rose-900 dark:bg-rose-950/40">
@@ -470,9 +475,23 @@ function ChallengeView({
           tiers={challenge.tiers}
         />
       </section>
+      <EventTimeline
+        days={challenge.eventDays}
+        onEdit={(id) => {
+          const completion = challenge.completions.find((item) => item.id === id);
+          if (completion) setEditingLog(completion);
+        }}
+      />
 
       <section className="@container rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-        <h2 className="mb-3 font-semibold text-gray-900 dark:text-white">Tasks</h2>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Tasks</h2>
+          {challenge.tasks
+            .filter((task) => task.mode === "TIME_LOCKED")
+            .map((task) => (
+              <LockedRate key={task.id} task={task} />
+            ))}
+        </div>
         {tasksClosedReason && (
           <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
             {tasksClosedReason}
@@ -480,27 +499,9 @@ function ChallengeView({
         )}
         <TaskGrid>
           {[...taskStates]
+            .filter(({ task }) => task.mode !== "TIME_LOCKED")
             .sort((a, b) => compareTasksByValue(a.task, b.task))
             .map(({ task, cap }) => {
-                  if (task.mode === "TIME_LOCKED") {
-                    const progress = challenge.timeLocked.find(
-                      (item) => item.taskId === task.id,
-                    );
-                    const status = !scoringOpen
-                      ? now.isBefore(octoberStart(challenge.year, challenge.timezone))
-                        ? "Oct 1"
-                        : "ended"
-                      : formatLocked(progress?.lockedMs ?? 0);
-                    return (
-                      <li key={task.id} className="h-full">
-                        <TaskTile
-                          task={task}
-                          detail={[taskCardDetail(task), status].filter(Boolean).join(" · ")}
-                          onClick={() => setReading(task)}
-                        />
-                      </li>
-                    );
-                  }
                   const pastDeadline = deadlinePassed(
                     task.deadlineMinute,
                     now.hour(),
@@ -527,6 +528,15 @@ function ChallengeView({
             })}
         </TaskGrid>
       </section>
+      <ChallengeReplies
+        slug={challenge.shareSlug}
+        likeCount={challenge.likeCount}
+        liked={challenge.liked}
+        comments={challenge.comments}
+        viewerId={userId}
+        isOwner
+        serverNow={serverNow}
+      />
 
       <ScheduleEditor
         key={`schedule-${challenge.updatedAt}`}
@@ -547,31 +557,41 @@ function ChallengeView({
         {challenge.completions.length === 0 ? (
           <p className="text-sm text-gray-500">Nothing logged yet.</p>
         ) : (
-          <ul className="flex flex-col gap-2 text-sm">
+          <ul className="flex flex-col gap-1 text-sm">
             {challenge.completions.slice(0, 30).map((completion) => (
-              <li key={completion.id} className="flex justify-between gap-3">
-                <span>
-                  {completion.title}
-                  {completion.note ? ` — ${completion.note}` : ""}
-                </span>
-                <span className="shrink-0 text-gray-500">
-                  {completion.pointsAwarded > 0 ? "+" : ""}
-                  {completion.pointsAwarded} ·{" "}
-                  {dayjs(completion.completedAt).fromNow()}
-                </span>
+              <li key={completion.id}>
+                <button
+                  type="button"
+                  className="flex w-full justify-between gap-3 rounded-md px-1 py-1 text-left hover:bg-gray-50 dark:hover:bg-gray-900"
+                  onClick={() => setEditingLog(completion)}
+                >
+                  <span>
+                    {completion.title}
+                    {completion.note ? ` — ${completion.note}` : ""}
+                  </span>
+                  <span className="shrink-0 text-gray-500">
+                    {completion.pointsAwarded > 0 ? "+" : ""}
+                    {completion.pointsAwarded} ·{" "}
+                    {dayjs(completion.completedAt).fromNow()}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      {reading && (
-        <Modal title={reading.title} onClose={() => setReading(null)}>
-          <p className="text-sm text-gray-600">{taskSummary(reading)}</p>
-          {reading.description ? (
-            <p className="mt-3 whitespace-pre-wrap text-sm text-gray-800">{reading.description}</p>
-          ) : null}
-        </Modal>
+      {editingLog && (
+        <EditLogModal
+          completion={editingLog}
+          task={challenge.tasks.find((task) => task.id === editingLog.taskId) ?? null}
+          completions={challenge.completions}
+          year={challenge.year}
+          timezone={challenge.timezone}
+          cumDays={challenge.cumDays}
+          firstDayOfWeek={firstDayOfWeek}
+          onClose={() => setEditingLog(null)}
+        />
       )}
       {completing && (
         <CompleteModal
@@ -1314,6 +1334,182 @@ function TaskForm({
         </div>
       </div>
     </form>
+  );
+}
+
+function EditLogModal({
+  completion,
+  task,
+  completions,
+  year,
+  timezone,
+  cumDays,
+  firstDayOfWeek,
+  onClose,
+}: {
+  completion: SerializedChallenge["completions"][number];
+  task: SerializedChallenge["tasks"][number] | null;
+  completions: SerializedChallenge["completions"];
+  year: number;
+  timezone: string;
+  cumDays: SerializedChallenge["cumDays"];
+  firstDayOfWeek: number;
+  onClose: () => void;
+}) {
+  const { pending, run } = useRunner();
+  const scored = dayjs(completion.completedAt).tz(timezone);
+  const [date, setDate] = useState(scored.format("YYYY-MM-DD"));
+  const [time, setTime] = useState(scored.format("HH:mm"));
+  const [note, setNote] = useState(completion.note ?? "");
+  const mode = task?.mode ?? completion.mode;
+  const kind = task?.kind ?? completion.kind;
+  const rate = Math.abs(task?.points ?? completion.rate ?? 0);
+  const [quantity, setQuantity] = useState(
+    rate > 0
+      ? Math.max(1, Math.round(Math.abs(completion.pointsAwarded) / rate))
+      : Math.max(1, completion.minutes ?? 1),
+  );
+  const [amount, setAmount] = useState(Math.max(1, Math.abs(completion.pointsAwarded) || 1));
+  const effective = dayjs.tz(`${date} ${time}`, timezone);
+  const frozen = windowIsFrozen(year, timezone, cumDays, scored);
+  const cap = task
+    ? taskCapState({
+        taskId: task.id,
+        mode: task.mode,
+        cadence: task.cadence,
+        maxCompletions: task.maxCompletions,
+        maxPoints: task.maxPoints,
+        completions: completions.filter((item) => item.id !== completion.id),
+        now: effective.isValid() ? effective : scored,
+        firstDayOfWeek,
+      })
+    : null;
+  const editablePoints = !completion.deadlineMiss && task != null && task.mode !== "TIME_LOCKED";
+  const unit = manualRateUnit(task?.rateUnit);
+  const unitLimit = manualQuantityLimit(unit);
+  const unitName = rateUnitWord(unit, 2);
+  const remainingPoints = cap?.remainingPoints ?? null;
+  const pointLimited = mode === "PER_MINUTE" && remainingPoints != null && rate > 0;
+  const maxQuantity = pointLimited
+    ? Math.min(unitLimit, Math.max(1, Math.floor(remainingPoints / rate)))
+    : unitLimit;
+  const amountMax = remainingPoints == null ? 500 : Math.max(1, Math.min(500, remainingPoints));
+  const moved = !effective.isValid() || Math.abs(effective.valueOf() - new Date(completion.enteredAt).getTime()) >= 60_000;
+  const noteNeeded = Boolean(task?.noteRequired) || moved;
+
+  return (
+    <Modal title={completion.title} onClose={onClose}>
+      {frozen ? (
+        <p className="text-sm text-gray-600">
+          This log is in a claimed or skipped window, so it stays as it is.
+        </p>
+      ) : (
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run(async () => {
+              if (!effective.isValid()) return { ok: false, error: "Enter a valid date and time." };
+              const result = await updateCompletion({
+                completionId: completion.id,
+                note,
+                completedAt: effective.toISOString(),
+                quantity: editablePoints && mode === "PER_MINUTE" ? quantity : undefined,
+                amount: editablePoints && mode === "ENTER_AMOUNT" ? amount : undefined,
+              });
+              if (result.ok) onClose();
+              return result;
+            });
+          }}
+        >
+          {completion.deadlineMiss ? (
+            <p className="text-sm text-gray-600">This penalty was added automatically.</p>
+          ) : null}
+          {editablePoints && mode === "PER_MINUTE" && (
+            <label className="flex flex-col gap-1 text-sm">
+              {unitName.charAt(0).toUpperCase() + unitName.slice(1)}
+              <input
+                type="number"
+                min={1}
+                max={maxQuantity}
+                value={quantity}
+                onChange={(event) => setQuantity(Number(event.target.value))}
+                className={inputClass}
+                required
+              />
+            </label>
+          )}
+          {editablePoints && mode === "ENTER_AMOUNT" && (
+            <label className="flex flex-col gap-1 text-sm">
+              {kind === "PENALTY" ? "Points to remove" : "Points to add"}
+              <input
+                type="number"
+                min={1}
+                max={amountMax}
+                value={amount}
+                onChange={(event) => setAmount(Number(event.target.value))}
+                className={inputClass}
+                required
+              />
+            </label>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-sm">
+              Date
+              <input
+                type="date"
+                value={date}
+                min={`${year}-10-01`}
+                max={`${year}-10-31`}
+                onChange={(event) => setDate(event.target.value)}
+                className={inputClass}
+                required
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Time
+              <input
+                type="time"
+                value={time}
+                onChange={(event) => setTime(event.target.value)}
+                className={inputClass}
+                required
+              />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-sm">
+            Note{noteNeeded ? "" : " (optional)"}
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              className={inputClass}
+              rows={3}
+              required={noteNeeded}
+            />
+          </label>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className="text-sm font-semibold text-rose-600 hover:underline disabled:opacity-50"
+              disabled={pending}
+              onClick={() => {
+                if (!confirm("Delete this log?")) return;
+                void run(async () => {
+                  const result = await deleteCompletion(completion.id);
+                  if (result.ok) onClose();
+                  return result;
+                });
+              }}
+            >
+              Delete
+            </button>
+            <button type="submit" className={buttonClass} disabled={pending}>
+              Save
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 }
 

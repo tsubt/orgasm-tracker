@@ -10,6 +10,7 @@ import {
   countdownReward,
   daysLeftPhrase,
   lockedHoursFromMinutes,
+  nextUnlockPhrase,
   type RewardTarget,
 } from "./shareLine";
 import { focusYear } from "./scoring";
@@ -204,10 +205,12 @@ export function locktoberCardLines(card: {
   daysLeft: number | null;
   targets?: unknown;
 }) {
+  const targets = cardTargets(card.targets);
   return {
     hours: lockedHoursFromMinutes(card.lockedMinutes),
     points: countLabel(card.points, "point", "points"),
-    days: daysLeftPhrase(card.daysLeft, countdownReward(card.points, cardTargets(card.targets))),
+    days: daysLeftPhrase(card.daysLeft, countdownReward(card.points, targets)),
+    next: nextUnlockPhrase(card.points, targets),
   };
 }
 

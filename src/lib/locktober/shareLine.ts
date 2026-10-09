@@ -35,6 +35,16 @@ export function daysLeftPhrase(daysLeft: number | null, reward: string | null) {
   return reward ? `${days} until ${reward}` : days;
 }
 
+/** Points still needed for the next reward. Null once every reward is reached. */
+export function nextUnlockPhrase(points: number, targets: RewardTarget[]): string | null {
+  const next = [...targets]
+    .sort((a, b) => a.points - b.points)
+    .find((target) => target.points > points);
+  if (!next) return null;
+  const remaining = Math.max(0, next.points - points);
+  return `Next unlock: ${next.label} (${countLabel(remaining, "point", "points")})`;
+}
+
 /** Plain-text line for the public page subtitle and the social card. */
 export function locktoberShareDescription(
   calendar: LocktoberCalendarDay[],
