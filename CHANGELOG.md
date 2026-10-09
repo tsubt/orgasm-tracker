@@ -1,5 +1,16 @@
 # otrack
 
+## 1.2.2
+
+### Patch Changes
+
+- 8fec245: Show recent Locktober activity under the calendar.
+- 8fec245: Open a Locktober log for editing from the activity feed.
+- 8fec245: Show a time-locked rate beside Tasks instead of as its own card.
+- 8fec245: Show the next unlock on the Locktober share card.
+- 5bbb4dd: Show Locktober power as points, days until the current reward, and points to the next reward.
+- 8fec245: Show likes and comments under Locktober tasks.
+
 ## 1.2.1
 
 ### Patch Changes
