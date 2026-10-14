@@ -141,7 +141,63 @@ export function missedDeadlinePenalties(args: {
       });
     }
   }
-  return results;
+  const unique = new Map<string, MissedDeadline>();
+  for (const item of results) {
+    unique.set(`${item.taskId}:${item.completedAt.toISOString()}`, item);
+  }
+  return [...unique.values()];
+}
+
+const CADENCES = new Set<LocktoberCadence>(["DAILY", "WEEKLY", "MONTHLY"]);
+
+export function snapshotCadence(snapshot: unknown): LocktoberCadence | null {
+  if (!snapshot || typeof snapshot !== "object" || !("cadence" in snapshot)) return null;
+  const cadence = (snapshot as { cadence?: unknown }).cadence;
+  if (typeof cadence !== "string" || !CADENCES.has(cadence as LocktoberCadence)) return null;
+  return cadence as LocktoberCadence;
+}
+
+/**
+ * Deadline misses beyond one per task and the cadence stored on that penalty.
+ * The earliest row stays. A later cadence change does not merge older periods.
+ */
+export function extraDeadlineMissIds(args: {
+  tz: string;
+  firstDayOfWeek: number;
+  tasks: { id: string; cadence: LocktoberCadence }[];
+  completions: {
+    id: string;
+    taskId: string | null;
+    completedAt: Date | string;
+    deadlineMiss: boolean;
+    /** Cadence stored on the penalty. Falls back to the task's current cadence. */
+    cadence: LocktoberCadence | null;
+  }[];
+}): string[] {
+  const cadenceByTask = new Map(args.tasks.map((task) => [task.id, task.cadence]));
+  const groups = new Map<string, { id: string; at: number }[]>();
+  for (const completion of args.completions) {
+    if (!completion.deadlineMiss || completion.taskId == null) continue;
+    const cadence = completion.cadence ?? cadenceByTask.get(completion.taskId);
+    if (!cadence) continue;
+    const period = periodStart(
+      dayjs(completion.completedAt).tz(args.tz),
+      cadence,
+      args.firstDayOfWeek,
+    );
+    const key = `${completion.taskId}:${cadence}:${period.valueOf()}`;
+    const group = groups.get(key) ?? [];
+    group.push({ id: completion.id, at: dayjs(completion.completedAt).valueOf() });
+    groups.set(key, group);
+  }
+
+  const extra: string[] = [];
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    group.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
+    for (const item of group.slice(1)) extra.push(item.id);
+  }
+  return extra;
 }
 
 /** Miss penalties whose period now has an on-time log. */
