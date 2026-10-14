@@ -62,10 +62,15 @@ export async function applyMissedDeadlines(challengeId: string): Promise<number>
   if (!due) return 0;
 
   return prisma.$transaction(async (tx) => {
-    const locked = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT "id" FROM "LocktoberChallenge" WHERE "id" = ${challengeId} FOR UPDATE
+    // Serializes penalty writes only. A row lock blocks every other write on the
+    // challenge and stacks until the function hits its timeout.
+    const [slot] = await tx.$queryRaw<Array<{ locked: boolean }>>`
+      SELECT pg_try_advisory_xact_lock(
+        hashtext('locktober-deadline'),
+        hashtext(${challengeId})
+      ) AS "locked"
     `;
-    if (locked.length === 0) return 0;
+    if (!slot?.locked) return 0;
 
     const challenge = await tx.locktoberChallenge.findUnique({
       where: { id: challengeId },
