@@ -223,7 +223,8 @@ export async function ensureCumDayLocks(challengeId: string) {
   await applyMissedDeadlines(challengeId);
   await prisma.$transaction(async (tx) => {
     // One resolver at a time. The next caller waits, then reads the committed rows.
-    await tx.$queryRaw`
+    // $executeRaw: the lock returns void, which $queryRaw cannot deserialize.
+    await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(
         hashtext('locktober-cumday'),
         hashtext(${challengeId})
