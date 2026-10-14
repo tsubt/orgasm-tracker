@@ -1,5 +1,11 @@
 # otrack
 
+## 1.2.3
+
+### Patch Changes
+
+- 4d4a183: Charge a missed Locktober deadline once for that day, week, or month.
+
 ## 1.2.2
 
 ### Patch Changes
