@@ -1,5 +1,11 @@
 # otrack
 
+## 1.2.4
+
+### Patch Changes
+
+- 0bb8270: Stop a missed-deadline check from locking the challenge until the page times out.
+
 ## 1.2.3
 
 ### Patch Changes
