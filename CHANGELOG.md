@@ -1,5 +1,11 @@
 # otrack
 
+## 1.2.6
+
+### Patch Changes
+
+- 6aebdf2: Stop Locktober from crashing while it resolves a cum day.
+
 ## 1.2.5
 
 ### Patch Changes
