@@ -169,12 +169,14 @@ export default function DocsPage() {
               resets at that same midnight, and points from then on count
               toward the next cum day, including tasks you log on the cum day
               itself. The button reads “Cum day reward” plus that reward’s
-              name. Completing it logs the reward. You can skip the day with
-              no reward instead. Until you claim or skip, you can still add a
-              task dated inside that earlier window, and the reward updates.
-              After you claim or skip, that window is frozen. Days left counts
-              toward the next cum day that has not started. If the locked
-              points are still under every reward, it says Denial. Claiming a
+              name. Completing it logs the reward. You can skip an earned
+              reward instead. Until you claim or skip that reward, you can
+              still add a task dated inside that earlier window, and the
+              reward updates. After you claim or skip, that window is frozen.
+              If the locked points are under every reward, the day is denied
+              immediately. There is nothing to claim or skip, and the calendar
+              shows a red cancel mark. Days left counts toward the next cum
+              day that has not started. Claiming a
               ruined reward logs a ruined orgasm. A full unlocked reward can
               end an active chastity session.
             </p>

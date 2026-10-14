@@ -6,7 +6,7 @@ import { octoberEnd, octoberStart, type LockedSpan } from "./scoring";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-export type LocktoberTimelineKind = "reward" | "penalty" | "lock" | "unlock" | "claim";
+export type LocktoberTimelineKind = "reward" | "penalty" | "lock" | "unlock" | "claim" | "denial";
 
 export type LocktoberTimelineEvent = {
   id: string;
@@ -201,16 +201,17 @@ export function locktoberTimeline(input: TimelineInput): LocktoberTimelineDay[] 
   }
 
   for (const day of input.cumDays) {
-    if (day.status !== "CLAIMED" || !day.claimedAt) continue;
+    if ((day.status !== "CLAIMED" && day.status !== "SKIPPED") || !day.claimedAt) continue;
     const at = new Date(day.claimedAt).getTime();
     if (!inOctober(at, start, end)) continue;
+    const denied = day.status === "SKIPPED";
     events.push({
       id: `claim-${day.id}`,
       at,
       order: 1,
       session: sessionAt(at, spans),
-      kind: "claim",
-      label: day.claimedTierLabel?.trim() || "Claimed",
+      kind: denied ? "denial" : "claim",
+      label: denied ? "Denied" : day.claimedTierLabel?.trim() || "Claimed",
       note: null,
     });
   }

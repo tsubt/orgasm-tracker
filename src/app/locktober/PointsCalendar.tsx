@@ -2,6 +2,7 @@ import { TierLockIcon } from "./PowerBar";
 import type { LocktoberCalendarDay } from "@/lib/locktober/calendar";
 import type { TierSnapshot } from "@/lib/locktober/scoring";
 import { tierCellClass } from "@/lib/locktober/tierTone";
+import { NoSymbolIcon } from "@heroicons/react/24/outline";
 import dayjs from "dayjs";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -93,10 +94,10 @@ export default function PointsCalendar({
           const isCum = Boolean(day?.cumStatus);
           const showPoints = !rewardTone && !isSkipped && !isFuture && points !== 0;
           const heat = showPoints && !isCum ? heatStyle(points, peak) : null;
-          const cumShade = isCum && !rewardTone;
+          const cumShade = isCum && !isSkipped && !rewardTone;
           const labelParts = [dayjs(date).format("MMMM D")];
           if (day?.rewardLabel) labelParts.push(day.rewardLabel);
-          else if (isSkipped) labelParts.push("Skipped");
+          else if (isSkipped) labelParts.push("Denied");
           else if (isCum) labelParts.push("Cum day");
           if (points !== 0) labelParts.push(pointsLabel(points));
           const lock = day?.lockedMinutes == null ? null : lockStatus(day.lockedMinutes);
@@ -110,7 +111,9 @@ export default function PointsCalendar({
               aria-label={label}
               style={heat?.style}
               className={`flex min-h-14 flex-col items-start rounded-md border px-1 py-1 ${
-                rewardTone
+                isSkipped
+                  ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+                  : rewardTone
                   ? tierCellClass(rewardTone)
                   : cumShade
                     ? "border-pink-200 bg-pink-50 text-pink-900 dark:border-pink-800 dark:bg-pink-950/40 dark:text-pink-100"
@@ -143,6 +146,12 @@ export default function PointsCalendar({
                   <span className="text-[10px] font-semibold leading-none tabular-nums">
                     {pointsLabel(points)}
                   </span>
+                ) : isSkipped ? (
+                  <NoSymbolIcon
+                    className="h-4 w-4 text-red-600 dark:text-red-400"
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
                 ) : cumShade ? (
                   <span className="text-sm leading-none" aria-hidden>
                     💦

@@ -32,7 +32,7 @@ async function loadBoard(userId: string): Promise<{
   } | null;
 } | null> {
   try {
-    const owner = await loadOwnerLocktober(userId);
+    const owner = await loadOwnerLocktober(userId, { lockDays: true });
     if (!owner) return null;
 
     const year = new Date().getUTCFullYear();

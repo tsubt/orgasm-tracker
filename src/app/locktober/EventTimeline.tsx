@@ -6,6 +6,7 @@ import type {
   LocktoberTimelineKind,
   LocktoberTimelineSegment,
 } from "@/lib/locktober/timeline";
+import { NoSymbolIcon } from "@heroicons/react/24/outline";
 import { LockClosedIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 
@@ -17,6 +18,7 @@ const kindClass: Record<LocktoberTimelineKind, string> = {
   lock: "text-gray-700 dark:text-gray-200",
   unlock: "text-gray-700 dark:text-gray-200",
   claim: "bg-amber-100 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100",
+  denial: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300",
 };
 
 function chipName(event: LocktoberTimelineEvent) {
@@ -68,6 +70,9 @@ function Chip({
         ) : (
           <LockClosedIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
         )
+      ) : null}
+      {event.kind === "denial" ? (
+        <NoSymbolIcon className="h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400" strokeWidth={2.25} aria-hidden />
       ) : null}
       {event.label ? <span className="truncate">{event.label}</span> : null}
     </>

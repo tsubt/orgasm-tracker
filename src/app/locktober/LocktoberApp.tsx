@@ -131,7 +131,7 @@ export default function LocktoberApp({
           Locktober {year}
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Earn points between cum days. On a cum day you claim only your highest reward, and the bar resets.
+          Earn points between cum days. On a cum day you claim only your highest reward, and the bar resets. A day under every reward is denied on its own.
         </p>
       </div>
 
@@ -439,15 +439,13 @@ function ChallengeView({
         }
       />
 
-      {locked && challenge.bar.cumDayDate && (
+      {locked && challenge.bar.cumDayDate && challenge.bar.reached && (
         <div className="rounded-lg border border-rose-300 bg-rose-50 p-4 dark:border-rose-900 dark:bg-rose-950/40">
           <h2 className="font-semibold text-rose-700 dark:text-rose-200">
             {dayjs(challenge.bar.cumDayDate).format("MMMM D")} is a cum day
           </h2>
           <p className="mt-1 text-sm text-rose-800 dark:text-rose-100">
-            {challenge.bar.reached
-              ? `You reached ${challenge.bar.reached.label}${rewardPoints == null ? "" : ` (${rewardPoints} pts)`}. Claim it on the bar to log it. Points from today count toward the next cum day.`
-              : "This cum day is Denial. Skip it if you don't want a reward. Points from today count toward the next cum day."}
+            {`You reached ${challenge.bar.reached.label}${rewardPoints == null ? "" : ` (${rewardPoints} pts)`}. Claim it on the bar to log it. Points from today count toward the next cum day.`}
           </p>
           <div className="mt-3">
             <button

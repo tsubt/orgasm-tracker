@@ -14,6 +14,7 @@ import {
   cumDayInstant,
   cyclePoints,
   dateOnlyString,
+  highestTier,
   isDeadlineMiss,
   parseTierSnapshot,
   rewardWindowFor,
@@ -220,76 +221,102 @@ function rewardPoints(
 /** Lock every cum day whose midnight has passed, and refresh an open reward's points. */
 export async function ensureCumDayLocks(challengeId: string) {
   await applyMissedDeadlines(challengeId);
-  const challenge = await prisma.locktoberChallenge.findUnique({
-    where: { id: challengeId },
-    include: {
-      tiers: { orderBy: { sortOrder: "asc" } },
-      cumDays: { orderBy: { date: "asc" } },
-      completions: {
-        select: { completedAt: true, pointsAwarded: true },
-      },
-      tasks: {
-        select: {
-          id: true,
-          mode: true,
-          points: true,
-          rateEvery: true,
-          rateUnit: true,
+  await prisma.$transaction(async (tx) => {
+    // One resolver at a time. The next caller waits, then reads the committed rows.
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtext('locktober-cumday'),
+        hashtext(${challengeId})
+      )
+    `;
+
+    const challenge = await tx.locktoberChallenge.findUnique({
+      where: { id: challengeId },
+      include: {
+        tiers: { orderBy: { sortOrder: "asc" } },
+        cumDays: { orderBy: { date: "asc" } },
+        completions: {
+          select: { completedAt: true, pointsAwarded: true },
+        },
+        tasks: {
+          select: {
+            id: true,
+            mode: true,
+            points: true,
+            rateEvery: true,
+            rateUnit: true,
+          },
         },
       },
-    },
-  });
-  if (!challenge) return;
-
-  const sessions = await prisma.chastitySession.findMany({
-    where: {
-      userId: challenge.userId,
-      startTime: { lt: new Date(`${challenge.year + 1}-01-01T00:00:00.000Z`) },
-      OR: [
-        { endTime: null },
-        { endTime: { gt: new Date(`${challenge.year}-08-01T00:00:00.000Z`) } },
-      ],
-    },
-    select: { startTime: true, endTime: true },
-  });
-
-  const cumDays = toCumDays(challenge.cumDays);
-  const liveTiers = tiersToSnapshot(challenge.tiers);
-  const now = dayjs().tz(challenge.timezone);
-
-  for (const day of cumDays) {
-    if (day.status === "CLAIMED" || day.status === "SKIPPED") continue;
-    if (cumDayInstant(day.date, challenge.timezone).isAfter(now)) break;
-
-    const points = rewardPoints(
-      challenge.year,
-      challenge.timezone,
-      cumDays,
-      day,
-      challenge.completions,
-      challenge.tasks,
-      sessions,
-    );
-    if (day.status === "LOCKED") {
-      if (day.pointsAtLock !== points) {
-        await prisma.locktoberCumDay.update({
-          where: { id: day.id },
-          data: { pointsAtLock: points },
-        });
-        day.pointsAtLock = points;
-      }
-      continue;
-    }
-    await prisma.locktoberCumDay.update({
-      where: { id: day.id },
-      data: {
-        status: "LOCKED",
-        pointsAtLock: points,
-        tierSnapshot: liveTiers as unknown as Prisma.InputJsonValue,
-      },
     });
-    day.status = "LOCKED";
-    day.pointsAtLock = points;
-    day.tierSnapshot = liveTiers;
-  }
+    if (!challenge) return;
+
+    const sessions = await tx.chastitySession.findMany({
+      where: {
+        userId: challenge.userId,
+        startTime: { lt: new Date(`${challenge.year + 1}-01-01T00:00:00.000Z`) },
+        OR: [
+          { endTime: null },
+          { endTime: { gt: new Date(`${challenge.year}-08-01T00:00:00.000Z`) } },
+        ],
+      },
+      select: { startTime: true, endTime: true },
+    });
+
+    const cumDays = toCumDays(challenge.cumDays);
+    const liveTiers = tiersToSnapshot(challenge.tiers);
+    const now = dayjs().tz(challenge.timezone);
+
+    for (const day of cumDays) {
+      if (day.status === "CLAIMED" || day.status === "SKIPPED") continue;
+      if (cumDayInstant(day.date, challenge.timezone).isAfter(now)) break;
+
+      const points = rewardPoints(
+        challenge.year,
+        challenge.timezone,
+        cumDays,
+        day,
+        challenge.completions,
+        challenge.tasks,
+        sessions,
+      );
+      const tiers = day.tierSnapshot?.length ? day.tierSnapshot : liveTiers;
+      if (!highestTier(points, tiers)) {
+        const deniedAt = cumDayInstant(day.date, challenge.timezone).toDate();
+        await tx.locktoberCumDay.updateMany({
+          where: { id: day.id, status: day.status },
+          data: {
+            status: "SKIPPED",
+            pointsAtLock: points,
+            tierSnapshot: tiers as unknown as Prisma.InputJsonValue,
+            claimedAt: deniedAt,
+            claimedTierLabel: null,
+          },
+        });
+        day.status = "SKIPPED";
+        continue;
+      }
+      if (day.status === "LOCKED") {
+        if (day.pointsAtLock !== points) {
+          await tx.locktoberCumDay.updateMany({
+            where: { id: day.id, status: "LOCKED" },
+            data: { pointsAtLock: points },
+          });
+          day.pointsAtLock = points;
+        }
+        continue;
+      }
+      await tx.locktoberCumDay.updateMany({
+        where: { id: day.id, status: "SCHEDULED" },
+        data: {
+          status: "LOCKED",
+          pointsAtLock: points,
+          tierSnapshot: liveTiers as unknown as Prisma.InputJsonValue,
+        },
+      });
+      day.status = "LOCKED";
+      day.pointsAtLock = points;
+      day.tierSnapshot = liveTiers;
+    }
+  });
 }

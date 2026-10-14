@@ -1055,7 +1055,7 @@ export async function claimReward(input: {
 
   const tiers = parseTierSnapshot(fresh.tierSnapshot) ?? tiersToSnapshot(fresh.challenge.tiers);
   const reached = highestTier(fresh.pointsAtLock ?? 0, tiers);
-  if (!reached) return fail("No reward tier was reached. You can skip this day.");
+  if (!reached) return fail("This cum day was denied.");
 
   const timestamp = input.orgasm ? new Date(input.orgasm.timestamp) : null;
 

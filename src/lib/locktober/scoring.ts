@@ -55,7 +55,7 @@ export type BarView = {
   locked: boolean;
   /** Tiers drawn on the live bar. */
   tiers: TierSnapshot[];
-  /** Highest tier of the waiting reward. Null when that reward is Denial, or when none is waiting. */
+  /** Highest tier of the waiting reward. Null when none is waiting. A shortfall is denied immediately and is not waiting. */
   reached: TierSnapshot | null;
   /** Points that decide the waiting reward. Null when none is waiting. */
   rewardPoints: number | null;
