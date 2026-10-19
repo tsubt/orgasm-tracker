@@ -160,7 +160,7 @@ function dueText(task: Pick<SerializedTask, "deadlineMinute" | "missPenalty">): 
   if (task.deadlineMinute == null) return "";
   const time = formatDeadline(task.deadlineMinute);
   if (task.missPenalty > 0) {
-    return `. Due by ${time}, ${task.missPenalty} point penalty if missed.`;
+    return `. Due by ${time}, ${task.missPenalty} point penalty if logged later.`;
   }
   return `. Due by ${time}.`;
 }

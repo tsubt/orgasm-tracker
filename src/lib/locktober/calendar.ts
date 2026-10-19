@@ -55,6 +55,12 @@ export function scoringWindows(
   return windows;
 }
 
+function addPoints(into: Map<string, number>, date: string, amount: number) {
+  if (amount === 0) return;
+  into.set(date, (into.get(date) ?? 0) + amount);
+}
+
+/** Credit each finished period on the local day it completes. Leftover time carries forward. */
 function creditLockedDays(
   intervals: { from: number; to: number }[],
   points: number,
@@ -66,20 +72,38 @@ function creditLockedDays(
   if (!Number.isInteger(points) || points < 1) return;
   if (!Number.isInteger(every) || every < 1) return;
   const periodMs = ratePeriodMs(every, unit);
+  if (!(periodMs > 0)) return;
   let bank = 0;
   for (const interval of intervals) {
     let cursor = interval.from;
     while (cursor < interval.to) {
-      const need = periodMs - bank;
-      const room = interval.to - cursor;
-      if (room < need) {
-        bank += room;
-        break;
+      const dayStart = dayjs(cursor).tz(tz).startOf("day");
+      const date = dayStart.format("YYYY-MM-DD");
+      // Re-parse the next calendar date. add(1, "day") keeps the old offset and
+      // misses the 23-hour and 25-hour days around a daylight-saving change.
+      const dayEnd = dayjs.tz(`${dayStart.add(1, "day").format("YYYY-MM-DD")} 00:00`, tz).valueOf();
+      const limit = Math.min(interval.to, dayEnd);
+      const span = limit - cursor;
+      if (!(span > 0)) break;
+
+      const periods = Math.floor((bank + span) / periodMs);
+      if (periods === 0) {
+        bank += span;
+        cursor = limit;
+        continue;
       }
-      cursor += need;
+
+      const consumed = periods * periodMs - bank;
+      const lastAt = cursor + consumed;
+      // A period that lands on the next midnight belongs to that new day.
+      if (lastAt === dayEnd) {
+        addPoints(into, date, (periods - 1) * points);
+        addPoints(into, dayjs(dayEnd).tz(tz).format("YYYY-MM-DD"), points);
+      } else {
+        addPoints(into, date, periods * points);
+      }
+      cursor = lastAt;
       bank = 0;
-      const date = dayjs(cursor).tz(tz).format("YYYY-MM-DD");
-      into.set(date, (into.get(date) ?? 0) + points);
     }
   }
 }

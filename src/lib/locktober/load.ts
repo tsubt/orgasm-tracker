@@ -9,7 +9,7 @@ import {
   LocktoberVisibility,
   Prisma,
 } from "@prisma/client";
-import { applyMissedDeadlines, ensureCumDayLocks } from "./locks";
+import { ensureCumDayLocks } from "./locks";
 import { octoberCalendar, type LocktoberCalendarDay } from "./calendar";
 import { locktoberTimeline, type LocktoberTimelineDay } from "./timeline";
 import {
@@ -317,13 +317,19 @@ export async function loadOwnerLocktober(
   if (!user) return null;
 
   const year = new Date().getUTCFullYear();
-  const found = await prisma.locktoberChallenge.findMany({
-    where: { userId, year: { in: [year - 1, year, year + 1] } },
-    select: { id: true },
-  });
-  for (const challenge of found) {
-    await applyMissedDeadlines(challenge.id);
-    if (options?.lockDays) await ensureCumDayLocks(challenge.id);
+  // Only the open challenge is freshened here. A failure still leaves the page up.
+  if (options?.lockDays) {
+    const current = await prisma.locktoberChallenge.findFirst({
+      where: { userId, year: focusYear(dayjs()) },
+      select: { id: true },
+    });
+    if (current) {
+      try {
+        await ensureCumDayLocks(current.id);
+      } catch (error) {
+        console.error("Locktober lock resolve failed", error);
+      }
+    }
   }
   const challenges = await prisma.locktoberChallenge.findMany({
     where: { userId, year: { in: [year - 1, year, year + 1] } },
@@ -402,14 +408,6 @@ export async function loadChallengeById(id: string) {
 }
 
 export async function loadChallengeBySlug(slug: string) {
-  const challenge = await loadChallengeBySlugRecord(slug);
-  if (!challenge) return null;
-  await applyMissedDeadlines(challenge.id);
-  await ensureCumDayLocks(challenge.id);
-  return loadChallengeById(challenge.id);
-}
-
-async function loadChallengeBySlugRecord(slug: string) {
   const bySlug = await prisma.locktoberChallenge.findUnique({
     where: { shareSlug: slug },
     include: challengeInclude,
@@ -433,20 +431,6 @@ async function loadChallengeBySlugRecord(slug: string) {
 }
 
 export async function loadPublicBoard(year: number): Promise<PublicChallengeCard[]> {
-  const due = await prisma.locktoberTask.findMany({
-    where: {
-      deadlineMinute: { not: null },
-      missPenalty: { gt: 0 },
-      mode: { not: "TIME_LOCKED" },
-      challenge: { visibility: "PUBLIC", year },
-    },
-    select: { challengeId: true },
-    distinct: ["challengeId"],
-  });
-  for (const task of due) {
-    await applyMissedDeadlines(task.challengeId);
-  }
-
   const challenges = await prisma.locktoberChallenge.findMany({
     where: { visibility: "PUBLIC", year },
     include: {

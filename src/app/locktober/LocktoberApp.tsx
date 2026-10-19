@@ -26,6 +26,7 @@ import {
   compareTasksByValue,
   deadlinePassed,
   deadlineTimeValue,
+  formatDeadline,
   manualQuantityLimit,
   manualRateUnit,
   parseDeadlineTime,
@@ -509,7 +510,9 @@ function ChallengeView({
                   const detail = cap.maxed
                     ? `${taskCardDetail(task)} · logged`
                     : pastDeadline
-                      ? `${taskCardDetail(task)} · deadline passed`
+                      ? task.missPenalty > 0
+                        ? `${taskCardDetail(task)} · late −${task.missPenalty}pt`
+                        : `${taskCardDetail(task)} · deadline passed`
                       : cap.remainingPoints != null
                         ? `${taskCardDetail(task)} · ${cap.remainingPoints}pt left`
                         : undefined;
@@ -1422,6 +1425,14 @@ function EditLogModal({
         >
           {completion.deadlineMiss ? (
             <p className="text-sm text-gray-600">This penalty was added automatically.</p>
+          ) : task &&
+            effective.isValid() &&
+            deadlinePassed(task.deadlineMinute, effective.hour(), effective.minute()) ? (
+            <p className="text-sm text-gray-600">
+              {task.missPenalty > 0
+                ? `After ${formatDeadline(task.deadlineMinute ?? 0)}, saving applies a ${task.missPenalty} point penalty.`
+                : `After ${formatDeadline(task.deadlineMinute ?? 0)}, saving awards no points.`}
+            </p>
           ) : null}
           {editablePoints && mode === "PER_MINUTE" && (
             <label className="flex flex-col gap-1 text-sm">
@@ -1553,7 +1564,10 @@ function CompleteModal({
   const maxQuantity = pointLimited
     ? Math.min(unitLimit, Math.floor(remainingPoints / rate))
     : unitLimit;
-  const amountMax = remainingPoints == null ? 500 : Math.min(500, remainingPoints);
+  const loggedAt = effective.isValid() ? effective : zoneNow;
+  const late = deadlinePassed(task.deadlineMinute, loggedAt.hour(), loggedAt.minute());
+  const amountMax = late || remainingPoints == null ? 500 : Math.min(500, remainingPoints);
+  const quantityMax = late ? unitLimit : maxQuantity;
 
   return (
     <Modal title={task.title} onClose={onClose}>
@@ -1581,16 +1595,23 @@ function CompleteModal({
           <p className="whitespace-pre-wrap text-sm text-gray-800">{task.description}</p>
         ) : null}
         <p className="text-sm text-gray-600">{taskSummary(task)}</p>
-        {task.mode === "PER_MINUTE" && maxQuantity < 1 && (
+        {late && task.deadlineMinute != null && (
+          <p className="text-sm text-gray-600">
+            {task.missPenalty > 0
+              ? `After ${formatDeadline(task.deadlineMinute)}, this logs a ${task.missPenalty} point penalty.`
+              : `After ${formatDeadline(task.deadlineMinute)}, this logs no points.`}
+          </p>
+        )}
+        {task.mode === "PER_MINUTE" && !late && maxQuantity < 1 && (
           <p className="text-sm text-gray-600">Not enough points left for another one.</p>
         )}
-        {task.mode === "PER_MINUTE" && maxQuantity >= 1 && (
+        {task.mode === "PER_MINUTE" && (late || maxQuantity >= 1) && (
           <label className="flex flex-col gap-1 text-sm">
             {unitName.charAt(0).toUpperCase() + unitName.slice(1)}
             <input
               type="number"
               min={1}
-              max={maxQuantity}
+              max={quantityMax}
               value={quantity}
               onChange={(event) => setQuantity(Number(event.target.value))}
               className={inputClass}
@@ -1665,7 +1686,7 @@ function CompleteModal({
         <button
           type="submit"
           className={buttonClass}
-          disabled={pending || (task.mode === "PER_MINUTE" && maxQuantity < 1)}
+          disabled={pending || (task.mode === "PER_MINUTE" && !late && maxQuantity < 1)}
         >
           Confirm
         </button>

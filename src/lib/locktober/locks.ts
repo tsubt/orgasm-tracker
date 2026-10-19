@@ -3,12 +3,7 @@ import { Prisma } from "@prisma/client";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import {
-  extraDeadlineMissIds,
-  missedDeadlinePenalties,
-  satisfiedDeadlineMissIds,
-  snapshotCadence,
-} from "./deadline";
+import { satisfiedDeadlineMissIds } from "./deadline";
 import {
   CumDayInput,
   cumDayInstant,
@@ -49,111 +44,7 @@ function toCumDays(
   }));
 }
 
-/** Write one penalty per missed deadline period. Returns how many were created. */
-export async function applyMissedDeadlines(challengeId: string): Promise<number> {
-  const due = await prisma.locktoberTask.findFirst({
-    where: {
-      challengeId,
-      deadlineMinute: { not: null },
-      missPenalty: { gt: 0 },
-      mode: { not: "TIME_LOCKED" },
-    },
-    select: { id: true },
-  });
-  if (!due) return 0;
-
-  return prisma.$transaction(async (tx) => {
-    // Serializes penalty writes only. A row lock blocks every other write on the
-    // challenge and stacks until the function hits its timeout.
-    const [slot] = await tx.$queryRaw<Array<{ locked: boolean }>>`
-      SELECT pg_try_advisory_xact_lock(
-        hashtext('locktober-deadline'),
-        hashtext(${challengeId})
-      ) AS "locked"
-    `;
-    if (!slot?.locked) return 0;
-
-    const challenge = await tx.locktoberChallenge.findUnique({
-      where: { id: challengeId },
-      select: {
-        id: true,
-        year: true,
-        timezone: true,
-        user: { select: { firstDayOfWeek: true } },
-        tasks: {
-          select: {
-            id: true,
-            title: true,
-            kind: true,
-            points: true,
-            mode: true,
-            cadence: true,
-            maxCompletions: true,
-            maxPoints: true,
-            noteRequired: true,
-            deadlineMinute: true,
-            missPenalty: true,
-            deadlineSetAt: true,
-          },
-        },
-      },
-    });
-    if (!challenge) return 0;
-    if (
-      !challenge.tasks.some(
-        (task) => task.deadlineMinute != null && task.missPenalty > 0 && task.mode !== "TIME_LOCKED",
-      )
-    ) {
-      return 0;
-    }
-
-    const now = dayjs().tz(challenge.timezone);
-    const completions = await tx.locktoberCompletion.findMany({
-      where: { challengeId },
-      select: { id: true, taskId: true, completedAt: true, snapshot: true },
-    });
-    const logged = completions.map((completion) => ({
-      id: completion.id,
-      taskId: completion.taskId,
-      completedAt: completion.completedAt,
-      deadlineMiss: isDeadlineMiss(completion.snapshot),
-      cadence: snapshotCadence(completion.snapshot),
-    }));
-    const extra = extraDeadlineMissIds({
-      tz: challenge.timezone,
-      firstDayOfWeek: challenge.user.firstDayOfWeek,
-      tasks: challenge.tasks,
-      completions: logged,
-    });
-    if (extra.length > 0) {
-      await tx.locktoberCompletion.deleteMany({ where: { id: { in: extra } } });
-    }
-    const removed = new Set(extra);
-    const pending = missedDeadlinePenalties({
-      year: challenge.year,
-      tz: challenge.timezone,
-      now,
-      firstDayOfWeek: challenge.user.firstDayOfWeek,
-      tasks: challenge.tasks,
-      completions: logged.filter((completion) => !removed.has(completion.id)),
-    });
-    if (pending.length === 0) return 0;
-    await tx.locktoberCompletion.createMany({
-      data: pending.map((item) => ({
-        challengeId: challenge.id,
-        taskId: item.taskId,
-        completedAt: item.completedAt,
-        enteredAt: item.completedAt,
-        note: item.note,
-        pointsAwarded: item.pointsAwarded,
-        snapshot: item.snapshot as unknown as Prisma.InputJsonValue,
-      })),
-    });
-    return pending.length;
-  });
-}
-
-/** Drop a miss penalty once an on-time log exists for that period. */
+/** Drop an old automatic miss once a real log exists for that period. */
 export async function clearSatisfiedDeadlineMisses(challengeId: string): Promise<number> {
   const challenge = await prisma.locktoberChallenge.findUnique({
     where: { id: challengeId },
@@ -218,18 +109,31 @@ function rewardPoints(
   return cyclePoints(completions, window.start, window.end, auto.total);
 }
 
-/** Lock every cum day whose midnight has passed, and refresh an open reward's points. */
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Lock every cum day whose midnight has passed, and refresh an open reward's points.
+ * A blocking lock holds the connection until the function is killed, so a busy
+ * challenge is left for the request that already has it.
+ */
 export async function ensureCumDayLocks(challengeId: string) {
-  await applyMissedDeadlines(challengeId);
-  await prisma.$transaction(async (tx) => {
-    // One resolver at a time. The next caller waits, then reads the committed rows.
-    // $executeRaw: the lock returns void, which $queryRaw cannot deserialize.
-    await tx.$executeRaw`
-      SELECT pg_advisory_xact_lock(
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (await resolveCumDayLocks(challengeId)) return;
+    await wait(75);
+  }
+}
+
+async function resolveCumDayLocks(challengeId: string): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const [slot] = await tx.$queryRaw<Array<{ locked: boolean }>>`
+      SELECT pg_try_advisory_xact_lock(
         hashtext('locktober-cumday'),
         hashtext(${challengeId})
-      )
+      ) AS "locked"
     `;
+    if (!slot?.locked) return false;
 
     const challenge = await tx.locktoberChallenge.findUnique({
       where: { id: challengeId },
@@ -250,7 +154,7 @@ export async function ensureCumDayLocks(challengeId: string) {
         },
       },
     });
-    if (!challenge) return;
+    if (!challenge) return true;
 
     const sessions = await tx.chastitySession.findMany({
       where: {
@@ -319,5 +223,6 @@ export async function ensureCumDayLocks(challengeId: string) {
       day.pointsAtLock = points;
       day.tierSnapshot = liveTiers;
     }
+    return true;
   });
 }

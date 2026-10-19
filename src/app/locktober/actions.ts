@@ -5,7 +5,7 @@ import { prisma } from "@/prisma";
 import { DEFAULT_TASKS, DEFAULT_TIERS } from "@/lib/locktober/defaults";
 import { deadlinePassed, manualQuantityLimit, manualRateUnit } from "@/lib/locktober/taskLabel";
 import { refreshLocktoberCard } from "@/lib/locktober/cardSnapshot";
-import { applyMissedDeadlines, clearSatisfiedDeadlineMisses, ensureCumDayLocks } from "@/lib/locktober/locks";
+import { clearSatisfiedDeadlineMisses, ensureCumDayLocks } from "@/lib/locktober/locks";
 import {
   cumDayInstant,
   cumDayIsFixed,
@@ -683,7 +683,6 @@ export async function completeTask(input: {
   if (!task || task.challenge.userId !== userId) return fail("Task not found.");
   if (task.mode === "TIME_LOCKED") return fail("Time locked is added automatically.");
 
-  const applied = await applyMissedDeadlines(task.challengeId);
   await ensureCumDayLocks(task.challengeId);
   const challenge = await prisma.locktoberChallenge.findUnique({
     where: { id: task.challengeId },
@@ -699,10 +698,10 @@ export async function completeTask(input: {
 
   const now = dayjs().tz(challenge.timezone);
   if (now.isBefore(octoberStart(challenge.year, challenge.timezone))) {
-    return fail("Tasks open on October 1.", applied > 0);
+    return fail("Tasks open on October 1.");
   }
   if (!now.isBefore(octoberEnd(challenge.year, challenge.timezone))) {
-    return fail("October is over.", applied > 0);
+    return fail("October is over.");
   }
 
   const enteredAt = new Date();
@@ -736,10 +735,7 @@ export async function completeTask(input: {
   ) {
     return fail("That time is already claimed or skipped.");
   }
-  if (deadlinePassed(task.deadlineMinute, effective.hour(), effective.minute())) {
-    await revalidateChallenge(challenge.shareSlug, challenge.id);
-    return fail("That deadline has passed, so this one is closed for that time.", true);
-  }
+  const late = deadlinePassed(task.deadlineMinute, effective.hour(), effective.minute());
 
   const logged = challenge.completions.map((completion) => ({
     taskId: completion.taskId,
@@ -781,23 +777,27 @@ export async function completeTask(input: {
       return fail(`Enter the ${unitName} as a whole number from 1 to ${limit}.`);
     }
     const awarded = rate * quantity;
-    if (cap.remainingPoints != null && Math.abs(awarded) > cap.remainingPoints) {
+    if (!late && cap.remainingPoints != null && Math.abs(awarded) > cap.remainingPoints) {
       return fail(`Only ${cap.remainingPoints} points are left for this period.`);
     }
-    pointsAwarded = awarded;
+    pointsAwarded = late ? -Math.max(0, task.missPenalty) : awarded;
     minutes =
       unit === "HOUR" ? quantity * 60 : unit === "MINUTE" ? quantity : Math.max(1, Math.round(quantity / 60));
   } else if (task.mode === "ENTER_AMOUNT") {
     if (!Number.isInteger(input.amount) || !input.amount || input.amount < 1 || input.amount > 500) {
       return fail("Enter a whole number of points from 1 to 500.");
     }
-    if (cap.remainingPoints != null && input.amount > cap.remainingPoints) {
+    if (!late && cap.remainingPoints != null && input.amount > cap.remainingPoints) {
       return fail(`Only ${cap.remainingPoints} points are left for this period.`);
     }
-    pointsAwarded = task.kind === "PENALTY" ? -input.amount : input.amount;
+    pointsAwarded = late
+      ? -Math.max(0, task.missPenalty)
+      : task.kind === "PENALTY"
+        ? -input.amount
+        : input.amount;
   } else {
-    pointsAwarded = task.points ?? 0;
-    if (pointsAwarded === 0) return fail("This task has no point value.");
+    pointsAwarded = late ? -Math.max(0, task.missPenalty) : (task.points ?? 0);
+    if (!late && pointsAwarded === 0) return fail("This task has no point value.");
   }
 
   const snapshot: CompletionSnapshot = {
@@ -843,7 +843,6 @@ export async function updateCompletion(input: {
   if (!owned.ok) return owned;
   const { completion, task } = owned;
 
-  const applied = await applyMissedDeadlines(completion.challengeId);
   await ensureCumDayLocks(completion.challengeId);
   const challenge = await prisma.locktoberChallenge.findUnique({
     where: { id: completion.challengeId },
@@ -859,7 +858,7 @@ export async function updateCompletion(input: {
 
   const now = dayjs().tz(challenge.timezone);
   if (!now.isBefore(octoberEnd(challenge.year, challenge.timezone))) {
-    return fail("October is over.", applied > 0);
+    return fail("October is over.");
   }
 
   const parsed = dayjs(input.completedAt);
@@ -897,11 +896,8 @@ export async function updateCompletion(input: {
 
   let pointsAwarded = completion.pointsAwarded;
   let minutes = completion.minutes;
+  const late = deadlinePassed(task?.deadlineMinute ?? null, effective.hour(), effective.minute());
   if (!miss && task && task.mode !== "TIME_LOCKED") {
-    if (deadlinePassed(task.deadlineMinute, effective.hour(), effective.minute())) {
-      await revalidateChallenge(challenge.shareSlug, challenge.id);
-      return fail("That deadline has passed, so this one is closed for that time.", true);
-    }
     const user = await prisma.user.findUnique({
       where: { id: owned.userId },
       select: { firstDayOfWeek: true },
@@ -937,10 +933,10 @@ export async function updateCompletion(input: {
         return fail(`Enter the ${unitName} as a whole number from 1 to ${limit}.`);
       }
       const awarded = rate * quantity;
-      if (cap.remainingPoints != null && Math.abs(awarded) > cap.remainingPoints) {
+      if (!late && cap.remainingPoints != null && Math.abs(awarded) > cap.remainingPoints) {
         return fail(`Only ${cap.remainingPoints} points are left for this period.`);
       }
-      pointsAwarded = awarded;
+      pointsAwarded = late ? -Math.max(0, task.missPenalty) : awarded;
       minutes =
         unit === "HOUR"
           ? quantity * 60
@@ -951,10 +947,16 @@ export async function updateCompletion(input: {
       if (!Number.isInteger(input.amount) || !input.amount || input.amount < 1 || input.amount > 500) {
         return fail("Enter a whole number of points from 1 to 500.");
       }
-      if (cap.remainingPoints != null && input.amount > cap.remainingPoints) {
+      if (!late && cap.remainingPoints != null && input.amount > cap.remainingPoints) {
         return fail(`Only ${cap.remainingPoints} points are left for this period.`);
       }
-      pointsAwarded = task.kind === "PENALTY" ? -input.amount : input.amount;
+      pointsAwarded = late
+        ? -Math.max(0, task.missPenalty)
+        : task.kind === "PENALTY"
+          ? -input.amount
+          : input.amount;
+    } else {
+      pointsAwarded = late ? -Math.max(0, task.missPenalty) : (task.points ?? completion.pointsAwarded);
     }
   }
 
